@@ -1,0 +1,757 @@
+---
+import { SITE_CONFIG } from '../config/site';
+const d = SITE_CONFIG.defaultIndicators;
+
+function splitNumberChars(val: number): string[] {
+  return val
+    .toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    .split('');
+}
+
+const selicChars = splitNumberChars(d.selic);
+const cdiChars = splitNumberChars(d.cdi);
+const poupancaChars = splitNumberChars(d.poupanca || 8.42);
+const ipcaChars = splitNumberChars(d.ipca12m);
+const dolarChars = splitNumberChars(d.dolar);
+---
+
+<div class="ticker-bar" aria-label="Indicadores macroeconômicos oficiais do Banco Central do Brasil">
+  <div class="container ticker-inner">
+    <div
+      class="ticker-info-badge"
+      id="bcb-ticker-badge"
+      role="status"
+      title="Indicadores macroeconômicos sincronizados em tempo real com o Banco Central do Brasil (SGS)"
+    >
+      <span class="live-beacon-dot" aria-hidden="true"></span>
+      <span class="ticker-badge-text">
+        <span class="badge-prefix">BCB SGS</span>
+        <span class="ticker-source" id="bcb-ticker-source">Ao Vivo</span>
+      </span>
+    </div>
+
+    <div class="ticker-divider" aria-hidden="true"></div>
+
+    <div class="ticker-items">
+      <!-- 1. SELIC -->
+      <a href="/calculadoras/renda-fixa" class="ticker-pill" title="Simular com a Taxa Selic atual">
+        <span class="ticker-label">Selic</span>
+        <strong
+          class="ticker-val"
+          id="bcb-selic"
+          data-value={d.selic.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          data-suffix="% a.a."
+          aria-label={`Selic: ${d.selic.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}% a.a.`}
+        >
+          <span class="flap-board" aria-hidden="true">
+            {selicChars.map((ch, idx) =>
+              ch === ',' || ch === '.' ? (
+                <span class="flap-cell flap-cell--sep" style={`--sibling-index: ${idx + 1};`}>
+                  <span class="flap-face flap-face--top">{ch}</span>
+                  <span class="flap-face flap-face--bottom">{ch}</span>
+                  <span class="flap-hinge" />
+                </span>
+              ) : (
+                <span class="flap-cell flap-cell--digit" data-char={ch} style={`--sibling-index: ${idx + 1};`}>
+                  <span class="flap-face flap-face--top">{ch}</span>
+                  <span class="flap-face flap-face--bottom">{ch}</span>
+                  <span class="flap-leaf flap-leaf--top">{ch}</span>
+                  <span class="flap-leaf flap-leaf--bottom">{ch}</span>
+                  <span class="flap-hinge" />
+                </span>
+              )
+            )}
+          </span>
+          <span class="flap-unit" aria-hidden="true">% a.a.</span>
+        </strong>
+      </a>
+
+      <!-- 2. CDI -->
+      <a href="/calculadoras/renda-fixa" class="ticker-pill" title="Simular rendimento em % do CDI">
+        <span class="ticker-label">CDI</span>
+        <strong
+          class="ticker-val"
+          id="bcb-cdi"
+          data-value={d.cdi.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          data-suffix="% a.a."
+          aria-label={`CDI: ${d.cdi.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}% a.a.`}
+        >
+          <span class="flap-board" aria-hidden="true">
+            {cdiChars.map((ch, idx) =>
+              ch === ',' || ch === '.' ? (
+                <span class="flap-cell flap-cell--sep" style={`--sibling-index: ${idx + 1};`}>
+                  <span class="flap-face flap-face--top">{ch}</span>
+                  <span class="flap-face flap-face--bottom">{ch}</span>
+                  <span class="flap-hinge" />
+                </span>
+              ) : (
+                <span class="flap-cell flap-cell--digit" data-char={ch} style={`--sibling-index: ${idx + 1};`}>
+                  <span class="flap-face flap-face--top">{ch}</span>
+                  <span class="flap-face flap-face--bottom">{ch}</span>
+                  <span class="flap-leaf flap-leaf--top">{ch}</span>
+                  <span class="flap-leaf flap-leaf--bottom">{ch}</span>
+                  <span class="flap-hinge" />
+                </span>
+              )
+            )}
+          </span>
+          <span class="flap-unit" aria-hidden="true">% a.a.</span>
+        </strong>
+      </a>
+
+      <!-- 3. POUPANÇA -->
+      <a href="/calculadoras/renda-fixa" class="ticker-pill" title="Comparar rendimento da Poupança com CDB e Tesouro">
+        <span class="ticker-label">Poupança</span>
+        <strong
+          class="ticker-val"
+          id="bcb-poupanca"
+          data-value={(d.poupanca || 8.42).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          data-suffix="% a.a."
+          aria-label={`Poupança: ${(d.poupanca || 8.42).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}% a.a.`}
+        >
+          <span class="flap-board" aria-hidden="true">
+            {poupancaChars.map((ch, idx) =>
+              ch === ',' || ch === '.' ? (
+                <span class="flap-cell flap-cell--sep" style={`--sibling-index: ${idx + 1};`}>
+                  <span class="flap-face flap-face--top">{ch}</span>
+                  <span class="flap-face flap-face--bottom">{ch}</span>
+                  <span class="flap-hinge" />
+                </span>
+              ) : (
+                <span class="flap-cell flap-cell--digit" data-char={ch} style={`--sibling-index: ${idx + 1};`}>
+                  <span class="flap-face flap-face--top">{ch}</span>
+                  <span class="flap-face flap-face--bottom">{ch}</span>
+                  <span class="flap-leaf flap-leaf--top">{ch}</span>
+                  <span class="flap-leaf flap-leaf--bottom">{ch}</span>
+                  <span class="flap-hinge" />
+                </span>
+              )
+            )}
+          </span>
+          <span class="flap-unit" aria-hidden="true">% a.a.</span>
+        </strong>
+      </a>
+
+      <!-- 4. IPCA (12m) -->
+      <a href="/calculadoras/juros-compostos" class="ticker-pill" title="Simular ganho real descontando o IPCA">
+        <span class="ticker-label">IPCA (12m)</span>
+        <strong
+          class="ticker-val"
+          id="bcb-ipca"
+          data-value={d.ipca12m.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          data-suffix="%"
+          aria-label={`IPCA 12 meses: ${d.ipca12m.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}%`}
+        >
+          <span class="flap-board" aria-hidden="true">
+            {ipcaChars.map((ch, idx) =>
+              ch === ',' || ch === '.' ? (
+                <span class="flap-cell flap-cell--sep" style={`--sibling-index: ${idx + 1};`}>
+                  <span class="flap-face flap-face--top">{ch}</span>
+                  <span class="flap-face flap-face--bottom">{ch}</span>
+                  <span class="flap-hinge" />
+                </span>
+              ) : (
+                <span class="flap-cell flap-cell--digit" data-char={ch} style={`--sibling-index: ${idx + 1};`}>
+                  <span class="flap-face flap-face--top">{ch}</span>
+                  <span class="flap-face flap-face--bottom">{ch}</span>
+                  <span class="flap-leaf flap-leaf--top">{ch}</span>
+                  <span class="flap-leaf flap-leaf--bottom">{ch}</span>
+                  <span class="flap-hinge" />
+                </span>
+              )
+            )}
+          </span>
+          <span class="flap-unit" aria-hidden="true">%</span>
+        </strong>
+      </a>
+
+      <!-- 5. DÓLAR -->
+      <a href="/calculadoras/renda-fixa" class="ticker-pill" title="Cotação oficial do Dólar PTAX (Banco Central)">
+        <span class="ticker-label">Dólar</span>
+        <strong
+          class="ticker-val"
+          id="bcb-dolar"
+          data-prefix="R$ "
+          data-value={d.dolar.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          aria-label={`Dólar: R$ ${d.dolar.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+        >
+          <span class="flap-unit flap-unit--prefix" aria-hidden="true">R$</span>
+          <span class="flap-board" aria-hidden="true">
+            {dolarChars.map((ch, idx) =>
+              ch === ',' || ch === '.' ? (
+                <span class="flap-cell flap-cell--sep" style={`--sibling-index: ${idx + 1};`}>
+                  <span class="flap-face flap-face--top">{ch}</span>
+                  <span class="flap-face flap-face--bottom">{ch}</span>
+                  <span class="flap-hinge" />
+                </span>
+              ) : (
+                <span class="flap-cell flap-cell--digit" data-char={ch} style={`--sibling-index: ${idx + 1};`}>
+                  <span class="flap-face flap-face--top">{ch}</span>
+                  <span class="flap-face flap-face--bottom">{ch}</span>
+                  <span class="flap-leaf flap-leaf--top">{ch}</span>
+                  <span class="flap-leaf flap-leaf--bottom">{ch}</span>
+                  <span class="flap-hinge" />
+                </span>
+              )
+            )}
+          </span>
+        </strong>
+      </a>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const prefersReducedMotion = () =>
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Fallback for sibling-index() in browsers that don't support it natively yet (dynamic-sibling-animations guide)
+  function applySiblingIndexFallback(board: HTMLElement) {
+    if (!CSS.supports('animation-delay: calc(sibling-index() * 0.1s)')) {
+      [...board.children].forEach((el, index) => {
+        (el as HTMLElement).style.setProperty('--sibling-index', String(index + 1));
+      });
+    }
+  }
+
+  function createCellMarkup(ch: string, index: number): HTMLElement {
+    const isSep = ch === ',' || ch === '.';
+    const cell = document.createElement('span');
+    cell.className = isSep ? 'flap-cell flap-cell--sep' : 'flap-cell flap-cell--digit';
+    cell.style.setProperty('--sibling-index', String(index + 1));
+
+    if (isSep) {
+      cell.innerHTML = `
+        <span class="flap-face flap-face--top">${ch}</span>
+        <span class="flap-face flap-face--bottom">${ch}</span>
+        <span class="flap-hinge"></span>
+      `;
+    } else {
+      cell.dataset.char = ch;
+      cell.innerHTML = `
+        <span class="flap-face flap-face--top">${ch}</span>
+        <span class="flap-face flap-face--bottom">${ch}</span>
+        <span class="flap-leaf flap-leaf--top">${ch}</span>
+        <span class="flap-leaf flap-leaf--bottom">${ch}</span>
+        <span class="flap-hinge"></span>
+      `;
+    }
+    return cell;
+  }
+
+  function setCellStaticChar(cell: HTMLElement, ch: string) {
+    cell.dataset.char = ch;
+    const topFace = cell.querySelector('.flap-face--top');
+    const bottomFace = cell.querySelector('.flap-face--bottom');
+    const topLeaf = cell.querySelector('.flap-leaf--top') as HTMLElement | null;
+    const bottomLeaf = cell.querySelector('.flap-leaf--bottom') as HTMLElement | null;
+
+    if (topFace) topFace.textContent = ch;
+    if (bottomFace) bottomFace.textContent = ch;
+    if (topLeaf) {
+      topLeaf.textContent = ch;
+      topLeaf.style.transform = 'rotateX(0deg)';
+    }
+    if (bottomLeaf) {
+      bottomLeaf.textContent = ch;
+      bottomLeaf.style.transform = 'rotateX(90deg)';
+    }
+  }
+
+  // Realiza um único giro 3D de placa dividida (Split-Flap Solari)
+  async function flipSingleStep(
+    cell: HTMLElement,
+    fromChar: string,
+    toChar: string,
+    stepDurationMs: number
+  ): Promise<void> {
+    const topFace = cell.querySelector('.flap-face--top') as HTMLElement | null;
+    const bottomFace = cell.querySelector('.flap-face--bottom') as HTMLElement | null;
+    const topLeaf = cell.querySelector('.flap-leaf--top') as HTMLElement | null;
+    const bottomLeaf = cell.querySelector('.flap-leaf--bottom') as HTMLElement | null;
+
+    if (!topFace || !bottomFace || !topLeaf || !bottomLeaf) return;
+
+    // Prepara as metades estáticas e móveis antes da queda da placa
+    topFace.textContent = toChar;
+    bottomFace.textContent = fromChar;
+    topLeaf.textContent = fromChar;
+    bottomLeaf.textContent = toChar;
+
+    topLeaf.style.transform = 'rotateX(0deg)';
+    bottomLeaf.style.transform = 'rotateX(90deg)';
+
+    const halfDuration = Math.round(stepDurationMs * 0.48);
+
+    // Fase 1: Metade superior cai até -90 graus (gravidade mecânica)
+    const topAnim = topLeaf.animate(
+      [
+        { transform: 'rotateX(0deg)', filter: 'brightness(1)' },
+        { transform: 'rotateX(-90deg)', filter: 'brightness(0.45)' },
+      ],
+      {
+        duration: halfDuration,
+        easing: 'cubic-bezier(0.55, 0.05, 0.85, 0.65)',
+        fill: 'forwards',
+      }
+    );
+
+    try {
+      await topAnim.finished;
+    } catch {
+      return;
+    }
+
+    // Fase 2: Metade inferior desce de +90 graus até 0 graus pousando sobre a base
+    const bottomAnim = bottomLeaf.animate(
+      [
+        { transform: 'rotateX(90deg)', filter: 'brightness(1.3)' },
+        { transform: 'rotateX(0deg)', filter: 'brightness(1)' },
+      ],
+      {
+        duration: Math.round(stepDurationMs * 0.56),
+        easing: 'cubic-bezier(0.16, 0.84, 0.32, 1)',
+        fill: 'forwards',
+      }
+    );
+
+    try {
+      await bottomAnim.finished;
+    } catch {
+      return;
+    }
+
+    bottomFace.textContent = toChar;
+    topLeaf.textContent = toChar;
+    topAnim.cancel();
+    bottomAnim.cancel();
+    topLeaf.style.transform = 'rotateX(0deg)';
+    bottomLeaf.style.transform = 'rotateX(90deg)';
+    cell.dataset.char = toChar;
+  }
+
+  // Gira um dígito sem pressa passando por múltiplos cartões mecânicos até pousar no valor final
+  async function spinDigitCell(
+    cell: HTMLElement,
+    targetChar: string,
+    delayMs: number,
+    flapStepsCount: number
+  ): Promise<void> {
+    const targetNum = Number.parseInt(targetChar, 10);
+    if (Number.isNaN(targetNum) || prefersReducedMotion()) {
+      setCellStaticChar(cell, targetChar);
+      return;
+    }
+
+    // Define o dígito inicial recuado em `flapStepsCount` posições na roda (0..9)
+    const startNum = (targetNum + 100 - flapStepsCount) % 10;
+    setCellStaticChar(cell, String(startNum));
+
+    if (delayMs > 0) {
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+
+    let currentNum = startNum;
+    for (let step = 1; step <= flapStepsCount; step++) {
+      const nextNum = (startNum + step) % 10;
+      const progress = step / flapStepsCount;
+      // Desaceleração orgânica sem pressa: começa em ~145ms por placa e desacelera até ~265ms na última placa
+      const stepDuration = Math.round(145 + Math.pow(progress, 2.1) * 125);
+      await flipSingleStep(cell, String(currentNum), String(nextNum), stepDuration);
+      currentNum = nextNum;
+    }
+  }
+
+  // Atualiza e anima um indicador completo (ex.: "13,75")
+  function animateIndicatorBoard(
+    el: HTMLElement,
+    formattedNumber: string,
+    indicatorIndex: number,
+    minSteps = 6
+  ) {
+    const board = el.querySelector('.flap-board') as HTMLElement | null;
+    if (!board) return;
+
+    const prefix = el.dataset.prefix || '';
+    const suffix = el.dataset.suffix ? ` ${el.dataset.suffix}` : '';
+    const labelEl = el.parentElement?.querySelector('.ticker-label');
+    const labelText = labelEl ? `${labelEl.textContent}: ` : '';
+    el.setAttribute('aria-label', `${labelText}${prefix}${formattedNumber}${suffix}`);
+    el.dataset.value = formattedNumber;
+
+    const chars = formattedNumber.split('');
+    const existingCells = [...board.children] as HTMLElement[];
+
+    // Se o formato de células mudou (ex.: de 4 para 5 caracteres), reconstrói os módulos
+    if (existingCells.length !== chars.length) {
+      board.innerHTML = '';
+      chars.forEach((ch, idx) => {
+        board.appendChild(createCellMarkup(ch, idx));
+      });
+    }
+
+    applySiblingIndexFallback(board);
+
+    const cells = [...board.children] as HTMLElement[];
+    let digitOrder = 0;
+
+    cells.forEach((cell, idx) => {
+      const ch = chars[idx];
+      if (ch === ',' || ch === '.') {
+        const top = cell.querySelector('.flap-face--top');
+        const bottom = cell.querySelector('.flap-face--bottom');
+        if (top) top.textContent = ch;
+        if (bottom) bottom.textContent = ch;
+        return;
+      }
+
+      const staggerDelay = indicatorIndex * 190 + digitOrder * 105;
+      const totalFlaps = minSteps + (digitOrder % 3);
+      digitOrder++;
+
+      spinDigitCell(cell, ch, staggerDelay, totalFlaps);
+    });
+  }
+
+  async function initAndHydrateSplitFlap() {
+    const ids: Array<{
+      id: string;
+      key: 'selic' | 'cdi' | 'poupanca' | 'ipca12m' | 'dolar';
+    }> = [
+      { id: 'bcb-selic', key: 'selic' },
+      { id: 'bcb-cdi', key: 'cdi' },
+      { id: 'bcb-poupanca', key: 'poupanca' },
+      { id: 'bcb-ipca', key: 'ipca12m' },
+      { id: 'bcb-dolar', key: 'dolar' },
+    ];
+
+    const fmt = (n: number) =>
+      n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    let liveData: Record<string, any> | null = null;
+    const endpoints = ['/api/indicadores.json'];
+
+    for (const url of endpoints) {
+      try {
+        const res = await fetch(url, { headers: { Accept: 'application/json' } });
+        if (!res.ok) continue;
+        const data = await res.json();
+        if (data && typeof data.selic === 'number') {
+          liveData = data;
+          break;
+        }
+      } catch {
+        // Segue fallback caso offline
+      }
+    }
+
+    if (liveData) {
+      const sourceEl = document.getElementById('bcb-ticker-source');
+      if (sourceEl && liveData.source === 'bcb-sgs-live') {
+        sourceEl.textContent = 'Ao Vivo';
+      }
+      (window as any).__ABC_INDICATORS__ = liveData;
+      window.dispatchEvent(new CustomEvent('abc:indicators-loaded', { detail: liveData }));
+    }
+
+    // Dispara a cascata mecânica sem pressa em todos os 4 indicadores
+    ids.forEach(({ id, key }, idx) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const targetStr =
+        liveData && typeof liveData[key] === 'number'
+          ? fmt(liveData[key])
+          : el.dataset.value || '0,00';
+      animateIndicatorBoard(el, targetStr, idx, 6);
+    });
+
+    // Permite clicar no selo do Banco Central para rever o giro mecânico a qualquer momento
+    const triggerBtn = document.getElementById('bcb-ticker-trigger');
+    if (triggerBtn && !triggerBtn.dataset.bound) {
+      triggerBtn.dataset.bound = 'true';
+      triggerBtn.addEventListener('click', () => {
+        ids.forEach(({ id }, idx) => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          animateIndicatorBoard(el, el.dataset.value || '0,00', idx, 5);
+        });
+      });
+    }
+  }
+
+  initAndHydrateSplitFlap();
+</script>
+
+<style>
+  .ticker-bar {
+    background: #05070c;
+    color: #94a3b8;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    font-size: 0.76rem;
+    padding-block: 0.36rem;
+    position: relative;
+    z-index: 101;
+  }
+
+  :root[data-theme="light"] .ticker-bar,
+  :root:has(> head > meta[name="color-scheme"][content="light"]) .ticker-bar {
+    background: #f8fafc;
+    border-bottom-color: #e2e8f0;
+    color: #64748b;
+  }
+
+  .ticker-inner {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 1.15rem;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  .ticker-inner::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ticker-divider {
+    width: 1px;
+    height: 16px;
+    background: rgba(255, 255, 255, 0.12);
+    flex-shrink: 0;
+  }
+
+  :root[data-theme="light"] .ticker-divider,
+  :root:has(> head > meta[name="color-scheme"][content="light"]) .ticker-divider {
+    background: #cbd5e1;
+  }
+
+  .ticker-info-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.42rem;
+    color: var(--text-secondary);
+    background: rgba(14, 165, 233, 0.08);
+    border: 1px solid rgba(56, 189, 248, 0.22);
+    border-radius: 9999px;
+    padding: 0.18rem 0.58rem;
+    font-size: 0.70rem;
+    letter-spacing: 0.01em;
+    cursor: default;
+    user-select: none;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+    flex-shrink: 0;
+  }
+
+  :root[data-theme="light"] .ticker-info-badge,
+  :root:has(> head > meta[name="color-scheme"][content="light"]) .ticker-info-badge {
+    background: #e0f2fe;
+    border-color: #bae6fd;
+    color: #0369a1;
+  }
+
+  .live-beacon-dot {
+    width: 0.42rem;
+    height: 0.42rem;
+    border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
+    animation: beaconPulse 2s infinite ease-in-out;
+    flex-shrink: 0;
+  }
+
+  @keyframes beaconPulse {
+    0%, 100% {
+      box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
+    }
+    50% {
+      box-shadow: 0 0 0 5px rgba(16, 185, 129, 0);
+    }
+  }
+
+  .ticker-badge-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+  }
+
+  .badge-prefix {
+    font-weight: 700;
+    color: #38bdf8;
+    text-transform: uppercase;
+    font-size: 0.66rem;
+    letter-spacing: 0.05em;
+  }
+
+  :root[data-theme="light"] .badge-prefix,
+  :root:has(> head > meta[name="color-scheme"][content="light"]) .badge-prefix {
+    color: #0284c7;
+  }
+
+  .ticker-source {
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .ticker-items {
+    display: flex;
+    align-items: center;
+    gap: clamp(0.95rem, 2.1vw, 1.85rem);
+    flex-wrap: nowrap;
+    white-space: nowrap;
+  }
+
+  .ticker-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.42rem;
+    transition: color 0.15s ease;
+  }
+
+  a.ticker-pill:hover .ticker-label {
+    color: #cbd5e1;
+  }
+
+  .ticker-label {
+    color: #64748b;
+    font-size: 0.74rem;
+    font-weight: 500;
+    transition: color 0.15s ease;
+  }
+
+  .ticker-val {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.26rem;
+    color: #f8fafc;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 0.80rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Painel Mecânico Split-Flap (Solari Board) calibrado para encaixe perfeito */
+  .flap-board {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .flap-cell {
+    --stagger-time: 0.08s;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.34em;
+    height: 1.68em;
+    border-radius: 3.5px;
+    background: linear-gradient(180deg, #131b2e 0%, #0b101d 49%, #060911 50%, #0e1525 100%);
+    border: 1px solid rgba(255, 255, 255, 0.11);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 1.5px 3px rgba(0, 0, 0, 0.55);
+    perspective: 280px;
+    user-select: none;
+    overflow: hidden;
+    animation: flap-module-wake 0.45s ease backwards;
+    animation-delay: calc(var(--sibling-index, 1) * var(--stagger-time));
+    animation-delay: calc(sibling-index() * var(--stagger-time));
+  }
+
+  .flap-cell--sep {
+    width: 0.74em;
+    background: linear-gradient(180deg, #0f1626 0%, #090d18 49%, #050810 50%, #0b111e 100%);
+    border-color: rgba(255, 255, 255, 0.07);
+    color: #94a3b8;
+  }
+
+  a.ticker-pill:hover .flap-cell {
+    border-color: rgba(56, 189, 248, 0.32);
+  }
+
+  .flap-face,
+  .flap-leaf {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    color: #f8fafc;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transform-origin: 50% 50%;
+    will-change: transform, filter;
+  }
+
+  .flap-face--top,
+  .flap-leaf--top {
+    clip-path: inset(0 0 50% 0);
+    background: linear-gradient(180deg, #141d30 0%, #0c1220 100%);
+  }
+
+  .flap-face--bottom,
+  .flap-leaf--bottom {
+    clip-path: inset(50% 0 0 0);
+    background: linear-gradient(180deg, #090e1a 0%, #101728 100%);
+  }
+
+  .flap-leaf--top {
+    z-index: 2;
+    transform: rotateX(0deg);
+  }
+
+  .flap-leaf--bottom {
+    z-index: 3;
+    transform: rotateX(90deg);
+  }
+
+  /* Linha divisória mecânica central (dobradiça do cartão) */
+  .flap-hinge {
+    position: absolute;
+    inset-inline: 0;
+    top: calc(50% - 0.5px);
+    height: 1px;
+    background: rgba(2, 4, 10, 0.9);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05);
+    z-index: 4;
+    pointer-events: none;
+  }
+
+  .flap-unit {
+    color: #94a3b8;
+    font-size: 0.70rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+
+  :root[data-theme="light"] .flap-unit,
+  :root:has(> head > meta[name="color-scheme"][content="light"]) .flap-unit {
+    color: #475569;
+  }
+
+  .flap-unit--prefix {
+    margin-inline-end: 0.05rem;
+  }
+
+  @keyframes flap-module-wake {
+    from {
+      opacity: 0.55;
+      transform: translateY(-1px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .flap-cell {
+      animation: none;
+    }
+  }
+</style>

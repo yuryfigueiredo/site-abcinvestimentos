@@ -1,0 +1,422 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { SITE_CONFIG } from '../config/site';
+
+const gaMeasurementId = SITE_CONFIG.analytics.measurementId;
+const currentDomain = SITE_CONFIG.domain;
+---
+
+<BaseLayout
+  title={`Exclusão de Tráfego Interno (Google Analytics) — ${SITE_CONFIG.name}`}
+  description="Ative a exclusão deste dispositivo para que suas visitas e testes não poluam as métricas do Google Analytics."
+  canonicalPath="/ignorar-analytics"
+>
+  <div class="container section">
+    <div class="admin-wrapper">
+      <div class="admin-header">
+        <span class="admin-pill">⚙️ Ferramenta do Administrador / Criador</span>
+        <h1>Exclusão de Tráfego Interno no Google Analytics</h1>
+        <p class="admin-subtitle">
+          Evite distorções em suas taxas de conversão, visualizações e tempo de sessão. Ative este dispositivo para que o Google Analytics (GA4) desconsidere totalmente seus acessos diários.
+        </p>
+      </div>
+
+      <!-- Card Principal: Status & Controle do Dispositivo -->
+      <div class="admin-card">
+        <div class="card-status-row">
+          <div class="status-indicator">
+            <span class="status-beacon" id="status-beacon"></span>
+            <div>
+              <span class="status-label">Status neste Dispositivo</span>
+              <strong class="status-value" id="status-text">Verificando dispositivo...</strong>
+            </div>
+          </div>
+          <div class="card-badge" id="storage-badge">Armazenamento Local</div>
+        </div>
+
+        <p class="status-description" id="status-desc">
+          Lendo a configuração salva no seu navegador...
+        </p>
+
+        <div class="action-buttons-group">
+          <button type="button" class="btn btn-primary" id="btn-disable-analytics">
+            🛡️ Ignorar Visitas Deste Dispositivo
+          </button>
+          <button type="button" class="btn btn-outline" id="btn-enable-analytics">
+            🔄 Reativar Rastreamento
+          </button>
+        </div>
+
+        <div class="feedback-toast" id="feedback-toast" hidden>
+          ✓ Preferência salva com sucesso!
+        </div>
+      </div>
+
+      <!-- Card 2: Link Rápido para Celular / WhatsApp -->
+      <div class="admin-card">
+        <h3>📱 Como Excluir Seu Celular ou Outros Aparelhos</h3>
+        <p class="card-instruction">
+          Basta abrir o link abaixo no navegador do seu smartphone (Safari no iPhone, Chrome no Android) ou enviá-lo para você mesmo no WhatsApp. Ao clicar no link, o aparelho é excluído instantaneamente:
+        </p>
+
+        <div class="magic-link-box">
+          <input
+            type="text"
+            id="magic-link-input"
+            class="magic-link-input"
+            readonly
+            value={`https://${currentDomain}/ignorar-analytics?ignorar_analytics=1`}
+          />
+          <button type="button" class="btn btn-secondary" id="btn-copy-link">
+            Copiar Link
+          </button>
+        </div>
+        <span class="copy-notice" id="copy-notice" hidden>✓ Link copiado para a área de transferência!</span>
+      </div>
+
+      <!-- Card 3: Informações Técnicas & Transparência -->
+      <div class="admin-card admin-card--subtle">
+        <h3>🔍 Detalhes da Configuração</h3>
+        <ul class="tech-specs-list">
+          <li>
+            <strong>ID de Métrica GA4 Configurado:</strong>
+            <code>{gaMeasurementId ? gaMeasurementId : 'Nenhum ID configurado no momento (preencha PUBLIC_GA_MEASUREMENT_ID no .env)'}</code>
+          </li>
+          <li>
+            <strong>Método de Bloqueio:</strong>
+            Oficial do Google (<code>window['ga-disable-G-XXXX'] = true</code>) combinado com chave persistente no <code>localStorage</code> e <code>cookie</code>.
+          </li>
+          <li>
+            <strong>Por que é melhor que filtro por IP?</strong>
+            Operadoras de celular (4G/5G) e conexões residenciais brasileiras possuem IP dinâmico que muda constantemente. A exclusão por dispositivo é 100% à prova de troca de IP ou rede Wi-Fi.
+          </li>
+        </ul>
+      </div>
+
+      <div class="admin-footer-back">
+        <a href="/" class="back-link">← Voltar para a Página Inicial</a>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  function checkStatus(): boolean {
+    try {
+      const fromLocal = localStorage.getItem('abc_ignore_analytics') === 'true';
+      const fromCookie = document.cookie.includes('abc_ignore_analytics=true');
+      return fromLocal || fromCookie;
+    } catch {
+      return false;
+    }
+  }
+
+  function setIgnored(isIgnored: boolean) {
+    try {
+      if (isIgnored) {
+        localStorage.setItem('abc_ignore_analytics', 'true');
+        document.cookie = 'abc_ignore_analytics=true;path=/;max-age=31536000;SameSite=Lax';
+      } else {
+        localStorage.removeItem('abc_ignore_analytics');
+        document.cookie = 'abc_ignore_analytics=;path=/;max-age=0;SameSite=Lax';
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    updateUI();
+  }
+
+  function updateUI() {
+    const isExcluded = checkStatus();
+    const beacon = document.getElementById('status-beacon');
+    const text = document.getElementById('status-text');
+    const desc = document.getElementById('status-desc');
+    const disableBtn = document.getElementById('btn-disable-analytics') as HTMLButtonElement | null;
+    const enableBtn = document.getElementById('btn-enable-analytics') as HTMLButtonElement | null;
+
+    if (!beacon || !text || !desc) return;
+
+    if (isExcluded) {
+      beacon.className = 'status-beacon status-beacon--active';
+      text.textContent = 'TRÁFEGO EXCLUÍDO (Analytics Desativado)';
+      desc.innerHTML =
+        '<strong>Este dispositivo está protegido.</strong> Nenhuma visualização, clique ou interação deste aparelho será enviada para o seu painel do Google Analytics.';
+      if (disableBtn) disableBtn.disabled = true;
+      if (enableBtn) enableBtn.disabled = false;
+    } else {
+      beacon.className = 'status-beacon status-beacon--inactive';
+      text.textContent = 'TRÁFEGO MONITORADO (Analytics Ativo)';
+      desc.innerHTML =
+        '<strong>Este dispositivo está sendo rastreado normalmente.</strong> Se este é o seu computador de trabalho ou celular pessoal, clique no botão abaixo para não poluir suas estatísticas.';
+      if (disableBtn) disableBtn.disabled = false;
+      if (enableBtn) enableBtn.disabled = true;
+    }
+  }
+
+  // Verifica parâmetros de URL caso o usuário tenha chegado via link mágico (?ignorar_analytics=1)
+  const urlParams = new URLSearchParams(window.location.search);
+  const param = urlParams.get('ignorar_analytics') || urlParams.get('optout');
+  if (param === '1' || param === 'true') {
+    setIgnored(true);
+  } else if (param === '0' || param === 'false') {
+    setIgnored(false);
+  } else {
+    updateUI();
+  }
+
+  document.getElementById('btn-disable-analytics')?.addEventListener('click', () => {
+    setIgnored(true);
+    showToast('🛡️ Dispositivo excluído com sucesso! Suas visitas não serão contabilizadas.');
+  });
+
+  document.getElementById('btn-enable-analytics')?.addEventListener('click', () => {
+    setIgnored(false);
+    showToast('🔄 Rastreamento reativado para este dispositivo.');
+  });
+
+  document.getElementById('btn-copy-link')?.addEventListener('click', async () => {
+    const input = document.getElementById('magic-link-input') as HTMLInputElement | null;
+    const notice = document.getElementById('copy-notice');
+    if (input) {
+      input.select();
+      try {
+        await navigator.clipboard.writeText(input.value);
+      } catch {
+        document.execCommand('copy');
+      }
+      if (notice) {
+        notice.hidden = false;
+        setTimeout(() => {
+          notice.hidden = true;
+        }, 3500);
+      }
+    }
+  });
+
+  function showToast(msg: string) {
+    const toast = document.getElementById('feedback-toast');
+    if (!toast) return;
+    toast.textContent = msg;
+    toast.hidden = false;
+    setTimeout(() => {
+      toast.hidden = true;
+    }, 4000);
+  }
+</script>
+
+<style>
+  .admin-wrapper {
+    max-width: 800px;
+    margin-inline: auto;
+  }
+
+  .admin-header {
+    text-align: center;
+    margin-bottom: 2.25rem;
+  }
+
+  .admin-pill {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(14, 165, 233, 0.1);
+    color: var(--brand-blue);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    border-radius: 9999px;
+    padding: 0.3rem 0.85rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+  }
+
+  .admin-header h1 {
+    font-size: 1.85rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    color: var(--text-primary);
+  }
+
+  .admin-subtitle {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    line-height: 1.55;
+    max-width: 680px;
+    margin-inline: auto;
+  }
+
+  .admin-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 14px;
+    padding: 1.75rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 20px -8px rgba(0, 0, 0, 0.15);
+  }
+
+  .admin-card--subtle {
+    background: var(--bg-canvas);
+    border-color: var(--border-subtle);
+  }
+
+  .admin-card h3 {
+    font-size: 1.12rem;
+    margin-bottom: 0.65rem;
+    color: var(--text-primary);
+  }
+
+  .card-status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border-subtle);
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+  }
+
+  .status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+  }
+
+  .status-beacon {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .status-beacon--active {
+    background: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
+    animation: beaconPulse 2s infinite ease-in-out;
+  }
+
+  .status-beacon--inactive {
+    background: #f59e0b;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25);
+  }
+
+  @keyframes beaconPulse {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25); }
+    50% { box-shadow: 0 0 0 7px rgba(16, 185, 129, 0); }
+  }
+
+  .status-label {
+    display: block;
+    font-size: 0.76rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+  }
+
+  .status-value {
+    font-size: 1.05rem;
+    color: var(--text-primary);
+  }
+
+  .card-badge {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    background: var(--bg-elevated);
+    padding: 0.25rem 0.65rem;
+    border-radius: 6px;
+    border: 1px solid var(--border-subtle);
+  }
+
+  .status-description {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: 1.5rem;
+  }
+
+  .action-buttons-group {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .feedback-toast {
+    margin-top: 1.15rem;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    color: #10b981;
+    font-size: 0.86rem;
+    padding: 0.65rem 1rem;
+    border-radius: 8px;
+  }
+
+  .card-instruction {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: 1rem;
+  }
+
+  .magic-link-box {
+    display: flex;
+    gap: 0.65rem;
+    align-items: center;
+  }
+
+  .magic-link-input {
+    flex: 1;
+    background: var(--bg-canvas);
+    border: 1px solid var(--border-card);
+    border-radius: 8px;
+    padding: 0.55rem 0.85rem;
+    font-size: 0.84rem;
+    font-family: var(--font-mono);
+    color: var(--text-primary);
+  }
+
+  .copy-notice {
+    display: inline-block;
+    margin-top: 0.55rem;
+    color: #10b981;
+    font-size: 0.8rem;
+  }
+
+  .tech-specs-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    font-size: 0.86rem;
+    color: var(--text-secondary);
+  }
+
+  .tech-specs-list li {
+    line-height: 1.45;
+  }
+
+  .tech-specs-list code {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    color: var(--brand-blue);
+  }
+
+  .admin-footer-back {
+    margin-top: 2rem;
+    text-align: center;
+  }
+
+  .back-link {
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    transition: color 0.15s;
+  }
+
+  .back-link:hover {
+    color: var(--text-primary);
+  }
+</style>

@@ -1,0 +1,226 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import NextStepCard from '../../components/NextStepCard.astro';
+import AdSlot from '../../components/AdSlot.astro';
+import { CALCULATORS } from '../../data/calculators';
+
+const calc = CALCULATORS.find((c) => c.slug === 'preco-teto-acoes-fiis')!;
+---
+
+<BaseLayout title={`${calc.title} | ABC Investimentos`} description={calc.seoDescription}>
+  <section class="calc-page-section">
+    <div class="container">
+      <nav class="breadcrumb" aria-label="Navegação estrutural">
+        <a href="/">Início</a> <span>/</span> <a href="/#ferramentas">Calculadoras</a> <span>/</span> <strong>{calc.shortTitle}</strong>
+      </nav>
+
+      <div class="calc-header">
+        <span class="badge-pill">{calc.badge}</span>
+        <h1>{calc.title}</h1>
+        <p>{calc.subtitle}</p>
+      </div>
+
+      <div class="calc-workspace">
+        <div class="abc-card calc-controls">
+          <h2>1. Ações (Bazin & Graham)</h2>
+          <div class="control-group">
+            <label for="bg-price" class="block-label">Cotação Atual da Ação (R$)</label>
+            <input type="number" id="bg-price" class="abc-input" step="0.1" value="30.00" />
+          </div>
+          <div class="control-group">
+            <label for="bg-div" class="block-label">Dividendo Anual por Ação (R$)</label>
+            <input type="number" id="bg-div" class="abc-input" step="0.1" value="2.40" />
+          </div>
+          <div class="rates-two-grid">
+            <div>
+              <label for="bg-lpa">LPA (Lucro/Ação R$)</label>
+              <input type="number" id="bg-lpa" class="abc-input" step="0.1" value="4.20" />
+            </div>
+            <div>
+              <label for="bg-vpa">VPA (Valor Patr./Ação R$)</label>
+              <input type="number" id="bg-vpa" class="abc-input" step="0.1" value="26.00" />
+            </div>
+          </div>
+
+          <hr class="divider" />
+
+          <h2>2. Número Mágico de FIIs</h2>
+          <div class="rates-two-grid">
+            <div>
+              <label for="fii-price">Preço da Cota FII (R$)</label>
+              <input type="number" id="fii-price" class="abc-input" step="0.5" value="102.00" />
+            </div>
+            <div>
+              <label for="fii-div">Último Rendimento Mensal (R$)</label>
+              <input type="number" id="fii-div" class="abc-input" step="0.05" value="0.95" />
+            </div>
+          </div>
+        </div>
+
+        <div class="abc-card calc-results">
+          <div class="kpi-grid">
+            <div class="kpi-box kpi-highlight">
+              <span class="kpi-label">Preço-Teto Décio Bazin (Mín. 6% a.a.)</span>
+              <strong class="kpi-value" id="bg-res-bazin">R$ 40,00</strong>
+              <span class="kpi-sub" id="bg-res-bazin-margin">Margem de Segurança: +33,3%</span>
+            </div>
+            <div class="kpi-box">
+              <span class="kpi-label">Valor Intrínseco Benjamin Graham</span>
+              <strong class="kpi-value" id="bg-res-graham">R$ 49,57</strong>
+              <span class="kpi-sub" id="bg-res-graham-margin">Fórmula √(22,5 × LPA × VPA)</span>
+            </div>
+            <div class="kpi-box kpi-emerald">
+              <span class="kpi-label">Número Mágico do FII</span>
+              <strong class="kpi-value" id="fii-res-magic">108 cotas</strong>
+              <span class="kpi-sub" id="fii-res-capital">Investimento: R$ 11.016,00</span>
+            </div>
+          </div>
+
+          <div class="fii-explainer" id="fii-explainer-box"></div>
+
+          <NextStepCard calculator={calc} />
+        </div>
+      </div>
+
+      <AdSlot slotId="calc-bg-bottom" />
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import { calculateStockValuationAndFiiMagicNumber, formatBRL, formatPct } from '../../lib/finance';
+
+  const priceEl = document.getElementById('bg-price') as HTMLInputElement;
+  const divEl = document.getElementById('bg-div') as HTMLInputElement;
+  const lpaEl = document.getElementById('bg-lpa') as HTMLInputElement;
+  const vpaEl = document.getElementById('bg-vpa') as HTMLInputElement;
+  const fiiPriceEl = document.getElementById('fii-price') as HTMLInputElement;
+  const fiiDivEl = document.getElementById('fii-div') as HTMLInputElement;
+
+  function recalc() {
+    const res = calculateStockValuationAndFiiMagicNumber({
+      stockPrice: Number(priceEl.value) || 30,
+      annualDividendPerShare: Number(divEl.value) || 2.4,
+      desiredYieldBazinPct: 6,
+      lpa: Number(lpaEl.value) || 4,
+      vpa: Number(vpaEl.value) || 25,
+      fiiQuotaPrice: Number(fiiPriceEl.value) || 100,
+      fiiMonthlyDividend: Number(fiiDivEl.value) || 1,
+    });
+
+    document.getElementById('bg-res-bazin')!.textContent = formatBRL(res.bazinCeilingPrice);
+    document.getElementById('bg-res-bazin-margin')!.textContent = `Margem Bazin: ${res.bazinMarginPct >= 0 ? '+' : ''}${formatPct(res.bazinMarginPct, 1)} (DY atual: ${formatPct(res.bazinCurrentDyPct)})`;
+
+    document.getElementById('bg-res-graham')!.textContent = formatBRL(res.grahamIntrinsicValue);
+    document.getElementById('bg-res-graham-margin')!.textContent = `Margem Graham: ${res.grahamMarginPct >= 0 ? '+' : ''}${formatPct(res.grahamMarginPct, 1)}`;
+
+    document.getElementById('fii-res-magic')!.textContent = `${res.fiiMagicNumberQuotas} cotas`;
+    document.getElementById('fii-res-capital')!.textContent = `Capital necessário: ${formatBRL(res.fiiCapitalForMagicNumber)} (Yield: ${formatPct(res.fiiMonthlyYieldPct)} a.m.)`;
+
+    document.getElementById('fii-explainer-box')!.innerHTML = `
+      <strong>🎯 Como funciona o seu Número Mágico (${res.fiiMagicNumberQuotas} cotas):</strong>
+      <p>Ao acumular <strong>${res.fiiMagicNumberQuotas} cotas</strong> (${formatBRL(res.fiiCapitalForMagicNumber)}), os rendimentos mensais somam <strong>${formatBRL(res.fiiMagicNumberQuotas * (Number(fiiDivEl.value) || 1))}/mês</strong> — valor suficiente para comprar <strong>+1 nova cota todo mês</strong> sem tirar nada do seu bolso!</p>
+    `;
+  }
+
+  [priceEl, divEl, lpaEl, vpaEl, fiiPriceEl, fiiDivEl].forEach((el) => el.addEventListener('input', recalc));
+  recalc();
+</script>
+
+<style>
+  .calc-page-section {
+    padding-block: 2rem 3rem;
+  }
+  .breadcrumb {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-block-end: 1rem;
+    display: flex;
+    gap: 0.45rem;
+  }
+  .calc-header {
+    margin-block-end: 2rem;
+  }
+  .calc-workspace {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 1.5rem;
+    align-items: start;
+  }
+  .control-group {
+    margin-block-end: 0.95rem;
+  }
+  .block-label {
+    display: block;
+    font-size: 0.84rem;
+    font-weight: 700;
+    margin-block-end: 0.3rem;
+  }
+  .rates-two-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem;
+  }
+  .rates-two-grid label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 700;
+    margin-block-end: 0.25rem;
+  }
+  .divider {
+    border: none;
+    border-block-start: 1px solid var(--border-subtle);
+    margin-block: 1.25rem;
+  }
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-block-end: 1.25rem;
+  }
+  .kpi-box {
+    padding: 1.15rem;
+    border-radius: 0.9rem;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-elevated);
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .kpi-highlight {
+    border-color: rgba(2, 132, 199, 0.28);
+  }
+  .kpi-label {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+  }
+  .kpi-value {
+    font-size: 1.38rem;
+    font-weight: 700;
+  }
+  .kpi-emerald .kpi-value {
+    color: var(--text-primary);
+  }
+  .kpi-sub {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+  .fii-explainer {
+    padding: 1.2rem;
+    border-radius: 0.9rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+  }
+  .fii-explainer p {
+    margin: 0.35rem 0 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+  }
+  @media (max-width: 980px) {
+    .calc-workspace,
+    .kpi-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

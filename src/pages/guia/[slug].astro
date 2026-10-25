@@ -1,0 +1,208 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import AdSlot from '../../components/AdSlot.astro';
+import { GUIDES, type GuideArticle } from '../../data/guides';
+import { SITE_CONFIG } from '../../config/site';
+
+export function getStaticPaths() {
+  return GUIDES.map((guide) => ({
+    params: { slug: guide.slug },
+    props: { guide },
+  }));
+}
+
+interface Props {
+  guide: GuideArticle;
+}
+
+const { guide } = Astro.props;
+---
+
+<BaseLayout title={`${guide.title} | Guia ABC Investimentos`} description={guide.summary}>
+  <article class="guide-post-section">
+    <div class="container guide-container">
+      <nav class="breadcrumb" aria-label="Navegação estrutural">
+        <a href="/">Início</a> <span>/</span> <a href="/guia">Guia ABC</a> <span>/</span> <strong>Passo {guide.level}</strong>
+      </nav>
+
+      <header class="post-header">
+        <div class="post-meta">
+          <span class="badge-pill">{guide.levelTitle}</span>
+          <span class="post-read">{guide.readTime}</span>
+        </div>
+        <h1>{guide.title}</h1>
+        <p class="post-lead">{guide.subtitle}</p>
+      </header>
+
+      <div class="post-body abc-card">
+        {guide.sections.map((sec) => (
+          <section class="post-block">
+            <h2>{sec.heading}</h2>
+            {sec.paragraphs.map((p) => (
+              <p>{p}</p>
+            ))}
+            {sec.bullets && (
+              <ul class="post-bullets">
+                {sec.bullets.map((b) => (
+                  <li>{b}</li>
+                ))}
+              </ul>
+            )}
+            {sec.highlightBox && (
+              <div class="post-highlight">
+                <strong>Ponto-Chave:</strong> {sec.highlightBox}
+              </div>
+            )}
+          </section>
+        ))}
+
+        <div class="post-tool-cta">
+          <div>
+            <span class="badge-pill">Simulador Prático</span>
+            <h3>Simule os números deste guia na nossa calculadora gratuita</h3>
+            <p>Sem cadastro: ajuste os controles deslizantes e veja o resultado em tempo real.</p>
+          </div>
+          <a href={`/calculadoras/${guide.relatedCalculatorSlug}`} class="btn btn-primary">
+            {guide.relatedCalculatorLabel} →
+          </a>
+        </div>
+      </div>
+
+      <AdSlot slotId="guide-article-bottom" />
+
+      <!-- Recomendação Discreta da Planilha Oficial no Fim do Guia -->
+      <aside class="abc-card post-sheet-box">
+        <div>
+          <span class="badge-pill">Organização Prática no Excel & Google Sheets</span>
+          <h3>{SITE_CONFIG.product.title}</h3>
+          <p>{SITE_CONFIG.product.subtitle}</p>
+        </div>
+        <a href="/planilha-abc" class="btn btn-secondary">Conhecer a Planilha Oficial →</a>
+      </aside>
+    </div>
+  </article>
+</BaseLayout>
+
+<style>
+  .guide-post-section {
+    padding-block: 2.25rem 3.5rem;
+  }
+
+  .guide-container {
+    max-inline-size: 860px;
+  }
+
+  .breadcrumb {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-block-end: 1.2rem;
+    display: flex;
+    gap: 0.45rem;
+  }
+
+  .post-header {
+    margin-block-end: 1.75rem;
+  }
+
+  .post-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-block-end: 0.75rem;
+  }
+
+  .post-read {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+
+  .post-header h1 {
+    font-size: clamp(1.75rem, 3.2vw, 2.4rem);
+    margin-block-end: 0.6rem;
+  }
+
+  .post-lead {
+    margin: 0;
+    font-size: 1.08rem;
+    color: var(--text-secondary);
+  }
+
+  .post-body {
+    padding: 2rem;
+  }
+
+  .post-block {
+    margin-block-end: 2rem;
+  }
+
+  .post-block h2 {
+    font-size: 1.3rem;
+    margin-block-end: 0.75rem;
+  }
+
+  .post-block p {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin-block: 0 0.9rem;
+  }
+
+  .post-bullets {
+    padding-inline-start: 1.25rem;
+    color: var(--text-primary);
+    display: grid;
+    gap: 0.5rem;
+    margin-block: 0.75rem 1rem;
+  }
+
+  .post-highlight {
+    padding: 1rem 1.2rem;
+    border-radius: 0.8rem;
+    background: color-mix(in oklab, var(--brand-emerald) 12%, var(--bg-elevated));
+    border-inline-start: 4px solid var(--brand-emerald);
+    font-size: 0.94rem;
+  }
+
+  .post-tool-cta {
+    margin-block-start: 2rem;
+    padding: 1.4rem;
+    border-radius: 0.95rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .post-tool-cta h3 {
+    margin: 0.4rem 0 0.25rem;
+    font-size: 1.1rem;
+  }
+
+  .post-tool-cta p {
+    margin: 0;
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+  }
+
+  .post-sheet-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+  }
+
+  .post-sheet-box h3 {
+    margin: 0.4rem 0 0.25rem;
+    font-size: 1.12rem;
+  }
+
+  .post-sheet-box p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+  }
+</style>

@@ -1,0 +1,496 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import NextStepCard from '../../components/NextStepCard.astro';
+import AdSlot from '../../components/AdSlot.astro';
+import { CALCULATORS } from '../../data/calculators';
+
+const calc = CALCULATORS.find((c) => c.slug === 'juros-compostos')!;
+---
+
+<BaseLayout title={`${calc.title} | ABC Investimentos`} description={calc.seoDescription}>
+  <section class="calc-page-section">
+    <div class="container">
+      <nav class="breadcrumb" aria-label="Navegação estrutural">
+        <a href="/">Início</a> <span>/</span> <a href="/#ferramentas">Calculadoras</a> <span>/</span> <strong>{calc.shortTitle}</strong>
+      </nav>
+
+      <div class="calc-header">
+        <span class="badge-pill">{calc.badge}</span>
+        <h1>{calc.title}</h1>
+        <p>{calc.subtitle}</p>
+      </div>
+
+      <div class="calc-workspace">
+        <!-- Painel de Controles (Sliders + Inputs Numéricos Sincronizados) -->
+        <div class="abc-card calc-controls">
+          <h2>Parâmetros da Simulação</h2>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="jc-initial">Valor Inicial (R$)</label>
+              <output id="jc-initial-out" for="jc-initial">R$ 5.000,00</output>
+            </div>
+            <input
+              type="range"
+              id="jc-initial-slider"
+              class="abc-slider"
+              min="0"
+              max="200000"
+              step="500"
+              value="5000"
+              data-format="brl"
+              aria-label="Controle deslizante de valor inicial"
+            />
+            <input type="number" id="jc-initial" class="abc-input" min="0" max="50000000" step="100" value="5000" />
+          </div>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="jc-monthly">Aporte Mensal (R$)</label>
+              <output id="jc-monthly-out" for="jc-monthly">R$ 1.000,00</output>
+            </div>
+            <input
+              type="range"
+              id="jc-monthly-slider"
+              class="abc-slider"
+              min="0"
+              max="25000"
+              step="100"
+              value="1000"
+              data-format="brl"
+              aria-label="Controle deslizante de aporte mensal"
+            />
+            <input type="number" id="jc-monthly" class="abc-input" min="0" max="1000000" step="50" value="1000" />
+          </div>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="jc-rate">Taxa de Juros Anual (% a.a.)</label>
+              <output id="jc-rate-out" for="jc-rate">12,00% a.a.</output>
+            </div>
+            <input
+              type="range"
+              id="jc-rate-slider"
+              class="abc-slider"
+              min="1"
+              max="25"
+              step="0.25"
+              value="12"
+              data-format="pct"
+              aria-label="Controle deslizante de taxa anual"
+            />
+            <input type="number" id="jc-rate" class="abc-input" min="0.5" max="100" step="0.25" value="12" />
+          </div>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="jc-years">Prazo do Investimento (Anos)</label>
+              <output id="jc-years-out" for="jc-years">15 anos</output>
+            </div>
+            <input
+              type="range"
+              id="jc-years-slider"
+              class="abc-slider"
+              min="1"
+              max="45"
+              step="1"
+              value="15"
+              data-format="years"
+              aria-label="Controle deslizante de prazo em anos"
+            />
+            <input type="number" id="jc-years" class="abc-input" min="1" max="60" step="1" value="15" />
+          </div>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="jc-inflation">Inflação Anual Estimada — IPCA (% a.a.)</label>
+              <output id="jc-inflation-out" for="jc-inflation">4,56% a.a.</output>
+            </div>
+            <input type="number" id="jc-inflation" class="abc-input" min="0" max="30" step="0.1" value="4.56" />
+          </div>
+        </div>
+
+        <!-- Painel de Resultados e Gráfico -->
+        <div class="abc-card calc-results">
+          <div class="kpi-grid">
+            <div class="kpi-box kpi-highlight">
+              <span class="kpi-label">Patrimônio Total Acumulado</span>
+              <strong class="kpi-value" id="jc-res-final">R$ 519.640,00</strong>
+              <span class="kpi-sub" id="jc-res-real">Poder de compra real: R$ 266.400,00</span>
+            </div>
+            <div class="kpi-box">
+              <span class="kpi-label">Total Tirado do Bolso</span>
+              <strong class="kpi-value" id="jc-res-invested">R$ 185.000,00</strong>
+              <span class="kpi-sub">Capital Inicial + Aportes</span>
+            </div>
+            <div class="kpi-box kpi-emerald">
+              <span class="kpi-label">Total Ganho só em Juros</span>
+              <strong class="kpi-value" id="jc-res-interest">R$ 334.640,00</strong>
+              <span class="kpi-sub" id="jc-res-share">64,4% do patrimônio veio dos juros!</span>
+            </div>
+          </div>
+
+          <!-- Banner Rumo ao 1º Milhão -->
+          <div class="million-banner" id="jc-million-banner">
+            <div>
+              <strong id="jc-million-title">Projeção Rumo ao 1º Milhão:</strong>
+              <p id="jc-million-desc">Calculando projeção...</p>
+            </div>
+          </div>
+
+          <!-- Barra de Composição Visual (Bolso vs. Juros) -->
+          <div class="composition-block">
+            <div class="composition-labels">
+              <span id="jc-bar-invested-lbl">Saído do bolso (35%)</span>
+              <span id="jc-bar-interest-lbl">Juros Compostos (65%)</span>
+            </div>
+            <div class="composition-track">
+              <div id="jc-bar-invested" class="comp-fill-invested" style="width: 35%"></div>
+              <div id="jc-bar-interest" class="comp-fill-interest" style="width: 65%"></div>
+            </div>
+          </div>
+
+          <!-- Tabela Responsiva Ano a Ano (responsive-table guide) -->
+          <div tabindex="0" role="region" aria-labelledby="jc-table-caption" class="table-wrapper">
+            <table
+              class="abc-table"
+              style='--label-2: "Total Investido"; --label-3: "Juros Acumulados"; --label-4: "Patrimônio Nominal"; --label-5: "Valor Real (IPCA)";'
+            >
+              <caption id="jc-table-caption">Evolução Patrimonial Ano a Ano</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Ano</th>
+                  <th scope="col">Total Investido</th>
+                  <th scope="col">Juros Acumulados</th>
+                  <th scope="col">Patrimônio Nominal</th>
+                  <th scope="col">Valor Real (IPCA)</th>
+                </tr>
+              </thead>
+              <tbody id="jc-table-body"></tbody>
+            </table>
+          </div>
+
+          <!-- Card Contextual de Próximo Passo (Planilha ABC + Livro) -->
+          <NextStepCard calculator={calc} />
+        </div>
+      </div>
+
+      <AdSlot slotId="calc-jc-bottom" />
+
+      <!-- Perguntas Frequentes (SEO & Educação) -->
+      <section class="faq-section below-fold-deferred">
+        <h2>Perguntas Frequentes sobre Juros Compostos e o 1º Milhão</h2>
+        <div class="faq-grid">
+          {calc.faqs.map((faq) => (
+            <div class="abc-card faq-card">
+              <h3>{faq.question}</h3>
+              <p>{faq.answer}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import { simulateCompoundInterest, formatBRL, formatPct } from '../../lib/finance';
+
+  const initialInput = document.getElementById('jc-initial') as HTMLInputElement;
+  const initialSlider = document.getElementById('jc-initial-slider') as HTMLInputElement;
+  const monthlyInput = document.getElementById('jc-monthly') as HTMLInputElement;
+  const monthlySlider = document.getElementById('jc-monthly-slider') as HTMLInputElement;
+  const rateInput = document.getElementById('jc-rate') as HTMLInputElement;
+  const rateSlider = document.getElementById('jc-rate-slider') as HTMLInputElement;
+  const yearsInput = document.getElementById('jc-years') as HTMLInputElement;
+  const yearsSlider = document.getElementById('jc-years-slider') as HTMLInputElement;
+  const inflationInput = document.getElementById('jc-inflation') as HTMLInputElement;
+
+  // Lê parâmetros da URL caso o usuário tenha vindo do Consultor IA
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('inicial')) {
+    initialInput.value = params.get('inicial')!;
+    initialSlider.value = params.get('inicial')!;
+  }
+  if (params.get('mensal')) {
+    monthlyInput.value = params.get('mensal')!;
+    monthlySlider.value = params.get('mensal')!;
+  }
+  if (params.get('anos')) {
+    yearsInput.value = params.get('anos')!;
+    yearsSlider.value = params.get('anos')!;
+  }
+
+  function bindPair(num: HTMLInputElement, slider: HTMLInputElement) {
+    slider.addEventListener('input', () => {
+      num.value = slider.value;
+      recalc();
+    });
+    num.addEventListener('input', () => {
+      slider.value = num.value;
+      slider.dispatchEvent(new Event('input'));
+      recalc();
+    });
+  }
+
+  function recalc() {
+    const initialAmount = Number(initialInput.value) || 0;
+    const monthlyContribution = Number(monthlyInput.value) || 0;
+    const annualRatePct = Number(rateInput.value) || 0;
+    const years = Number(yearsInput.value) || 1;
+    const inflationAnnualPct = Number(inflationInput.value) || 0;
+
+    document.getElementById('jc-initial-out')!.textContent = formatBRL(initialAmount);
+    document.getElementById('jc-monthly-out')!.textContent = formatBRL(monthlyContribution);
+    document.getElementById('jc-rate-out')!.textContent = `${formatPct(annualRatePct)} a.a.`;
+    document.getElementById('jc-years-out')!.textContent = `${years} ${years === 1 ? 'ano' : 'anos'}`;
+    document.getElementById('jc-inflation-out')!.textContent = `${formatPct(inflationAnnualPct)} a.a.`;
+
+    const res = simulateCompoundInterest({
+      initialAmount,
+      monthlyContribution,
+      annualRatePct,
+      years,
+      inflationAnnualPct,
+    });
+
+    document.getElementById('jc-res-final')!.textContent = formatBRL(res.finalAmount);
+    document.getElementById('jc-res-real')!.textContent = `Poder de compra real (descontando IPCA): ${formatBRL(res.realFinalAmount)}`;
+    document.getElementById('jc-res-invested')!.textContent = formatBRL(res.totalInvested);
+    document.getElementById('jc-res-interest')!.textContent = formatBRL(res.totalInterest);
+    document.getElementById('jc-res-share')!.textContent = `${formatPct(res.interestSharePct, 1)} do total veio dos juros compostos!`;
+
+    const invPct = Math.max(5, Math.min(95, 100 - res.interestSharePct));
+    const intPct = 100 - invPct;
+    (document.getElementById('jc-bar-invested') as HTMLElement).style.width = `${invPct}%`;
+    (document.getElementById('jc-bar-interest') as HTMLElement).style.width = `${intPct}%`;
+    document.getElementById('jc-bar-invested-lbl')!.textContent = `Saído do bolso (${formatPct(100 - res.interestSharePct, 1)})`;
+    document.getElementById('jc-bar-interest-lbl')!.textContent = `Juros Compostos (${formatPct(res.interestSharePct, 1)})`;
+
+    const millionDesc = document.getElementById('jc-million-desc')!;
+    if (res.yearsToFirstMillion !== null) {
+      millionDesc.innerHTML = `Mantendo esse ritmo a <strong>${formatPct(annualRatePct)} a.a.</strong>, você atinge <strong>R$ 1.000.000,00</strong> em aproximadamente <strong>${res.yearsToFirstMillion.toLocaleString('pt-BR')} anos</strong> (${res.monthsToFirstMillion} meses). Para atingir R$ 1 milhão exatamente em ${years} anos, o aporte mensal necessário seria de <strong>${formatBRL(res.monthlyNeededForMillionInPeriod)}</strong>.`;
+    } else {
+      millionDesc.textContent = 'Aumente o aporte mensal ou a taxa para calcular o prazo até o 1º milhão.';
+    }
+
+    const tbody = document.getElementById('jc-table-body')!;
+    tbody.innerHTML = res.yearlyBreakdown
+      .map(
+        (row) => `
+        <tr>
+          <th scope="row">Ano ${row.year} (${row.months}m)</th>
+          <td>${formatBRL(row.totalInvested)}</td>
+          <td style="color: var(--brand-emerald); font-weight: 700;">+ ${formatBRL(row.totalInterest)}</td>
+          <td style="font-weight: 700;">${formatBRL(row.totalAccumulated)}</td>
+          <td>${formatBRL(row.realAccumulated ?? row.totalAccumulated)}</td>
+        </tr>
+      `
+      )
+      .join('');
+  }
+
+  bindPair(initialInput, initialSlider);
+  bindPair(monthlyInput, monthlySlider);
+  bindPair(rateInput, rateSlider);
+  bindPair(yearsInput, yearsSlider);
+  inflationInput.addEventListener('input', recalc);
+
+  if ((window as any).__initAbcSliders) (window as any).__initAbcSliders();
+  recalc();
+</script>
+
+<style>
+  .calc-page-section {
+    padding-block: 2rem 3rem;
+  }
+
+  .breadcrumb {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-block-end: 1rem;
+    display: flex;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+  }
+
+  .breadcrumb a:hover {
+    color: var(--brand-emerald);
+  }
+
+  .calc-header {
+    margin-block-end: 2rem;
+  }
+
+  .calc-header h1 {
+    font-size: clamp(1.65rem, 3vw, 2.35rem);
+    margin-block: 0.6rem 0.4rem;
+  }
+
+  .calc-header p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 1.02rem;
+  }
+
+  .calc-workspace {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 1.5rem;
+    align-items: start;
+  }
+
+  .calc-controls h2 {
+    font-size: 1.15rem;
+    margin-block-end: 1.25rem;
+  }
+
+  .control-group {
+    margin-block-end: 1.2rem;
+  }
+
+  .control-label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-block-end: 0.25rem;
+  }
+
+  .control-label-row output {
+    color: var(--text-primary);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-block-end: 1.35rem;
+  }
+
+  .kpi-box {
+    padding: 1.15rem;
+    border-radius: 0.9rem;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-elevated);
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .kpi-highlight {
+    background: linear-gradient(
+      145deg,
+      rgba(56, 189, 248, 0.06),
+      var(--bg-surface)
+    );
+    border-color: rgba(2, 132, 199, 0.28);
+  }
+
+  .kpi-label {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+  }
+
+  .kpi-value {
+    font-size: clamp(1.2rem, 2vw, 1.55rem);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .kpi-emerald .kpi-value {
+    color: var(--text-primary);
+  }
+
+  .kpi-sub {
+    font-size: 0.76rem;
+    color: var(--text-muted);
+  }
+
+  .million-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.9rem;
+    padding: 1.1rem 1.25rem;
+    border-radius: 0.9rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-card);
+    border-inline-start: 3px solid var(--brand-blue);
+    margin-block-end: 1.4rem;
+  }
+
+  .million-icon {
+    font-size: 1.65rem;
+  }
+
+  .million-banner p {
+    margin: 0.25rem 0 0;
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+  }
+
+  .composition-block {
+    margin-block-end: 1.5rem;
+  }
+
+  .composition-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.82rem;
+    font-weight: 700;
+    margin-block-end: 0.45rem;
+  }
+
+  .composition-track {
+    display: flex;
+    block-size: 1rem;
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--bg-elevated);
+  }
+
+  .comp-fill-invested {
+    background: #3b82f6;
+    transition: width 0.2s ease;
+  }
+
+  .comp-fill-interest {
+    background: var(--brand-blue);
+    transition: width 0.2s ease;
+  }
+
+  .faq-section {
+    margin-block-start: 3rem;
+  }
+
+  .faq-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.25rem;
+  }
+
+  .faq-card h3 {
+    font-size: 1.02rem;
+    margin-block-end: 0.5rem;
+  }
+
+  .faq-card p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+  }
+
+  @media (max-width: 980px) {
+    .calc-workspace {
+      grid-template-columns: 1fr;
+    }
+    .kpi-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

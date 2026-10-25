@@ -1,0 +1,259 @@
+---
+import '../styles/global.css';
+import { SITE_CONFIG } from '../config/site';
+import Ticker from '../components/Ticker.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import PartnershipsDialog from '../components/PartnershipsDialog.astro';
+import ConsentBanner from '../components/ConsentBanner.astro';
+
+interface Props {
+  title?: string;
+  description?: string;
+  canonicalPath?: string;
+}
+
+const {
+  title = `${SITE_CONFIG.name} — ${SITE_CONFIG.tagline}`,
+  description = SITE_CONFIG.description,
+  canonicalPath = Astro.url.pathname,
+} = Astro.props;
+
+const canonicalUrl = new URL(canonicalPath, SITE_CONFIG.url).toString();
+const adsenseEnabled = SITE_CONFIG.adsense.enabled && Boolean(SITE_CONFIG.adsense.clientId);
+const gaMeasurementId = SITE_CONFIG.analytics.measurementId;
+const gaEnabled = SITE_CONFIG.analytics.enabled && Boolean(gaMeasurementId);
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- MANDATORY (dark-mode & dark-mode-toggle): meta color-scheme + inline FOUC-prevention script -->
+    <meta name="color-scheme" content="dark light" />
+    <script is:inline>
+      try {
+        const savedScheme = localStorage.getItem('color-scheme');
+        const resolved = savedScheme === 'light' || savedScheme === 'dark' ? savedScheme : 'dark';
+        document.querySelector('meta[name="color-scheme"]').content = resolved;
+        document.documentElement.dataset.theme = resolved;
+      } catch (e) {}
+    </script>
+
+    <!-- Google Analytics 4 (GA4) com Proteção de Exclusão de Tráfego Interno (Dev/Admin) -->
+    {gaEnabled && (
+      <>
+        <script is:inline define:vars={{ gaId: gaMeasurementId }}>
+          (function() {
+            try {
+              // 1. Suporte a ativação/desativação imediata por link (?ignorar_analytics=1 ou ?ignorar_analytics=0)
+              const params = new URLSearchParams(window.location.search);
+              const opt = params.get('ignorar_analytics') || params.get('optout');
+              if (opt === '1' || opt === 'true') {
+                localStorage.setItem('abc_ignore_analytics', 'true');
+                document.cookie = 'abc_ignore_analytics=true;path=/;max-age=31536000;SameSite=Lax';
+              } else if (opt === '0' || opt === 'false') {
+                localStorage.removeItem('abc_ignore_analytics');
+                document.cookie = 'abc_ignore_analytics=;path=/;max-age=0;SameSite=Lax';
+              }
+
+              // 2. Se o dispositivo está marcado para ser ignorado, desativa o GA antes de carregar
+              const isExcluded =
+                localStorage.getItem('abc_ignore_analytics') === 'true' ||
+                document.cookie.includes('abc_ignore_analytics=true');
+              if (isExcluded) {
+                window['ga-disable-' + gaId] = true;
+                window.__ABC_ANALYTICS_EXCLUDED__ = true;
+                console.info('[ABC Investimentos] 🛡️ Tráfego Interno Ignorado: Google Analytics (' + gaId + ') desativado para este dispositivo.');
+              }
+            } catch (e) {}
+          })();
+        </script>
+        <script is:inline async src={`https://www.googletagmanager.com/gtag/js?id=${gaMeasurementId}`}></script>
+        <script is:inline define:vars={{ gaId: gaMeasurementId }}>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', gaId, {
+            anonymize_ip: true,
+            cookie_flags: 'SameSite=Lax;Secure'
+          });
+        </script>
+      </>
+    )}
+
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonicalUrl} />
+
+    <!-- Resource hints (performance guide) -->
+    <link rel="preconnect" href="https://api.bcb.gov.br" crossorigin />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={SITE_CONFIG.name} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:locale" content="pt_BR" />
+
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+
+    <!-- Favicon SVG embutido em Azul Elétrico / Midnight -->
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%230284c7'/%3E%3Cstop offset='100%25' stop-color='%2338bdf8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='url(%23g)'/%3E%3Ctext x='50%25' y='56%25' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='900' font-size='24'%3EABC%3C/text%3E%3C/svg%3E"
+    />
+  </head>
+  <body>
+    <div class="header-anchor-guard">
+      <Ticker />
+      <Header />
+      <main id="main-content">
+        <slot />
+      </main>
+    </div>
+
+    <Footer />
+    <PartnershipsDialog />
+    <ConsentBanner />
+
+    <!-- Scripts globais de acessibilidade e fallbacks do Modern Web Guidance -->
+    <script>
+      // 1. State-Aware Sticky Header Fallback (state-aware-sticky-headers guide)
+      function getScrollParent(node: Element | null): Element | null {
+        if (node == null || node === document.body || node === document.documentElement) {
+          return null;
+        }
+        if (node.scrollHeight > node.clientHeight || node.scrollWidth > node.clientWidth) {
+          const overflow = getComputedStyle(node).overflow;
+          if (overflow !== 'visible' && overflow !== 'clip') {
+            return node;
+          }
+        }
+        return getScrollParent(node.parentElement);
+      }
+
+      document.querySelectorAll('.sticky-container').forEach((container) => {
+        const root = getScrollParent(container);
+        const topOffset = parseFloat(getComputedStyle(container).top) || 0;
+        const observer = new IntersectionObserver(
+          ([e]) => {
+            if (e) e.target.classList.toggle('is-stuck', e.intersectionRatio < 1);
+          },
+          {
+            root,
+            threshold: [1],
+            rootMargin: `-${topOffset + 1}px 0px 0px 0px`,
+          }
+        );
+        observer.observe(container);
+      });
+
+      // 2. Sincronização de Sliders (--attr-min, --attr-max, --control-value e aria-valuetext) (slider guide)
+      function initAbcSliders(root: Document | HTMLElement = document) {
+        root.querySelectorAll<HTMLInputElement>('input[type="range"].abc-slider').forEach((slider) => {
+          const syncSlider = () => {
+            slider.style.setProperty('--attr-min', slider.min || '0');
+            slider.style.setProperty('--attr-max', slider.max || '100');
+            slider.style.setProperty('--control-value', slider.value);
+            const formatType = slider.dataset.format;
+            const num = Number(slider.value);
+            if (formatType === 'brl') {
+              slider.setAttribute(
+                'aria-valuetext',
+                num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+              );
+            } else if (formatType === 'pct') {
+              slider.setAttribute('aria-valuetext', `${num.toLocaleString('pt-BR')}%`);
+            } else if (formatType === 'years') {
+              slider.setAttribute('aria-valuetext', `${num} ${num === 1 ? 'ano' : 'anos'}`);
+            } else if (formatType === 'months') {
+              slider.setAttribute('aria-valuetext', `${num} ${num === 1 ? 'mês' : 'meses'}`);
+            } else {
+              slider.setAttribute('aria-valuetext', slider.value);
+            }
+          };
+          syncSlider();
+          slider.addEventListener('input', syncSlider);
+        });
+      }
+      initAbcSliders();
+      (window as any).__initAbcSliders = initAbcSliders;
+
+      // 3. Validate Input After Interaction + ARIA sync (validate-input-after-interaction guide)
+      const syncAria = (el: EventTarget | null) => {
+        if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement)) {
+          return;
+        }
+        try {
+          if (CSS.supports('selector(:user-invalid)')) {
+            el.setAttribute('aria-invalid', el.matches(':user-invalid') ? 'true' : 'false');
+          }
+        } catch {}
+      };
+
+      document.addEventListener('blur', (e) => syncAria(e.target), true);
+      document.addEventListener('input', (e) => {
+        if (e.target instanceof HTMLElement && e.target.hasAttribute('aria-invalid')) {
+          syncAria(e.target);
+        }
+      });
+
+      const UserInvalidFallback = (() => {
+        const dirtyState = new WeakMap<Element, { hasInteracted: boolean; hasBlurred: boolean }>();
+
+        const updateState = (input: HTMLInputElement | HTMLTextAreaElement) => {
+          const isValid = input.checkValidity();
+          input.classList.toggle('user-invalid-fallback', !isValid);
+          input.classList.toggle('user-valid-fallback', isValid);
+          if (!isValid) {
+            input.setAttribute('aria-invalid', 'true');
+          } else {
+            input.removeAttribute('aria-invalid');
+          }
+        };
+
+        const handleEvent = (event: Event) => {
+          const input = event.target as HTMLInputElement | HTMLTextAreaElement;
+          if (!input || typeof input.checkValidity !== 'function') return;
+
+          if (event.type === 'input' || event.type === 'change') {
+            const state = dirtyState.get(input) || { hasInteracted: false, hasBlurred: false };
+            state.hasInteracted = true;
+            dirtyState.set(input, state);
+            if (state.hasBlurred) updateState(input);
+          } else if (event.type === 'blur') {
+            const state = dirtyState.get(input) || { hasInteracted: false, hasBlurred: false };
+            state.hasBlurred = true;
+            dirtyState.set(input, state);
+            if (state.hasInteracted) updateState(input);
+          }
+        };
+
+        const init = (root: Document = document) => {
+          if (window.CSS?.supports?.('selector(:user-invalid)')) return;
+          root.addEventListener('blur', handleEvent, true);
+          root.addEventListener('input', handleEvent);
+          root.addEventListener('change', handleEvent);
+        };
+
+        return { init };
+      })();
+      UserInvalidFallback.init();
+    </script>
+
+    {adsenseEnabled && (
+      <script
+        defer
+        src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${SITE_CONFIG.adsense.clientId}`}
+        crossorigin="anonymous"
+      ></script>
+    )}
+  </body>
+</html>

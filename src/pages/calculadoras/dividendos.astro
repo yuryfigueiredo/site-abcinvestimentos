@@ -1,0 +1,377 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import NextStepCard from '../../components/NextStepCard.astro';
+import AdSlot from '../../components/AdSlot.astro';
+import { CALCULATORS } from '../../data/calculators';
+
+const calc = CALCULATORS.find((c) => c.slug === 'dividendos')!;
+---
+
+<BaseLayout title={`${calc.title} | ABC Investimentos`} description={calc.seoDescription}>
+  <section class="calc-page-section">
+    <div class="container">
+      <nav class="breadcrumb" aria-label="Navegação estrutural">
+        <a href="/">Início</a> <span>/</span> <a href="/#ferramentas">Calculadoras</a> <span>/</span> <strong>{calc.shortTitle}</strong>
+      </nav>
+
+      <div class="calc-header">
+        <span class="badge-pill">{calc.badge}</span>
+        <h1>{calc.title}</h1>
+        <p>{calc.subtitle}</p>
+      </div>
+
+      <div class="calc-workspace">
+        <div class="abc-card calc-controls">
+          <h2>Sua Meta de Renda Passiva</h2>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="div-income">Renda Passiva Mensal Desejada (R$)</label>
+              <output id="div-income-out" for="div-income">R$ 3.500,00</output>
+            </div>
+            <input
+              type="range"
+              id="div-income-slider"
+              class="abc-slider"
+              min="500"
+              max="60000"
+              step="250"
+              value="3500"
+              data-format="brl"
+              aria-label="Meta de renda passiva mensal"
+            />
+            <input type="number" id="div-income" class="abc-input" min="100" max="500000" step="100" value="3500" />
+          </div>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="div-dy">Dividend Yield Anual Estimado (% a.a.)</label>
+              <output id="div-dy-out" for="div-dy">9,50% a.a.</output>
+            </div>
+            <input
+              type="range"
+              id="div-dy-slider"
+              class="abc-slider"
+              min="4"
+              max="16"
+              step="0.25"
+              value="9.5"
+              data-format="pct"
+              aria-label="Dividend Yield anual esperado"
+            />
+            <input type="number" id="div-dy" class="abc-input" min="1" max="30" step="0.25" value="9.5" />
+          </div>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="div-current">Patrimônio Já Investido (R$)</label>
+              <output id="div-current-out" for="div-current">R$ 20.000,00</output>
+            </div>
+            <input
+              type="range"
+              id="div-current-slider"
+              class="abc-slider"
+              min="0"
+              max="300000"
+              step="2000"
+              value="20000"
+              data-format="brl"
+              aria-label="Patrimônio atual"
+            />
+            <input type="number" id="div-current" class="abc-input" min="0" max="50000000" step="500" value="20000" />
+          </div>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="div-monthly">Aporte Mensal do Seu Bolso (R$)</label>
+              <output id="div-monthly-out" for="div-monthly">R$ 1.200,00</output>
+            </div>
+            <input
+              type="range"
+              id="div-monthly-slider"
+              class="abc-slider"
+              min="100"
+              max="20000"
+              step="100"
+              value="1200"
+              data-format="brl"
+              aria-label="Aporte mensal"
+            />
+            <input type="number" id="div-monthly" class="abc-input" min="0" max="500000" step="100" value="1200" />
+          </div>
+
+          <div class="checkbox-row">
+            <input type="checkbox" id="div-reinvest" checked />
+            <label for="div-reinvest">Reinvestir 100% dos dividendos recebidos (Efeito Bola de Neve)</label>
+          </div>
+        </div>
+
+        <div class="abc-card calc-results">
+          <div class="kpi-grid">
+            <div class="kpi-box kpi-highlight">
+              <span class="kpi-label">Patrimônio Necessário para a Meta</span>
+              <strong class="kpi-value" id="div-res-target">R$ 461.000,00</strong>
+              <span class="kpi-sub" id="div-res-monthly-yield">Yield mensal equiv.: 0,759% a.m.</span>
+            </div>
+            <div class="kpi-box kpi-emerald">
+              <span class="kpi-label">Tempo Estimado até Viver de Renda</span>
+              <strong class="kpi-value" id="div-res-time">13,2 anos</strong>
+              <span class="kpi-sub" id="div-res-months">158 meses reinvestindo proventos</span>
+            </div>
+            <div class="kpi-box">
+              <span class="kpi-label">Renda Passiva Atual</span>
+              <strong class="kpi-value" id="div-res-current-inc">R$ 151,80/mês</strong>
+              <span class="kpi-sub">Com seu patrimônio atual</span>
+            </div>
+          </div>
+
+          <div class="law-banner" id="div-law-banner">
+            <span aria-hidden="true">⚖️</span>
+            <p id="div-law-text"></p>
+          </div>
+
+          <div tabindex="0" role="region" aria-labelledby="div-table-caption" class="table-wrapper">
+            <table
+              class="abc-table"
+              style='--label-2: "Total Aportado do Bolso"; --label-3: "Patrimônio Acumulado"; --label-4: "Renda Passiva Mensal";'
+            >
+              <caption id="div-table-caption">Evolução da Bola de Neve de Dividendos</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Ano</th>
+                  <th scope="col">Total Aportado do Bolso</th>
+                  <th scope="col">Patrimônio Acumulado</th>
+                  <th scope="col">Renda Passiva Mensal</th>
+                </tr>
+              </thead>
+              <tbody id="div-table-body"></tbody>
+            </table>
+          </div>
+
+          <NextStepCard calculator={calc} />
+        </div>
+      </div>
+
+      <AdSlot slotId="calc-div-bottom" />
+
+      <section class="faq-section below-fold-deferred">
+        <h2>Perguntas Frequentes sobre Dividendos, FIIs e Lei 15.270/2025</h2>
+        <div class="faq-grid">
+          {calc.faqs.map((faq) => (
+            <div class="abc-card faq-card">
+              <h3>{faq.question}</h3>
+              <p>{faq.answer}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import { simulateDividendsAndPassiveIncome, formatBRL, formatPct } from '../../lib/finance';
+
+  const incomeInput = document.getElementById('div-income') as HTMLInputElement;
+  const incomeSlider = document.getElementById('div-income-slider') as HTMLInputElement;
+  const dyInput = document.getElementById('div-dy') as HTMLInputElement;
+  const dySlider = document.getElementById('div-dy-slider') as HTMLInputElement;
+  const currentInput = document.getElementById('div-current') as HTMLInputElement;
+  const currentSlider = document.getElementById('div-current-slider') as HTMLInputElement;
+  const monthlyInput = document.getElementById('div-monthly') as HTMLInputElement;
+  const monthlySlider = document.getElementById('div-monthly-slider') as HTMLInputElement;
+  const reinvestCheck = document.getElementById('div-reinvest') as HTMLInputElement;
+
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('renda')) {
+    incomeInput.value = params.get('renda')!;
+    incomeSlider.value = params.get('renda')!;
+  }
+  if (params.get('dy')) {
+    dyInput.value = params.get('dy')!;
+    dySlider.value = params.get('dy')!;
+  }
+
+  function bindPair(num: HTMLInputElement, slider: HTMLInputElement) {
+    slider.addEventListener('input', () => {
+      num.value = slider.value;
+      recalc();
+    });
+    num.addEventListener('input', () => {
+      slider.value = num.value;
+      slider.dispatchEvent(new Event('input'));
+      recalc();
+    });
+  }
+
+  function recalc() {
+    const desiredMonthlyIncome = Number(incomeInput.value) || 1000;
+    const dividendYieldAnnualPct = Number(dyInput.value) || 9.5;
+    const currentPatrimony = Number(currentInput.value) || 0;
+    const monthlyContribution = Number(monthlyInput.value) || 0;
+    const reinvestDividends = reinvestCheck.checked;
+
+    document.getElementById('div-income-out')!.textContent = formatBRL(desiredMonthlyIncome);
+    document.getElementById('div-dy-out')!.textContent = `${formatPct(dividendYieldAnnualPct)} a.a.`;
+    document.getElementById('div-current-out')!.textContent = formatBRL(currentPatrimony);
+    document.getElementById('div-monthly-out')!.textContent = formatBRL(monthlyContribution);
+
+    const res = simulateDividendsAndPassiveIncome({
+      desiredMonthlyIncome,
+      dividendYieldAnnualPct,
+      currentPatrimony,
+      monthlyContribution,
+      reinvestDividends,
+    });
+
+    document.getElementById('div-res-target')!.textContent = formatBRL(res.requiredPatrimony);
+    document.getElementById('div-res-monthly-yield')!.textContent = `Yield mensal equiv.: ${formatPct(res.monthlyYieldPct, 3)} a.m.`;
+    document.getElementById('div-res-current-inc')!.textContent = `${formatBRL(res.currentMonthlyIncome)}/mês`;
+
+    if (res.yearsToGoal !== null) {
+      document.getElementById('div-res-time')!.textContent = `${res.yearsToGoal.toLocaleString('pt-BR')} anos`;
+      document.getElementById('div-res-months')!.textContent = `${res.monthsToGoal} meses (${reinvestDividends ? 'reinvestindo dividendos' : 'sem reinvestir'})`;
+    } else {
+      document.getElementById('div-res-time')!.textContent = '+50 anos';
+      document.getElementById('div-res-months')!.textContent = 'Ative o reinvestimento ou aumente o aporte';
+    }
+
+    document.getElementById('div-law-text')!.textContent = res.netDesiredAfterLaw15270Notice;
+
+    document.getElementById('div-table-body')!.innerHTML = res.yearlySnowball
+      .slice(0, 20)
+      .map(
+        (r) => `
+        <tr>
+          <th scope="row">Ano ${r.year}</th>
+          <td>${formatBRL(r.totalInvestedOutOfPocket)}</td>
+          <td style="font-weight: 700;">${formatBRL(r.patrimony)}</td>
+          <td style="color: var(--brand-emerald); font-weight: 800;">${formatBRL(r.monthlyPassiveIncome)} / mês</td>
+        </tr>
+      `
+      )
+      .join('');
+  }
+
+  bindPair(incomeInput, incomeSlider);
+  bindPair(dyInput, dySlider);
+  bindPair(currentInput, currentSlider);
+  bindPair(monthlyInput, monthlySlider);
+  reinvestCheck.addEventListener('change', recalc);
+
+  if ((window as any).__initAbcSliders) (window as any).__initAbcSliders();
+  recalc();
+</script>
+
+<style>
+  .calc-page-section {
+    padding-block: 2rem 3rem;
+  }
+  .breadcrumb {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-block-end: 1rem;
+    display: flex;
+    gap: 0.45rem;
+  }
+  .calc-header {
+    margin-block-end: 2rem;
+  }
+  .calc-header h1 {
+    font-size: clamp(1.6rem, 3vw, 2.25rem);
+    margin-block: 0.6rem 0.4rem;
+  }
+  .calc-workspace {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 1.5rem;
+    align-items: start;
+  }
+  .control-group {
+    margin-block-end: 1.15rem;
+  }
+  .control-label-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.86rem;
+    font-weight: 600;
+    margin-block-end: 0.25rem;
+  }
+  .control-label-row output {
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.75rem;
+    border-radius: 0.75rem;
+    background: var(--bg-elevated);
+    font-size: 0.86rem;
+    font-weight: 600;
+  }
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-block-end: 1.25rem;
+  }
+  .kpi-box {
+    padding: 1.15rem;
+    border-radius: 0.9rem;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-elevated);
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .kpi-highlight {
+    border-color: rgba(2, 132, 199, 0.28);
+  }
+  .kpi-label {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+  }
+  .kpi-value {
+    font-size: 1.38rem;
+    font-weight: 700;
+  }
+  .kpi-emerald .kpi-value {
+    color: var(--text-primary);
+  }
+  .kpi-sub {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+  .law-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem 1.2rem;
+    border-radius: 0.85rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    margin-block-end: 1.35rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
+  .law-banner p {
+    margin: 0;
+  }
+  .faq-section {
+    margin-block-start: 3rem;
+  }
+  .faq-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.25rem;
+  }
+  @media (max-width: 980px) {
+    .calc-workspace,
+    .kpi-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

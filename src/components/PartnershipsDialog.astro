@@ -1,0 +1,258 @@
+---
+import { SITE_CONFIG } from '../config/site';
+---
+
+<!-- MANDATORY (light-dismiss-a-dialog & animate-to-from-top-layer): <dialog closedby="any"> aberto com showModal() -->
+<dialog id="parcerias-dialog" closedby="any" class="abc-dialog" aria-labelledby="parcerias-dialog-title">
+  <div class="dialog-header">
+    <div>
+      <span class="badge-pill">🤝 Canal Oficial de Negócios</span>
+      <h2 id="parcerias-dialog-title">Parcerias Comerciais, Publicidade & Mídia Kit</h2>
+    </div>
+    <button type="button" class="dialog-close-btn" data-close-dialog="parcerias-dialog" aria-label="Fechar janela">
+      ✕
+    </button>
+  </div>
+
+  <p class="dialog-intro">
+    O portal <strong>abcinvestimentos.com.br</strong> conecta investidores brasileiros a ferramentas de simulação e educação financeira. Entre em contato para patrocínios editoriais, parcerias de afiliação ou propostas estratégicas envolvendo o ativo digital.
+  </p>
+
+  <form id="parcerias-form" class="parcerias-form" novalidate>
+    <div class="field">
+      <label for="partner-name">Seu Nome ou Empresa</label>
+      <span id="partner-name-hint" class="field-hint">Informe seu nome completo ou razão social da instituição</span>
+      <input
+        type="text"
+        id="partner-name"
+        name="name"
+        class="abc-input"
+        required
+        minlength="2"
+        autocomplete="name"
+        aria-describedby="partner-name-hint"
+        aria-errormessage="partner-name-error"
+      />
+      <div id="partner-name-error" class="error-msg">
+        <span aria-hidden="true">⚠️</span> Informe seu nome ou nome da empresa (mínimo 2 caracteres).
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="partner-email">E-mail Corporativo para Retorno</label>
+      <span id="partner-email-hint" class="field-hint">Formato: voce@empresa.com.br</span>
+      <input
+        type="email"
+        id="partner-email"
+        name="email"
+        class="abc-input"
+        required
+        autocomplete="email"
+        aria-describedby="partner-email-hint"
+        aria-errormessage="partner-email-error"
+      />
+      <div id="partner-email-error" class="error-msg">
+        <span aria-hidden="true">⚠️</span> Digite um endereço de e-mail válido para respondermos.
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="partner-subject">Tipo de Proposta</label>
+      <select id="partner-subject" name="subject" class="abc-input">
+        <option value="Publicidade / Patrocínio no Portal">Publicidade / Patrocínio no Portal</option>
+        <option value="Parceria de Produto Financeiro / Afiliados">Parceria de Produto Financeiro / Afiliados</option>
+        <option value="Proposta Comercial / Aquisição de Ativo Digital">Proposta Comercial / Aquisição de Ativo Digital</option>
+        <option value="Imprensa / Outros Assuntos">Imprensa / Outros Assuntos</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="partner-message">Mensagem / Detalhes da Proposta</label>
+      <span id="partner-msg-hint" class="field-hint">Descreva brevemente o objetivo da parceria</span>
+      <textarea
+        id="partner-message"
+        name="message"
+        rows="3"
+        class="abc-input"
+        required
+        minlength="10"
+        aria-describedby="partner-msg-hint"
+        aria-errormessage="partner-msg-error"
+      ></textarea>
+      <div id="partner-msg-error" class="error-msg">
+        <span aria-hidden="true">⚠️</span> Escreva uma breve mensagem (mínimo 10 caracteres).
+      </div>
+    </div>
+
+    <div class="dialog-actions">
+      <button type="button" class="btn-secondary" data-close-dialog="parcerias-dialog">Cancelar</button>
+      <button type="submit" class="btn-primary">Preparar Envio da Proposta →</button>
+    </div>
+    <p id="parcerias-feedback" class="parcerias-feedback" aria-live="polite"></p>
+  </form>
+</dialog>
+
+<script define:vars={{ partnershipsEmail: SITE_CONFIG.contact.partnershipsEmail }}>
+  const dialog = document.getElementById('parcerias-dialog');
+
+  // Feature detection para animações de saída da top-layer (animate-to-from-top-layer guide)
+  let supportsDisplayTransition;
+  function canTransitionDisplay() {
+    if (supportsDisplayTransition !== undefined) return supportsDisplayTransition;
+    if (!window.CSS?.supports?.('transition-behavior', 'allow-discrete') || !document.body) {
+      return false;
+    }
+    const probe = document.createElement('div');
+    probe.style.cssText = 'transition: display 1s allow-discrete !important; display: block;';
+    document.body.appendChild(probe);
+    getComputedStyle(probe).display;
+    probe.style.display = 'none';
+    supportsDisplayTransition = getComputedStyle(probe).display === 'block';
+    probe.remove();
+    return supportsDisplayTransition;
+  }
+
+  function supportsTopLayerExit() {
+    return window.CSS?.supports?.('overlay', 'auto') && canTransitionDisplay();
+  }
+
+  async function closeTopLayer(element) {
+    if (!element) return;
+    if (!supportsTopLayerExit()) {
+      element.setAttribute('data-closing', '');
+      const animations = element.getAnimations({ subtree: true });
+      if (animations.length > 0) {
+        await Promise.race([
+          Promise.allSettled(animations.map((a) => a.finished)),
+          new Promise((r) => setTimeout(r, 2000)),
+        ]);
+      }
+      if (!element.hasAttribute('data-closing')) return;
+      element.removeAttribute('data-closing');
+    }
+    element.close();
+  }
+
+  if (dialog) {
+    // Abrir modal via botões [data-open-dialog="parcerias-dialog"]
+    document.querySelectorAll('[data-open-dialog="parcerias-dialog"]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        dialog.showModal();
+      });
+    });
+
+    // Fechar modal via botões [data-close-dialog="parcerias-dialog"]
+    document.querySelectorAll('[data-close-dialog="parcerias-dialog"]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        closeTopLayer(dialog);
+      });
+    });
+
+    // Intercepta cancel (Esc) para animar saída
+    dialog.addEventListener('cancel', (event) => {
+      event.preventDefault();
+      closeTopLayer(dialog);
+    });
+
+    // MANDATORY fallback (light-dismiss-a-dialog guide) para navegadores sem suporte a closedby (ex: Safari)
+    if (!('closedBy' in HTMLDialogElement.prototype)) {
+      dialog.addEventListener('click', (event) => {
+        if (event.target !== dialog) return;
+        const rect = dialog.getBoundingClientRect();
+        const isDialogContent =
+          rect.top <= event.clientY &&
+          event.clientY <= rect.top + rect.height &&
+          rect.left <= event.clientX &&
+          event.clientX <= rect.left + rect.width;
+        if (isDialogContent) return;
+        closeTopLayer(dialog);
+      });
+    }
+  }
+
+  // Envio do formulário de parcerias
+  const form = document.getElementById('parcerias-form');
+  const feedback = document.getElementById('parcerias-feedback');
+  if (form) {
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!form.checkValidity()) {
+        const firstInvalid = form.querySelector(':invalid');
+        if (firstInvalid) firstInvalid.focus();
+        return;
+      }
+      const data = new FormData(form);
+      const name = data.get('name');
+      const email = data.get('email');
+      const subject = data.get('subject');
+      const message = data.get('message');
+
+      const mailto = `mailto:${partnershipsEmail}?subject=${encodeURIComponent(
+        `[ABC Investimentos] ${subject} - ${name}`
+      )}&body=${encodeURIComponent(`Nome/Empresa: ${name}\nE-mail: ${email}\n\nProposta:\n${message}`)}`;
+
+      if (feedback) {
+        feedback.textContent = `Redirecionando para seu cliente de e-mail (${partnershipsEmail})...`;
+      }
+      window.location.href = mailto;
+    });
+  }
+</script>
+
+<style>
+  .dialog-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-block-end: 0.75rem;
+  }
+
+  .dialog-header h2 {
+    margin: 0.45rem 0 0;
+    font-size: 1.3rem;
+  }
+
+  .dialog-close-btn {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+    inline-size: 2.2rem;
+    block-size: 2.2rem;
+    border-radius: 0.6rem;
+    cursor: pointer;
+    font-size: 1rem;
+  }
+
+  .dialog-intro {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-block-end: 1.15rem;
+  }
+
+  .parcerias-form {
+    display: grid;
+    gap: 0.9rem;
+  }
+
+  .field label {
+    display: block;
+    font-weight: 700;
+    font-size: 0.875rem;
+    margin-block-end: 0.15rem;
+  }
+
+  .dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-block-start: 0.5rem;
+  }
+
+  .parcerias-feedback {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--brand-blue);
+    font-weight: 600;
+  }
+</style>

@@ -1,0 +1,59 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { SITE_CONFIG } from '../config/site';
+---
+
+<BaseLayout
+  title="Política de Privacidade e LGPD"
+  description="Política de Privacidade, Cookies e Proteção de Dados Pessoais (LGPD — Lei nº 13.709/2018) do portal ABC Investimentos."
+>
+  <section class="section">
+    <div class="container" style="max-width: 820px;">
+      <span class="badge badge--emerald" style="margin-bottom: 0.75rem;">LGPD • Transparência Total</span>
+      <h1 style="font-size: clamp(1.8rem, 3.5vw, 2.5rem); margin-bottom: 1rem;">Política de Privacidade e Cookies</h1>
+      <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 2rem;">
+        Última atualização: Outubro de 2026 • Portal <strong>{SITE_CONFIG.domain}</strong>
+      </p>
+
+      <div class="calc-panel" style="display: grid; gap: 1.5rem; font-size: 0.95rem; color: var(--text-secondary);">
+        <div>
+          <h2 style="font-size: 1.2rem; color: var(--text-primary); margin-bottom: 0.5rem;">1. Compromisso com a sua Privacidade</h2>
+          <p style="margin: 0;">
+            O portal <strong>{SITE_CONFIG.name}</strong> ({SITE_CONFIG.domain}) foi desenhado sob o princípio de <em>Privacy by Design</em>. Todas as nossas calculadoras financeiras (Juros Compostos, Renda Fixa, Dividendos, Reserva de Emergência, Alugar vs. Financiar e Preço-Teto) processam as simulações <strong>100% localmente no seu navegador</strong>. Os valores financeiros digitados nos simuladores não são armazenados em bancos de dados nossos.
+          </p>
+        </div>
+
+        <div>
+          <h2 style="font-size: 1.2rem; color: var(--text-primary); margin-bottom: 0.5rem;">2. Uso do Consultor Educativo ABC IA</h2>
+          <p style="margin: 0;">
+            Ao utilizar o campo de perguntas do Consultor Educativo ABC IA, o texto da sua dúvida é processado de forma anônima para gerar a explicação didática. Recomendamos expressamente que você <strong>não insira dados pessoais sensíveis</strong> (como CPF, número de conta bancária, senhas ou endereço residencial) no campo de perguntas.
+          </p>
+        </div>
+
+        <div>
+          <h2 style="font-size: 1.2rem; color: var(--text-primary); margin-bottom: 0.5rem;">3. Cookies, Armazenamento Local e Publicidade (Google AdSense)</h2>
+          <p style="margin: 0 0 0.75rem;">
+            Utilizamos o armazenamento local (`localStorage`) do seu navegador apenas para salvar sua preferência de tema visual (Modo Claro ou Modo Escuro), sua escolha no banner de consentimento de privacidade e a contagem diária de uso gratuito do assistente educativo.
+          </p>
+          <p style="margin: 0;">
+            Caso você opte por <strong>"Aceitar Todos"</strong> no banner de privacidade, parceiros de medição de tráfego e publicidade contextual (como o Google AdSense) poderão utilizar cookies para exibir anúncios relevantes com base em suas visitas a este e a outros sites na internet. Você pode escolher <strong>"Apenas Essenciais"</strong> a qualquer momento ou gerenciar cookies diretamente nas configurações do seu navegador.
+          </p>
+        </div>
+
+        <div>
+          <h2 style="font-size: 1.2rem; color: var(--text-primary); margin-bottom: 0.5rem;">4. Links de Afiliados e Produtos Digitais</h2>
+          <p style="margin: 0;">
+            Algumas páginas contêm indicações de livros (via programa Associados Amazon) ou links para aquisição de nossas planilhas financeiras oficiais em plataformas seguras de pagamento (como Hotmart ou Kiwify). Ao clicar nesses links externos, a transação ocorre integralmente no ambiente criptografado da respectiva plataforma parceira.
+          </p>
+        </div>
+
+        <div>
+          <h2 style="font-size: 1.2rem; color: var(--text-primary); margin-bottom: 0.5rem;">5. Direitos do Titular (Art. 18 da LGPD)</h2>
+          <p style="margin: 0;">
+            Em conformidade com a Lei Geral de Proteção de Dados Pessoais (Lei nº 13.709/2018), você pode entrar em contato conosco a qualquer momento pelo e-mail <a href={`mailto:${SITE_CONFIG.contact.email}`}>{SITE_CONFIG.contact.email}</a> para tirar dúvidas sobre privacidade ou solicitar esclarecimentos.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

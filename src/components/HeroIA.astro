@@ -1,0 +1,1707 @@
+---
+import { CALCULATORS } from '../data/calculators';
+import FinanceIcon from './icons/FinanceIcon.astro';
+
+const topFour = CALCULATORS.filter((c) => c.isTopFour);
+---
+
+<section class="hero-section" id="consultor-ia">
+  <!-- Canvas de Constelação Orbital (Estilo Mais Retorno) -->
+  <canvas id="hero-constellation-canvas" class="hero-canvas" aria-hidden="true"></canvas>
+
+  <!-- Tags Flutuantes de Mercado no Espaço Cósmico -->
+  <div class="ambient-tags-layer" aria-hidden="true">
+    <span class="ambient-tag tag-pos-1"><span class="tag-dot"></span>Selic 14,25%</span>
+    <span class="ambient-tag tag-pos-2"><span class="tag-dot"></span>MXRF11 FII</span>
+    <span class="ambient-tag tag-pos-3"><span class="tag-dot"></span>CDI 14,15%</span>
+    <span class="ambient-tag tag-pos-4"><span class="tag-dot"></span>Tesouro Selic</span>
+    <span class="ambient-tag tag-pos-5"><span class="tag-dot"></span>IPCA 4,56%</span>
+    <span class="ambient-tag tag-pos-6"><span class="tag-dot"></span>VALE3 Ação</span>
+  </div>
+
+  <div class="container hero-container">
+    <!-- Headline de Alto Impacto -->
+    <div class="hero-headline">
+      <h1 class="hero-title">
+        Pesquise, compare e simule seus investimentos na mesma plataforma
+      </h1>
+      <p class="hero-subtitle">
+        Calculadoras gratuitas, inteligência com dados oficiais do Banco Central e sem economês.
+      </p>
+    </div>
+
+    <!-- Barra de Busca / Consultor IA em Cápsula (Padrão 68px Mais Retorno) -->
+    <div class="search-capsule-wrapper">
+      <!-- Badge de Autoridade da IA Especialista Proprietária -->
+      <div class="ia-authority-tag" aria-label="Tecnologia Especializada">
+        <span class="ia-spark-lead">✨</span>
+        <strong class="ia-tag-title">IA Especialista ABC</strong>
+        <span class="ia-tag-sep">•</span>
+        <span class="ia-tag-desc">Treinada para o investidor brasileiro com taxas do Banco Central e regras 2026</span>
+      </div>
+
+      <form id="hero-ia-form" class="search-capsule" role="search">
+        <label for="hero-ia-input" class="sr-only">Digite sua dúvida ou simulação</label>
+        <div class="search-icon-wrap" aria-hidden="true">
+          <FinanceIcon name="search" size={22} />
+        </div>
+        <span class="search-divider" aria-hidden="true"></span>
+        <input
+          type="text"
+          id="hero-ia-input"
+          class="search-input"
+          placeholder="Pergunte sobre CDB, FIIs, Selic ou simule..."
+          maxlength="300"
+          required
+        />
+        <button type="submit" id="hero-ia-submit" class="search-submit-btn" aria-label="Consultar nossa IA Especialista">
+          <FinanceIcon name="sparkles" size={17} />
+          <span>Consultar IA Especialista</span>
+        </button>
+      </form>
+
+      <!-- Chips de Teste em 1 Clique (Cápsulas de Vidro Escuro) -->
+      <div class="search-chips-row">
+        <span class="chips-label">Atalhos rápidos:</span>
+        <button
+          type="button"
+          class="search-chip"
+          data-ia-prompt="Vale mais a pena CDB de 105% do CDI ou LCI de 92% isenta para 1 ano?"
+        >
+          CDB 105% vs LCI 92%
+        </button>
+        <button
+          type="button"
+          class="search-chip"
+          data-ia-prompt="Quanto preciso ter investido para receber R$ 3.000 por mês de dividendos?"
+        >
+          Meta R$ 3.000/mês Dividendos
+        </button>
+        <button
+          type="button"
+          class="search-chip"
+          data-ia-prompt="Sou CLT com custo fixo de R$ 4.000. Onde guardar minha Reserva de Emergência?"
+        >
+          Reserva de Emergência Ideal
+        </button>
+      </div>
+
+      <!-- Resposta Inteligente da IA ao Vivo -->
+      <div id="hero-ia-response" class="ia-response-modal" hidden aria-live="polite">
+        <div class="ia-response-head">
+          <div class="ia-response-title">
+            <FinanceIcon name="bot" size={18} />
+            <strong>Consultor IA • ABC Investimentos</strong>
+            <span class="ia-badge-live" id="ia-badge-source">IA Especialista ABC • Análise em Tempo Real</span>
+          </div>
+          <button type="button" id="ia-close-btn" class="ia-close-btn" aria-label="Fechar resposta">×</button>
+        </div>
+        <div class="ia-response-body" id="hero-ia-answer-text"></div>
+        <div class="ia-response-actions" id="hero-ia-actions"></div>
+      </div>
+    </div>
+
+    <!-- "Escolha por onde começar" — Os 4 Cards Idênticos ao Mais Retorno -->
+    <div class="start-section">
+      <p class="start-label">Escolha por onde começar</p>
+
+      <div class="tools-grid-4">
+        {topFour.map((tool) => (
+          <a href={`/calculadoras/${tool.slug}`} class="tool-card-mr" title={`Acessar ${tool.title}`}>
+            <div class="tool-card-top">
+              <span class="tool-card-icon-wrap">
+                <FinanceIcon name={tool.icon} size={22} />
+              </span>
+              <span class="tool-card-badge">{tool.badge}</span>
+            </div>
+            <div class="tool-card-info">
+              <h3 class="tool-card-title">{tool.shortTitle}</h3>
+              <p class="tool-card-desc">{tool.subtitle}</p>
+            </div>
+          </a>
+        ))}
+      </div>
+    </div>
+
+    <!-- Faixa de Métricas & Prova Social (Abaixo dos Cards) -->
+    <div class="metrics-bar">
+      <div class="metric-item">
+        <strong class="metric-number">100%</strong>
+        <span class="metric-label">Gratuito e sem cadastro</span>
+      </div>
+      <div class="metric-divider"></div>
+      <div class="metric-item">
+        <strong class="metric-number">BCB / SGS</strong>
+        <span class="metric-label">Taxas oficiais do Banco Central</span>
+      </div>
+      <div class="metric-divider"></div>
+      <div class="metric-item">
+        <strong class="metric-number">2026</strong>
+        <span class="metric-label">Tributação e regras vigentes</span>
+      </div>
+      <div class="metric-divider"></div>
+      <div class="metric-item">
+        <strong class="metric-number">6 Simuladores</strong>
+        <span class="metric-label">Do zero ao 1º Milhão</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  // 1. Script de Animação da Constelação Orbital no Canvas (Estilo Mais Retorno)
+  function initConstellation() {
+    const canvas = document.getElementById('hero-constellation-canvas') as HTMLCanvasElement | null;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let width = 0;
+    let height = 0;
+    let animationFrameId: number;
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    interface Particle {
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      radius: number;
+      alpha: number;
+      pulseSpeed: number;
+    }
+
+    let particles: Particle[] = [];
+
+    function resize() {
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      width = canvas.width = rect.width * (window.devicePixelRatio || 1);
+      height = canvas.height = rect.height * (window.devicePixelRatio || 1);
+      createParticles();
+    }
+
+    function createParticles() {
+      particles = [];
+      const count = Math.floor(Math.min(50, (width * height) / 25000));
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          vx: (Math.random() - 0.5) * 0.45,
+          vy: (Math.random() - 0.5) * 0.45,
+          radius: Math.random() * 1.8 + 1.2,
+          alpha: Math.random() * 0.6 + 0.2,
+          pulseSpeed: Math.random() * 0.02 + 0.01,
+        });
+      }
+    }
+
+    function draw() {
+      if (!ctx) return;
+      ctx.clearRect(0, 0, width, height);
+
+      // Traços conectivos
+      const maxDist = 140 * (window.devicePixelRatio || 1);
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x;
+          const dy = particles[i].y - particles[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < maxDist) {
+            const lineAlpha = (1 - dist / maxDist) * 0.18;
+            ctx.strokeStyle = `rgba(56, 189, 248, ${lineAlpha})`;
+            ctx.lineWidth = 1 * (window.devicePixelRatio || 1);
+            ctx.beginPath();
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.stroke();
+          }
+        }
+      }
+
+      // Desenhar nós
+      for (const p of particles) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius * (window.devicePixelRatio || 1), 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(56, 189, 248, ${p.alpha})`;
+        ctx.shadowColor = 'rgba(56, 189, 248, 0.4)';
+        ctx.shadowBlur = 8;
+        ctx.fill();
+
+        if (!prefersReducedMotion) {
+          p.x += p.vx;
+          p.y += p.vy;
+          if (p.x < 0 || p.x > width) p.vx *= -1;
+          if (p.y < 0 || p.y > height) p.vy *= -1;
+          p.alpha += Math.sin(Date.now() * p.pulseSpeed * 0.05) * 0.01;
+        }
+      }
+
+      if (!prefersReducedMotion) {
+        animationFrameId = requestAnimationFrame(draw);
+      }
+    }
+
+    window.addEventListener('resize', resize);
+    resize();
+    draw();
+  }
+
+  initConstellation();
+
+  import { processConsultantQuery } from '../lib/ai-assistant';
+
+  function renderBlockLines(lines: string[]): string {
+    const htmlParts: string[] = [];
+    let inList = false;
+
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (!line) {
+        if (inList) {
+          htmlParts.push('</ul>');
+          inList = false;
+        }
+        continue;
+      }
+
+      // Converte negritos **texto** -> <strong>texto</strong>
+      const formatted = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+      if (line.startsWith('- ') || line.startsWith('* ')) {
+        if (!inList) {
+          htmlParts.push('<ul class="ia-bullet-list">');
+          inList = true;
+        }
+        const bulletText = formatted.replace(/^[-*]\s*/, '');
+        htmlParts.push(`<li><span class="bullet-content">${bulletText}</span></li>`);
+      } else if (line.startsWith('### ')) {
+        if (inList) {
+          htmlParts.push('</ul>');
+          inList = false;
+        }
+        htmlParts.push(`<h4 class="ia-subheading">${formatted.replace(/^###\s*/, '')}</h4>`);
+      } else if (line.startsWith('## ')) {
+        if (inList) {
+          htmlParts.push('</ul>');
+          inList = false;
+        }
+        htmlParts.push(`<h3 class="ia-heading">${formatted.replace(/^##\s*/, '')}</h3>`);
+      } else if (/^\d+\.\s/.test(line)) {
+        if (inList) {
+          htmlParts.push('</ul>');
+          inList = false;
+        }
+        htmlParts.push(`<p class="ia-numbered-p">${formatted}</p>`);
+      } else {
+        if (inList) {
+          htmlParts.push('</ul>');
+          inList = false;
+        }
+        htmlParts.push(`<p>${formatted}</p>`);
+      }
+    }
+
+    if (inList) {
+      htmlParts.push('</ul>');
+    }
+
+    return htmlParts.join('');
+  }
+
+  function renderMarkdown(md: string): string {
+    const rawLines = md.split('\n');
+    interface SectionBlock {
+      type: 'diagnostic' | 'simulation' | 'warning' | 'general';
+      title: string;
+      icon: string;
+      lines: string[];
+    }
+
+    const blocks: SectionBlock[] = [];
+    let currentBlock: SectionBlock = {
+      type: 'general',
+      title: '',
+      icon: '',
+      lines: []
+    };
+
+    for (const line of rawLines) {
+      const trimmed = line.trim();
+
+      // Reconhecimento resiliente dos blocos estratégicos
+      const isDiag = /^(?:1\.\s*|#+\s*)?(?:DIAGNÓSTICO\s*(?:DIRETO|ESTRATÉGICO)?|DIAGNOSTICO)/i.test(trimmed);
+      const isSim = /^(?:2\.\s*|#+\s*)?(?:SIMULAÇÃO\s*(?:OU\s*CÁLCULO\s*REAL)?|SIMULACAO|CÁLCULO\s*REAL|CALCULO)/i.test(trimmed);
+      const isWarn = /^(?:3\.\s*|#+\s*)?(?:ATENÇÃO\s*PRÁTICA|ATENCAO\s*PRATICA|REGRAS\s*E\s*RISCOS|PONTOS\s*DE\s*ATENÇÃO)/i.test(trimmed);
+
+      if (isDiag) {
+        if (currentBlock.lines.length > 0) blocks.push(currentBlock);
+        currentBlock = { type: 'diagnostic', title: 'Diagnóstico Estratégico', icon: '🎯', lines: [] };
+        continue;
+      } else if (isSim) {
+        if (currentBlock.lines.length > 0) blocks.push(currentBlock);
+        currentBlock = { type: 'simulation', title: 'Simulação & Números Reais', icon: '📊', lines: [] };
+        continue;
+      } else if (isWarn) {
+        if (currentBlock.lines.length > 0) blocks.push(currentBlock);
+        currentBlock = { type: 'warning', title: 'Atenção Prática & Regras', icon: '⚠️', lines: [] };
+        continue;
+      }
+
+      currentBlock.lines.push(line);
+    }
+
+    if (currentBlock.lines.length > 0) {
+      blocks.push(currentBlock);
+    }
+
+    // Se for texto geral sem os 3 tópicos, aplica formatação fluida padrão
+    if (blocks.length === 1 && blocks[0].type === 'general') {
+      return `<div class="ia-general-body">${renderBlockLines(blocks[0].lines)}</div>`;
+    }
+
+    return blocks
+      .map((b) => {
+        const content = renderBlockLines(b.lines);
+        if (!content.trim()) return '';
+
+        if (b.type === 'diagnostic') {
+          return `
+            <div class="ia-section-card ia-card-diagnostic">
+              <div class="ia-card-badge">
+                <span class="badge-icon">${b.icon}</span>
+                <span>${b.title}</span>
+              </div>
+              <div class="ia-card-content">${content}</div>
+            </div>
+          `;
+        }
+        if (b.type === 'simulation') {
+          return `
+            <div class="ia-section-card ia-card-simulation">
+              <div class="ia-card-badge">
+                <span class="badge-icon">${b.icon}</span>
+                <span>${b.title}</span>
+              </div>
+              <div class="ia-card-content">${content}</div>
+            </div>
+          `;
+        }
+        if (b.type === 'warning') {
+          return `
+            <div class="ia-section-card ia-card-warning">
+              <div class="ia-card-badge">
+                <span class="badge-icon">${b.icon}</span>
+                <span>${b.title}</span>
+              </div>
+              <div class="ia-card-content">${content}</div>
+            </div>
+          `;
+        }
+        return `<div class="ia-general-body">${content}</div>`;
+      })
+      .join('');
+  }
+
+  // 2. Interações do Consultor IA e Chips
+  const iaForm = document.getElementById('hero-ia-form') as HTMLFormElement | null;
+  const iaInput = document.getElementById('hero-ia-input') as HTMLInputElement | null;
+  const iaSubmit = document.getElementById('hero-ia-submit') as HTMLButtonElement | null;
+  const iaResponse = document.getElementById('hero-ia-response');
+  const iaAnswerText = document.getElementById('hero-ia-answer-text');
+  const iaActions = document.getElementById('hero-ia-actions');
+  const iaCloseBtn = document.getElementById('ia-close-btn');
+  const iaBadgeSource = document.getElementById('ia-badge-source');
+
+  if (iaCloseBtn && iaResponse) {
+    iaCloseBtn.addEventListener('click', () => {
+      iaResponse.classList.remove('is-open');
+      iaResponse.hidden = true;
+    });
+  }
+
+  // Light-dismiss acessível (Modern Web Guidance)
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && iaResponse && !iaResponse.hidden) {
+      iaResponse.classList.remove('is-open');
+      iaResponse.hidden = true;
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (iaResponse && !iaResponse.hidden) {
+      const target = e.target as HTMLElement;
+      if (!iaResponse.contains(target) && !iaForm?.contains(target) && !target.closest('.search-chip')) {
+        iaResponse.classList.remove('is-open');
+        iaResponse.hidden = true;
+      }
+    }
+  });
+
+  document.querySelectorAll<HTMLButtonElement>('.search-chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      const prompt = chip.dataset.iaPrompt;
+      if (prompt && iaInput) {
+        iaInput.value = prompt;
+        iaForm?.requestSubmit();
+      }
+    });
+  });
+
+  if (iaForm && iaInput && iaSubmit && iaResponse && iaAnswerText && iaActions) {
+    iaForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const question = iaInput.value.trim();
+      if (!question) return;
+
+      iaSubmit.disabled = true;
+      if (iaResponse.hidden) {
+        iaResponse.hidden = false;
+        iaResponse.classList.add('is-open');
+        requestAnimationFrame(() => {
+          iaResponse.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+      }
+      iaAnswerText.innerHTML = `
+        <div class="ia-agent-loading">
+          <div class="loading-header">
+            <div class="loading-badge">
+              <span class="loading-pulse-ring" aria-hidden="true"></span>
+              <span class="loading-badge-text">Agente Especialista ABC • Análise em Tempo Real</span>
+            </div>
+          </div>
+
+          <div class="loading-content">
+            <p class="loading-headline">
+              Nosso consultor com treinamento especializado está analisando seu cenário e buscando as melhores informações para você.
+            </p>
+            <p class="loading-subline">
+              Cruzando taxas oficiais do <strong>Banco Central</strong> com as diretrizes fiscais de <strong>2026</strong>...
+            </p>
+          </div>
+
+          <div class="loading-steps">
+            <div class="loading-step step-done">
+              <span class="step-icon">✓</span>
+              <span class="step-text">Taxas BCB (Selic, CDI, IPCA)</span>
+            </div>
+            <div class="loading-step step-pulse">
+              <span class="step-spinner" aria-hidden="true"></span>
+              <span class="step-text">Processando Inteligência em Nuvem</span>
+            </div>
+            <div class="loading-step step-pending">
+              <span class="step-icon">○</span>
+              <span class="step-text">Estruturando Estratégia & Simulação</span>
+            </div>
+          </div>
+
+          <div class="loading-progress-wrap">
+            <progress class="ia-loading-progress" aria-label="Processando análise patrimonial"></progress>
+          </div>
+        </div>
+      `;
+      iaActions.innerHTML = '';
+
+      try {
+        const indicators = (window as any).__ABC_INDICATORS__ || undefined;
+        const [data] = await Promise.all([
+          processConsultantQuery(question, indicators),
+          new Promise((resolve) => setTimeout(resolve, 350)),
+        ]);
+
+        if (iaBadgeSource) {
+          if (data.source === 'gemini-1.5-flash') {
+            iaBadgeSource.className = 'ia-badge-live';
+            iaBadgeSource.textContent = 'IA Especialista ABC • Alta Precisão';
+          } else if (data.source === 'gemini-3.5-flash' || data.source === 'gemini-flash') {
+            iaBadgeSource.className = 'ia-badge-live';
+            iaBadgeSource.textContent = 'IA Especialista ABC • Análise em Tempo Real';
+          } else {
+            iaBadgeSource.className = 'ia-badge-live ia-badge-local';
+            iaBadgeSource.textContent = 'Motor Heurístico ABC • Auditoria Local';
+          }
+        }
+
+        iaAnswerText.innerHTML = renderMarkdown(data.answer);
+
+        if (Array.isArray(data.recommendedCalculators) && data.recommendedCalculators.length > 0) {
+          const linksHtml = data.recommendedCalculators
+            .map(
+              (calc) => `
+              <a href="/calculadoras/${calc.slug}${calc.params || ''}" class="btn-ia-action">
+                <span class="btn-action-text">${calc.title}</span>
+                <span class="btn-arrow" aria-hidden="true">→</span>
+              </a>
+            `
+            )
+            .join('');
+          iaActions.innerHTML = `
+            <div class="ia-rec-title">Simulação Completa nas Ferramentas:</div>
+            <div class="ia-rec-list">${linksHtml}</div>
+          `;
+        }
+      } catch {
+        iaAnswerText.innerHTML = `<p>Para esta comparação, acesse diretamente nossos simuladores gratuitos:</p>`;
+        iaActions.innerHTML = `
+          <div class="ia-rec-title">Acesse diretamente os simuladores gratuitos:</div>
+          <div class="ia-rec-list">
+            <a href="/calculadoras/renda-fixa" class="btn-ia-action">
+              <span class="btn-action-text">Simulador Renda Fixa (CDB vs LCI)</span>
+              <span class="btn-arrow">→</span>
+            </a>
+            <a href="/calculadoras/juros-compostos" class="btn-ia-action">
+              <span class="btn-action-text">Juros Compostos & 1º Milhão</span>
+              <span class="btn-arrow">→</span>
+            </a>
+          </div>
+        `;
+      } finally {
+        iaSubmit.disabled = false;
+      }
+    });
+  }
+</script>
+
+<style>
+  .hero-section {
+    position: relative;
+    padding-top: 4.5rem;
+    padding-bottom: 4rem;
+    overflow: hidden;
+    background:
+      radial-gradient(
+        ellipse 72% 62% at 50% 34%,
+        rgba(32, 68, 134, 0.58) 0%,
+        rgba(14, 165, 233, 0.20) 40%,
+        rgba(15, 26, 52, 0.28) 68%,
+        transparent 92%
+      ),
+      radial-gradient(
+        ellipse 96% 68% at 50% 0%,
+        rgba(56, 189, 248, 0.22) 0%,
+        rgba(20, 38, 74, 0.36) 52%,
+        transparent 88%
+      );
+  }
+
+  :global(:root[data-theme="light"]) .hero-section,
+  :global(:root:has(> head > meta[name="color-scheme"][content="light"])) .hero-section {
+    background:
+      radial-gradient(
+        ellipse 75% 60% at 50% 30%,
+        rgba(186, 230, 253, 0.55) 0%,
+        rgba(224, 242, 254, 0.4) 45%,
+        transparent 88%
+      );
+  }
+
+  @media (min-width: 1024px) {
+    .hero-section {
+      padding-top: 5.5rem;
+      padding-bottom: 5.5rem;
+    }
+  }
+
+  /* Canvas de Constelação no Fundo */
+  .hero-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.65;
+  }
+
+  /* Tags de Mercado Flutuantes no Espaço (Estilo Mais Retorno) */
+  .ambient-tags-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 2;
+    overflow: hidden;
+  }
+
+  .ambient-tag {
+    position: absolute;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.3rem 0.75rem;
+    border-radius: 9999px;
+    background: var(--glass-bg);
+    border: 1px solid var(--border-card);
+    backdrop-filter: blur(8px);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    box-shadow: var(--card-shadow);
+    transition: opacity 0.3s;
+  }
+
+  .tag-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--brand-blue);
+    box-shadow: 0 0 6px var(--brand-blue);
+  }
+
+  .tag-pos-1 { top: 12%; left: 8%; }
+  .tag-pos-2 { top: 22%; right: 9%; }
+  .tag-pos-3 { top: 48%; left: 4%; }
+  .tag-pos-4 { top: 52%; right: 5%; }
+  .tag-pos-5 { top: 78%; left: 10%; }
+  .tag-pos-6 { top: 82%; right: 11%; }
+
+  @media (max-width: 900px) {
+    .ambient-tags-layer {
+      display: none;
+    }
+  }
+
+  .hero-container {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  /* Headline */
+  .hero-headline {
+    max-width: 880px;
+    margin-bottom: 2.5rem;
+  }
+
+  .hero-title {
+    font-size: clamp(2.2rem, 4.5vw, 3.6rem);
+    font-weight: 700;
+    line-height: 1.12;
+    letter-spacing: -0.035em;
+    color: var(--text-primary);
+    margin-bottom: 1.25rem;
+    text-wrap: balance;
+  }
+
+  .hero-subtitle {
+    font-size: clamp(1rem, 1.8vw, 1.2rem);
+    color: var(--text-secondary);
+    line-height: 1.5;
+    max-width: 720px;
+    margin-inline: auto;
+    letter-spacing: -0.01em;
+  }
+
+  /* Barra de Busca / IA em Cápsula (68px Mais Retorno) */
+  .search-capsule-wrapper {
+    width: 100%;
+    max-width: 720px;
+    margin-bottom: 3.5rem;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* IA Authority Marketing Tag */
+  .ia-authority-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(14, 165, 233, 0.08);
+    border: 1px solid rgba(56, 189, 248, 0.22);
+    padding: 0.35rem 0.95rem;
+    border-radius: 9999px;
+    font-size: 0.78rem;
+    margin-bottom: 1rem;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 14px -2px rgba(14, 165, 233, 0.15);
+  }
+
+  :root[data-theme="light"] .ia-authority-tag,
+  :root:has(> head > meta[name="color-scheme"][content="light"]) .ia-authority-tag {
+    background: #e0f2fe;
+    border-color: #bae6fd;
+    box-shadow: 0 2px 8px rgba(14, 165, 233, 0.08);
+  }
+
+  .ia-spark-lead {
+    font-size: 0.9rem;
+    color: #38bdf8;
+    line-height: 1;
+  }
+
+  .ia-tag-title {
+    font-weight: 700;
+    color: #38bdf8;
+    letter-spacing: -0.01em;
+  }
+
+  :root[data-theme="light"] .ia-tag-title,
+  :root:has(> head > meta[name="color-scheme"][content="light"]) .ia-tag-title {
+    color: #0369a1;
+  }
+
+  .ia-tag-sep {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+  }
+
+  .ia-tag-desc {
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  @media (max-width: 640px) {
+    .ia-tag-desc,
+    .ia-tag-sep {
+      display: none;
+    }
+  }
+
+  .search-capsule {
+    display: flex;
+    align-items: center;
+    background: var(--glass-elevated);
+    border: 1px solid var(--border-card);
+    border-radius: 9999px;
+    height: 64px;
+    padding: 0.35rem 0.5rem 0.35rem 1.35rem;
+    box-shadow: var(--card-shadow);
+    transition: all 0.25s ease;
+    width: 100%;
+  }
+
+  .search-capsule:hover {
+    border-color: var(--border-hover);
+  }
+
+  .search-capsule:focus-within {
+    border-color: var(--brand-blue);
+    box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.15), var(--card-shadow);
+  }
+
+  .search-icon-wrap {
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    transition: color 0.2s ease;
+  }
+
+  .search-capsule:focus-within .search-icon-wrap {
+    color: var(--brand-blue);
+  }
+
+  .search-divider {
+    width: 1px;
+    height: 26px;
+    background: var(--border-card);
+    margin-inline: 0.9rem;
+    flex-shrink: 0;
+  }
+
+  .search-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    outline: none;
+    min-width: 0;
+    padding-inline-end: 0.85rem;
+    text-overflow: ellipsis;
+  }
+
+  .search-input::placeholder {
+    color: var(--text-muted);
+  }
+
+  .search-submit-btn {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 9999px;
+    height: 52px;
+    padding-inline: 1.35rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    letter-spacing: -0.01em;
+    box-shadow: 0 4px 14px -2px rgba(2, 132, 199, 0.45);
+    /* Individual transform properties (Modern Web Guidance) */
+    translate: 0 0;
+    scale: 1;
+    transition:
+      translate 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+      scale 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 0.2s ease,
+      background 0.2s ease,
+      border-color 0.2s ease;
+  }
+
+  /* Shimmer gleam sweep */
+  .search-submit-btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      105deg,
+      transparent 20%,
+      rgba(255, 255, 255, 0.32) 50%,
+      transparent 80%
+    );
+    transform: translateX(-100%);
+    animation: btnGleam 4.2s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  @keyframes btnGleam {
+    0%, 65% {
+      transform: translateX(-100%);
+    }
+    82%, 100% {
+      transform: translateX(180%);
+    }
+  }
+
+  .search-submit-btn:hover {
+    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+    border-color: rgba(255, 255, 255, 0.45);
+    box-shadow: 0 6px 22px rgba(56, 189, 248, 0.5), 0 0 0 1px rgba(56, 189, 248, 0.4);
+    scale: 1.025;
+    translate: 0 -1px;
+  }
+
+  .search-submit-btn:active {
+    scale: 0.975;
+    translate: 0 1px;
+    box-shadow: 0 2px 8px rgba(2, 132, 199, 0.4);
+  }
+
+  .search-submit-btn :global(svg) {
+    transition: rotate 0.3s ease, scale 0.3s ease;
+    flex-shrink: 0;
+  }
+
+  .search-submit-btn:hover :global(svg) {
+    rotate: 15deg;
+    scale: 1.15;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .search-submit-btn::after {
+      animation: none;
+    }
+    .search-submit-btn {
+      transition: none;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .search-submit-btn span {
+      display: none;
+    }
+    .search-submit-btn {
+      padding-inline: 0.95rem;
+    }
+  }
+
+  /* Chips */
+  .search-chips-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+    font-size: 0.8rem;
+  }
+
+  .chips-label {
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .search-chip {
+    background: var(--pill-bg);
+    border: 1px solid var(--pill-border);
+    color: var(--pill-text);
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+    transition: all 0.15s ease;
+  }
+
+  .search-chip:hover {
+    background: rgba(2, 132, 199, 0.1);
+    border-color: var(--brand-blue);
+    color: var(--brand-blue);
+    transform: translateY(-1px);
+  }
+
+  /* IA Response Modal — Modern Fintech Glass & Container Queries */
+  .ia-response-modal {
+    margin-top: 1.5rem;
+    background: var(--glass-elevated);
+    border: 1px solid var(--border-card);
+    border-radius: 18px;
+    padding: clamp(1.15rem, 3vw, 1.75rem);
+    text-align: left;
+    box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(56, 189, 248, 0.12);
+    backdrop-filter: blur(16px);
+    container-type: inline-size;
+    position: relative;
+    z-index: 20;
+    width: 100%;
+    transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    transform-origin: top center;
+  }
+
+  .ia-response-modal.is-open {
+    animation: modalSlideFade 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  @keyframes modalSlideFade {
+    from {
+      opacity: 0;
+      transform: translateY(12px) scale(0.985);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  :root[data-theme="light"] .ia-response-modal,
+  :root:has(> head > meta[name="color-scheme"][content="light"]) .ia-response-modal {
+    background: #ffffff;
+    border-color: #e2e8f0;
+    box-shadow: 0 16px 36px -8px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(14, 165, 233, 0.15);
+  }
+
+  .ia-response-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 0.85rem;
+    border-bottom: 1px solid var(--border-subtle);
+    margin-bottom: 1.15rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .ia-response-title {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--brand-blue);
+    font-size: 0.95rem;
+    font-weight: 600;
+    flex-wrap: wrap;
+  }
+
+  .ia-badge-live {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #38bdf8;
+    background: rgba(14, 165, 233, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.28);
+    padding: 0.22rem 0.65rem;
+    border-radius: 9999px;
+    letter-spacing: 0.02em;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.42rem;
+    line-height: 1.2;
+  }
+
+  .ia-badge-live::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.75);
+    flex-shrink: 0;
+    animation: livePulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes livePulse {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.55;
+      transform: scale(0.85);
+    }
+  }
+
+  .ia-badge-live.ia-badge-local::before {
+    background: #f59e0b;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.75);
+    animation: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ia-badge-live::before {
+      animation: none;
+    }
+  }
+
+  :root[data-theme="light"] .ia-badge-live,
+  :root:has(> head > meta[name="color-scheme"][content="light"]) .ia-badge-live {
+    color: #0369a1;
+    background: #e0f2fe;
+    border-color: #7dd3fc;
+  }
+
+  :root[data-theme="light"] .ia-badge-live::before,
+  :root:has(> head > meta[name="color-scheme"][content="light"]) .ia-badge-live::before {
+    background: #059669;
+    box-shadow: 0 0 6px rgba(5, 150, 105, 0.5);
+  }
+
+  :root[data-theme="light"] .ia-badge-live.ia-badge-local::before,
+  :root:has(> head > meta[name="color-scheme"][content="light"]) .ia-badge-live.ia-badge-local::before {
+    background: #d97706;
+    box-shadow: 0 0 6px rgba(217, 119, 6, 0.5);
+  }
+
+  .ia-close-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-muted);
+    font-size: 1.15rem;
+    cursor: pointer;
+    line-height: 1;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+  }
+
+  .ia-close-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.12);
+    border-color: var(--border-hover);
+  }
+
+  /* Scoped Dynamic Children Styles (via :global) */
+  .ia-response-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .ia-response-modal :global(.ia-section-card) {
+    background: rgba(15, 23, 42, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 12px;
+    padding: 1.15rem 1.25rem;
+    transition: border-color 0.2s ease, transform 0.15s ease;
+  }
+
+  :root[data-theme="light"] .ia-response-modal :global(.ia-section-card),
+  :root:has(> head > meta[name="color-scheme"][content="light"]) .ia-response-modal :global(.ia-section-card) {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+  }
+
+  .ia-response-modal :global(.ia-card-diagnostic) {
+    border-left: 3.5px solid #0ea5e9;
+    background: linear-gradient(90deg, rgba(14, 165, 233, 0.08) 0%, rgba(15, 23, 42, 0.35) 100%);
+  }
+
+  :root[data-theme="light"] .ia-response-modal :global(.ia-card-diagnostic),
+  :root:has(> head > meta[name="color-scheme"][content="light"]) .ia-response-modal :global(.ia-card-diagnostic) {
+    background: linear-gradient(90deg, #f0f9ff 0%, #f8fafc 100%);
+    border-left-color: #0284c7;
+  }
+
+  .ia-response-modal :global(.ia-card-simulation) {
+    border-left: 3.5px solid #10b981;
+    background: linear-gradient(90deg, rgba(16, 185, 129, 0.08) 0%, rgba(15, 23, 42, 0.35) 100%);
+  }
+
+  :root[data-theme="light"] .ia-response-modal :global(.ia-card-simulation),
+  :root:has(> head > meta[name="color-scheme"][content="light"]) .ia-response-modal :global(.ia-card-simulation) {
+    background: linear-gradient(90deg, #ecfdf5 0%, #f8fafc 100%);
+    border-left-color: #059669;
+  }
+
+  .ia-response-modal :global(.ia-card-warning) {
+    border-left: 3.5px solid #f59e0b;
+    background: linear-gradient(90deg, rgba(245, 158, 11, 0.08) 0%, rgba(15, 23, 42, 0.35) 100%);
+  }
+
+  :root[data-theme="light"] .ia-response-modal :global(.ia-card-warning),
+  :root:has(> head > meta[name="color-scheme"][content="light"]) .ia-response-modal :global(.ia-card-warning) {
+    background: linear-gradient(90deg, #fffbeb 0%, #f8fafc 100%);
+    border-left-color: #d97706;
+  }
+
+  .ia-response-modal :global(.ia-card-badge) {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.65rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 6px;
+  }
+
+  .ia-response-modal :global(.ia-card-diagnostic .ia-card-badge) {
+    color: #38bdf8;
+    background: rgba(14, 165, 233, 0.15);
+  }
+
+  :root[data-theme="light"] .ia-response-modal :global(.ia-card-diagnostic .ia-card-badge),
+  :root:has(> head > meta[name="color-scheme"][content="light"]) .ia-response-modal :global(.ia-card-diagnostic .ia-card-badge) {
+    color: #0369a1;
+    background: #e0f2fe;
+  }
+
+  .ia-response-modal :global(.ia-card-simulation .ia-card-badge) {
+    color: #34d399;
+    background: rgba(16, 185, 129, 0.15);
+  }
+
+  :root[data-theme="light"] .ia-response-modal :global(.ia-card-simulation .ia-card-badge),
+  :root:has(> head > meta[name="color-scheme"][content="light"]) .ia-response-modal :global(.ia-card-simulation .ia-card-badge) {
+    color: #047857;
+    background: #d1fae5;
+  }
+
+  .ia-response-modal :global(.ia-card-warning .ia-card-badge) {
+    color: #fbbf24;
+    background: rgba(245, 158, 11, 0.15);
+  }
+
+  :root[data-theme="light"] .ia-response-modal :global(.ia-card-warning .ia-card-badge),
+  :root:has(> head > meta[name="color-scheme"][content="light"]) .ia-response-modal :global(.ia-card-warning .ia-card-badge) {
+    color: #b45309;
+    background: #fef3c7;
+  }
+
+  .ia-response-modal :global(.ia-card-content) {
+    font-size: 0.92rem;
+    line-height: 1.68;
+    color: var(--text-secondary);
+  }
+
+  .ia-response-modal :global(.ia-card-content p) {
+    margin-bottom: 0.75rem;
+  }
+
+  .ia-response-modal :global(.ia-card-content p:last-child) {
+    margin-bottom: 0;
+  }
+
+  .ia-response-modal :global(.ia-card-content strong) {
+    color: var(--text-primary);
+    font-weight: 650;
+  }
+
+  .ia-response-modal :global(.ia-general-body) {
+    font-size: 0.93rem;
+    color: var(--text-secondary);
+    line-height: 1.65;
+  }
+
+  .ia-response-modal :global(.ia-bullet-list) {
+    list-style: none;
+    padding: 0;
+    margin: 0.45rem 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+
+  .ia-response-modal :global(.ia-bullet-list li) {
+    position: relative;
+    padding-left: 1.45rem;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+  }
+
+  .ia-response-modal :global(.ia-bullet-list li::before) {
+    content: '';
+    position: absolute;
+    left: 0.25rem;
+    top: 0.55rem;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--brand-blue);
+    box-shadow: 0 0 6px var(--brand-blue);
+  }
+
+  .ia-response-modal :global(.ia-card-warning .ia-bullet-list li::before) {
+    background: #f59e0b;
+    box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
+  }
+
+  .ia-response-modal :global(.ia-heading) {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 1.15rem 0 0.5rem;
+    letter-spacing: -0.01em;
+  }
+
+  .ia-response-modal :global(.ia-subheading) {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--brand-blue);
+    margin: 0.95rem 0 0.4rem;
+  }
+
+  .ia-response-modal :global(.ia-numbered-p) {
+    padding-left: 0.25rem;
+    margin-bottom: 0.65rem;
+  }
+
+  /* Elevated Agent Loading State — Modern Web Guidance (progress & spinner) */
+  .ia-response-modal :global(.ia-agent-loading) {
+    display: flex;
+    flex-direction: column;
+    gap: 1.15rem;
+    padding: 0.5rem 0.25rem 0.25rem;
+  }
+
+  .ia-response-modal :global(.loading-header) {
+    display: flex;
+    align-items: center;
+  }
+
+  .ia-response-modal :global(.loading-badge) {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    background: linear-gradient(90deg, rgba(14, 165, 233, 0.15) 0%, rgba(2, 132, 199, 0.08) 100%);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    padding: 0.3rem 0.85rem;
+    border-radius: 9999px;
+  }
+
+  :root[data-theme="light"] .ia-response-modal :global(.loading-badge),
+  :root:has(> head > meta[name="color-scheme"][content="light"]) .ia-response-modal :global(.loading-badge) {
+    background: #e0f2fe;
+    border-color: #7dd3fc;
+  }
+
+  .ia-response-modal :global(.loading-pulse-ring) {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #0ea5e9;
+    box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.7);
+    animation: pulseRing 1.8s infinite cubic-bezier(0.66, 0, 0, 1);
+  }
+
+  @keyframes pulseRing {
+    0% {
+      box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.7);
+    }
+    70% {
+      box-shadow: 0 0 0 8px rgba(14, 165, 233, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(14, 165, 233, 0);
+    }
+  }
+
+  .ia-response-modal :global(.loading-badge-text) {
+    font-size: 0.76rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #38bdf8;
+  }
+
+  :root[data-theme="light"] .ia-response-modal :global(.loading-badge-text),
+  :root:has(> head > meta[name="color-scheme"][content="light"]) .ia-response-modal :global(.loading-badge-text) {
+    color: #0284c7;
+  }
+
+  .ia-response-modal :global(.loading-content) {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .ia-response-modal :global(.loading-headline) {
+    font-size: 1.02rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.45;
+    letter-spacing: -0.01em;
+  }
+
+  .ia-response-modal :global(.loading-subline) {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  .ia-response-modal :global(.loading-subline strong) {
+    color: var(--text-primary);
+  }
+
+  .ia-response-modal :global(.loading-steps) {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.55rem;
+    background: rgba(15, 23, 42, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
+    margin-top: 0.25rem;
+  }
+
+  :root[data-theme="light"] .ia-response-modal :global(.loading-steps),
+  :root:has(> head > meta[name="color-scheme"][content="light"]) .ia-response-modal :global(.loading-steps) {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+  }
+
+  @container (min-width: 520px) {
+    .ia-response-modal :global(.loading-steps) {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.65rem;
+    }
+  }
+
+  .ia-response-modal :global(.loading-step) {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+  }
+
+  .ia-response-modal :global(.loading-step.step-done) {
+    color: #34d399;
+  }
+
+  .ia-response-modal :global(.loading-step.step-done .step-icon) {
+    font-weight: 700;
+  }
+
+  .ia-response-modal :global(.loading-step.step-pulse) {
+    color: #38bdf8;
+    font-weight: 500;
+  }
+
+  :root[data-theme="light"] .ia-response-modal :global(.loading-step.step-pulse),
+  :root:has(> head > meta[name="color-scheme"][content="light"]) .ia-response-modal :global(.loading-step.step-pulse) {
+    color: #0284c7;
+  }
+
+  .ia-response-modal :global(.step-spinner) {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid rgba(56, 189, 248, 0.2);
+    border-top-color: #38bdf8;
+    animation: stepSpin 0.75s linear infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes stepSpin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .ia-response-modal :global(.loading-progress-wrap) {
+    width: 100%;
+    margin-top: 0.25rem;
+  }
+
+  .ia-response-modal :global(progress.ia-loading-progress) {
+    appearance: none;
+    border: 0 solid;
+    overflow: clip;
+    width: 100%;
+    height: 4px;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.08);
+    display: block;
+    position: relative;
+  }
+
+  :root[data-theme="light"] .ia-response-modal :global(progress.ia-loading-progress),
+  :root:has(> head > meta[name="color-scheme"][content="light"]) .ia-response-modal :global(progress.ia-loading-progress) {
+    background: #e2e8f0;
+  }
+
+  .ia-response-modal :global(progress.ia-loading-progress:indeterminate::-webkit-progress-bar) {
+    background: transparent;
+  }
+
+  .ia-response-modal :global(progress.ia-loading-progress:indeterminate::-webkit-progress-value) {
+    background: linear-gradient(90deg, #0284c7, #38bdf8);
+    border-radius: 9999px;
+  }
+
+  .ia-response-modal :global(progress.ia-loading-progress:indeterminate::-moz-progress-bar) {
+    background: linear-gradient(90deg, #0284c7, #38bdf8);
+    border-radius: 9999px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ia-response-modal :global(.loading-pulse-ring) {
+      animation: none;
+    }
+    .ia-response-modal :global(.step-spinner) {
+      animation-duration: 4s;
+    }
+  }
+
+  .ia-response-actions {
+    margin-top: 1.35rem;
+    padding-top: 1.15rem;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .ia-rec-title {
+    font-size: 0.74rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+  }
+
+  .ia-rec-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+
+  .ia-response-modal :global(.btn-ia-action) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.12) 0%, rgba(3, 105, 161, 0.08) 100%);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    color: var(--text-primary);
+    padding: 0.7rem 1.15rem;
+    border-radius: 12px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+
+  :root[data-theme="light"] .ia-response-modal :global(.btn-ia-action),
+  :root:has(> head > meta[name="color-scheme"][content="light"]) .ia-response-modal :global(.btn-ia-action) {
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    border-color: #bae6fd;
+    color: #0369a1;
+    box-shadow: 0 2px 6px rgba(14, 165, 233, 0.08);
+  }
+
+  .ia-response-modal :global(.btn-ia-action:hover) {
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.22) 0%, rgba(3, 105, 161, 0.18) 100%);
+    border-color: var(--brand-blue);
+    color: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px -2px rgba(14, 165, 233, 0.4);
+  }
+
+  :root[data-theme="light"] .ia-response-modal :global(.btn-ia-action:hover),
+  :root:has(> head > meta[name="color-scheme"][content="light"]) .ia-response-modal :global(.btn-ia-action:hover) {
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    border-color: #0284c7;
+    color: #ffffff;
+    box-shadow: 0 8px 18px -2px rgba(2, 132, 199, 0.35);
+  }
+
+  .ia-response-modal :global(.btn-ia-action .btn-arrow) {
+    color: var(--brand-blue);
+    font-size: 1.05rem;
+    font-weight: 700;
+    transition: transform 0.2s ease;
+  }
+
+  .ia-response-modal :global(.btn-ia-action:hover .btn-arrow) {
+    transform: translateX(4px);
+    color: #ffffff;
+  }
+
+  /* Size-Aware Styling via Container Queries (Modern Web Guidance) */
+  @container (min-width: 480px) {
+    .ia-rec-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0.75rem;
+    }
+  }
+
+  /* Start Section — Os 4 Cards (Estilo Mais Retorno) */
+  .start-section {
+    width: 100%;
+    margin-bottom: 4rem;
+  }
+
+  .start-label {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 1.25rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+
+  .tools-grid-4 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.85rem;
+    width: 100%;
+  }
+
+  @media (min-width: 900px) {
+    .tools-grid-4 {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  .tool-card-mr {
+    height: 155px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border-radius: 10px;
+    border: 1px solid var(--border-card);
+    background: var(--glass-bg);
+    box-shadow: var(--card-shadow);
+    padding: 1.15rem 1.15rem 1.15rem;
+    text-align: left;
+    text-decoration: none;
+    backdrop-filter: blur(8px);
+    transition: all 0.25s ease;
+  }
+
+  .tool-card-mr:hover {
+    transform: translateY(-4px);
+    border-color: var(--brand-blue);
+    box-shadow: var(--card-shadow), 0 0 20px rgba(2, 132, 199, 0.12);
+  }
+
+  .tool-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .tool-card-icon-wrap {
+    color: var(--brand-blue);
+    display: flex;
+    align-items: center;
+  }
+
+  .tool-card-badge {
+    font-size: 0.68rem;
+    font-weight: 500;
+    color: var(--pill-text);
+    background: var(--pill-bg);
+    border: 1px solid var(--pill-border);
+    padding: 0.14rem 0.5rem;
+    border-radius: 9999px;
+    letter-spacing: 0.02em;
+  }
+
+  .tool-card-title {
+    font-size: 0.96rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.2rem;
+    letter-spacing: -0.015em;
+    line-height: 1.3;
+  }
+
+  .tool-card-desc {
+    font-size: 0.76rem;
+    color: var(--text-secondary);
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Metrics Bar (Estilo Mais Retorno) */
+  .metrics-bar {
+    width: 100%;
+    max-width: 980px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-block: 1.75rem;
+    border-top: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+    flex-wrap: wrap;
+    gap: 1.25rem;
+  }
+
+  .metric-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    flex: 1;
+    min-width: 150px;
+  }
+
+  .metric-number {
+    font-size: clamp(1.4rem, 2.5vw, 1.85rem);
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+  }
+
+  .metric-label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: 0.2rem;
+  }
+
+  .metric-divider {
+    width: 1px;
+    height: 36px;
+    background: var(--border-subtle);
+  }
+
+  @media (max-width: 768px) {
+    .metric-divider {
+      display: none;
+    }
+  }
+</style>

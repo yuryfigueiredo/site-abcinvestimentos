@@ -1,0 +1,290 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import NextStepCard from '../../components/NextStepCard.astro';
+import AdSlot from '../../components/AdSlot.astro';
+import { CALCULATORS } from '../../data/calculators';
+
+const calc = CALCULATORS.find((c) => c.slug === 'alugar-vs-financiar')!;
+---
+
+<BaseLayout title={`${calc.title} | ABC Investimentos`} description={calc.seoDescription}>
+  <section class="calc-page-section">
+    <div class="container">
+      <nav class="breadcrumb" aria-label="Navegação estrutural">
+        <a href="/">Início</a> <span>/</span> <a href="/#ferramentas">Calculadoras</a> <span>/</span> <strong>{calc.shortTitle}</strong>
+      </nav>
+
+      <div class="calc-header">
+        <span class="badge-pill">{calc.badge}</span>
+        <h1>{calc.title}</h1>
+        <p>{calc.subtitle}</p>
+      </div>
+
+      <div class="calc-workspace">
+        <div class="abc-card calc-controls">
+          <h2>Dados do Imóvel e Aluguel</h2>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="af-prop">Valor do Imóvel (R$)</label>
+              <output id="af-prop-out" for="af-prop">R$ 500.000,00</output>
+            </div>
+            <input type="range" id="af-prop-slider" class="abc-slider" min="150000" max="2500000" step="25000" value="500000" data-format="brl" />
+            <input type="number" id="af-prop" class="abc-input" min="50000" max="20000000" step="10000" value="500000" />
+          </div>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="af-down">Valor da Entrada Disponível (R$)</label>
+              <output id="af-down-out" for="af-down">R$ 100.000,00</output>
+            </div>
+            <input type="range" id="af-down-slider" class="abc-slider" min="20000" max="1000000" step="10000" value="100000" data-format="brl" />
+            <input type="number" id="af-down" class="abc-input" min="0" max="10000000" step="5000" value="100000" />
+          </div>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="af-rent">Valor do Aluguel Mensal Equivalente (R$)</label>
+              <output id="af-rent-out" for="af-rent">R$ 2.400,00</output>
+            </div>
+            <input type="range" id="af-rent-slider" class="abc-slider" min="800" max="15000" step="100" value="2400" data-format="brl" />
+            <input type="number" id="af-rent" class="abc-input" min="300" max="100000" step="100" value="2400" />
+          </div>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="af-years">Prazo do Financiamento SAC (Anos)</label>
+              <output id="af-years-out" for="af-years">25 anos</output>
+            </div>
+            <input type="range" id="af-years-slider" class="abc-slider" min="5" max="35" step="1" value="25" data-format="years" />
+            <input type="number" id="af-years" class="abc-input" min="1" max="35" step="1" value="25" />
+          </div>
+
+          <div class="rates-two-grid">
+            <div>
+              <label for="af-loan-rate">Juros Financiamento (% a.a.)</label>
+              <input type="number" id="af-loan-rate" class="abc-input" step="0.25" value="11.2" />
+            </div>
+            <div>
+              <label for="af-inv-rate">Rendimento Líquido Renda Fixa (% a.a.)</label>
+              <input type="number" id="af-inv-rate" class="abc-input" step="0.25" value="11.5" />
+            </div>
+          </div>
+        </div>
+
+        <div class="abc-card calc-results">
+          <div class="winner-banner" id="af-verdict-banner">
+            <span class="winner-trophy" aria-hidden="true">🏠</span>
+            <div>
+              <strong id="af-verdict-title">Análise Patrimonial Comparativa:</strong>
+              <p id="af-verdict-desc"></p>
+            </div>
+          </div>
+
+          <div class="kpi-grid">
+            <div class="kpi-box">
+              <span class="kpi-label">1ª Parcela SAC → Última Parcela</span>
+              <strong class="kpi-value" id="af-res-sac">R$ 4.860 → R$ 1.345</strong>
+              <span class="kpi-sub" id="af-res-total-paid">Total pago no financiamento</span>
+            </div>
+            <div class="kpi-box">
+              <span class="kpi-label">Patrimônio Final Comprando (Imóvel Corrigido)</span>
+              <strong class="kpi-value" id="af-res-buyer">R$ 1.500.000</strong>
+              <span class="kpi-sub">Valorização pela inflação</span>
+            </div>
+            <div class="kpi-box kpi-emerald">
+              <span class="kpi-label">Patrimônio Final Alugando + Investindo</span>
+              <strong class="kpi-value" id="af-res-renter">R$ 2.150.000</strong>
+              <span class="kpi-sub">Entrada + diferença das parcelas na Renda Fixa</span>
+            </div>
+          </div>
+
+          <NextStepCard calculator={calc} />
+        </div>
+      </div>
+
+      <AdSlot slotId="calc-af-bottom" />
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import { simulateRentVsFinance, formatBRL } from '../../lib/finance';
+
+  const propInput = document.getElementById('af-prop') as HTMLInputElement;
+  const propSlider = document.getElementById('af-prop-slider') as HTMLInputElement;
+  const downInput = document.getElementById('af-down') as HTMLInputElement;
+  const downSlider = document.getElementById('af-down-slider') as HTMLInputElement;
+  const rentInput = document.getElementById('af-rent') as HTMLInputElement;
+  const rentSlider = document.getElementById('af-rent-slider') as HTMLInputElement;
+  const yearsInput = document.getElementById('af-years') as HTMLInputElement;
+  const yearsSlider = document.getElementById('af-years-slider') as HTMLInputElement;
+  const loanRateInput = document.getElementById('af-loan-rate') as HTMLInputElement;
+  const invRateInput = document.getElementById('af-inv-rate') as HTMLInputElement;
+
+  function bindPair(num: HTMLInputElement, slider: HTMLInputElement) {
+    slider.addEventListener('input', () => {
+      num.value = slider.value;
+      recalc();
+    });
+    num.addEventListener('input', () => {
+      slider.value = num.value;
+      slider.dispatchEvent(new Event('input'));
+      recalc();
+    });
+  }
+
+  function recalc() {
+    const propertyValue = Number(propInput.value) || 500000;
+    const downPayment = Number(downInput.value) || 100000;
+    const monthlyRent = Number(rentInput.value) || 2400;
+    const financingYears = Number(yearsInput.value) || 25;
+    const financingAnnualRatePct = Number(loanRateInput.value) || 11.2;
+    const investmentNetAnnualRatePct = Number(invRateInput.value) || 11.5;
+
+    document.getElementById('af-prop-out')!.textContent = formatBRL(propertyValue);
+    document.getElementById('af-down-out')!.textContent = formatBRL(downPayment);
+    document.getElementById('af-rent-out')!.textContent = formatBRL(monthlyRent);
+    document.getElementById('af-years-out')!.textContent = `${financingYears} anos`;
+
+    const res = simulateRentVsFinance({
+      propertyValue,
+      downPayment,
+      financingYears,
+      financingAnnualRatePct,
+      monthlyRent,
+      rentInflationAnnualPct: 4.5,
+      investmentNetAnnualRatePct,
+      propertyAppreciationAnnualPct: 4.5,
+    });
+
+    document.getElementById('af-res-sac')!.textContent = `${formatBRL(res.firstInstallmentSac, 0)} → ${formatBRL(res.lastInstallmentSac, 0)}`;
+    document.getElementById('af-res-total-paid')!.textContent = `Total pago ao banco: ${formatBRL(res.totalPaidFinancing, 0)} (Juros: ${formatBRL(res.totalInterestPaidFinancing, 0)})`;
+    document.getElementById('af-res-buyer')!.textContent = formatBRL(res.netWealthBuyer, 0);
+    document.getElementById('af-res-renter')!.textContent = formatBRL(res.netWealthRenter, 0);
+
+    const titleEl = document.getElementById('af-verdict-title')!;
+    const descEl = document.getElementById('af-verdict-desc')!;
+    if (res.advantageSide === 'alugar_investir') {
+      titleEl.textContent = 'Vencedor Matemático: Alugar e Investir a Diferença com Disciplina';
+      descEl.innerHTML = `Aplicando a entrada de <strong>${formatBRL(downPayment)}</strong> mais a diferença mensal entre a parcela SAC e o aluguel, seu patrimônio final supera o valor do imóvel em <strong>+ ${formatBRL(res.wealthDifference)}</strong>.`;
+    } else if (res.advantageSide === 'financiar') {
+      titleEl.textContent = 'Vencedor Matemático: Financiar o Imóvel';
+      descEl.innerHTML = `Com esse valor de aluguel e taxa de juros, comprar o imóvel gera um patrimônio final superior em <strong>+ ${formatBRL(res.wealthDifference)}</strong>.`;
+    } else {
+      titleEl.textContent = 'Empate Técnico Patrimonial';
+      descEl.textContent = 'Os dois caminhos chegam a patrimônios finais muito próximos.';
+    }
+  }
+
+  bindPair(propInput, propSlider);
+  bindPair(downInput, downSlider);
+  bindPair(rentInput, rentSlider);
+  bindPair(yearsInput, yearsSlider);
+  loanRateInput.addEventListener('input', recalc);
+  invRateInput.addEventListener('input', recalc);
+
+  if ((window as any).__initAbcSliders) (window as any).__initAbcSliders();
+  recalc();
+</script>
+
+<style>
+  .calc-page-section {
+    padding-block: 2rem 3rem;
+  }
+  .breadcrumb {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-block-end: 1rem;
+    display: flex;
+    gap: 0.45rem;
+  }
+  .calc-header {
+    margin-block-end: 2rem;
+  }
+  .calc-workspace {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 1.5rem;
+    align-items: start;
+  }
+  .control-group {
+    margin-block-end: 1.15rem;
+  }
+  .control-label-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.86rem;
+    font-weight: 600;
+    margin-block-end: 0.25rem;
+  }
+  .control-label-row output {
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+  .rates-two-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem;
+  }
+  .rates-two-grid label {
+    display: block;
+    font-size: 0.76rem;
+    font-weight: 700;
+    margin-block-end: 0.25rem;
+  }
+  .winner-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.9rem;
+    padding: 1.2rem;
+    border-radius: 0.95rem;
+    border: 1px solid rgba(2, 132, 199, 0.28);
+    background: var(--bg-elevated);
+    margin-block-end: 1.25rem;
+  }
+  .winner-trophy {
+    font-size: 1.8rem;
+  }
+  .winner-banner p {
+    margin: 0.3rem 0 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+  }
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+  }
+  .kpi-box {
+    padding: 1.15rem;
+    border-radius: 0.9rem;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-elevated);
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .kpi-label {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+  }
+  .kpi-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+  }
+  .kpi-emerald .kpi-value {
+    color: var(--text-primary);
+  }
+  .kpi-sub {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+  @media (max-width: 980px) {
+    .calc-workspace,
+    .kpi-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

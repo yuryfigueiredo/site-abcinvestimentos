@@ -1,0 +1,340 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import NextStepCard from '../../components/NextStepCard.astro';
+import AdSlot from '../../components/AdSlot.astro';
+import { CALCULATORS } from '../../data/calculators';
+
+const calc = CALCULATORS.find((c) => c.slug === 'reserva-emergencia')!;
+---
+
+<BaseLayout title={`${calc.title} | ABC Investimentos`} description={calc.seoDescription}>
+  <section class="calc-page-section">
+    <div class="container">
+      <nav class="breadcrumb" aria-label="Navegação estrutural">
+        <a href="/">Início</a> <span>/</span> <a href="/#ferramentas">Calculadoras</a> <span>/</span> <strong>{calc.shortTitle}</strong>
+      </nav>
+
+      <div class="calc-header">
+        <span class="badge-pill">{calc.badge}</span>
+        <h1>{calc.title}</h1>
+        <p>{calc.subtitle}</p>
+      </div>
+
+      <div class="calc-workspace">
+        <div class="abc-card calc-controls">
+          <h2>Seu Perfil & Custo Mensal</h2>
+
+          <div class="control-group">
+            <label for="re-profile" class="block-label">Seu Vínculo Profissional</label>
+            <select id="re-profile" class="abc-input">
+              <option value="clt" selected>Profissional CLT (Recomendado: 6 meses)</option>
+              <option value="autonomo">Autônomo / MEI / Profissional Liberal (Recomendado: 12 meses)</option>
+              <option value="empresario">Empresário / PJ (Recomendado: 12 meses)</option>
+              <option value="servidor">Servidor Público Concursado (Recomendado: 3 meses)</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="re-cost">Seus Custos Essenciais Mensais (R$)</label>
+              <output id="re-cost-out" for="re-cost">R$ 4.000,00</output>
+            </div>
+            <input
+              type="range"
+              id="re-cost-slider"
+              class="abc-slider"
+              min="1000"
+              max="30000"
+              step="250"
+              value="4000"
+              data-format="brl"
+              aria-label="Custos essenciais mensais"
+            />
+            <input type="number" id="re-cost" class="abc-input" min="500" max="200000" step="100" value="4000" />
+          </div>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="re-current">Quanto Você Já Tem Guardado (R$)</label>
+              <output id="re-current-out" for="re-current">R$ 4.000,00</output>
+            </div>
+            <input
+              type="range"
+              id="re-current-slider"
+              class="abc-slider"
+              min="0"
+              max="150000"
+              step="500"
+              value="4000"
+              data-format="brl"
+              aria-label="Reserva atual"
+            />
+            <input type="number" id="re-current" class="abc-input" min="0" max="2000000" step="500" value="4000" />
+          </div>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="re-save">Quanto Pode Guardar por Mês (R$)</label>
+              <output id="re-save-out" for="re-save">R$ 1.000,00</output>
+            </div>
+            <input
+              type="range"
+              id="re-save-slider"
+              class="abc-slider"
+              min="100"
+              max="15000"
+              step="100"
+              value="1000"
+              data-format="brl"
+              aria-label="Valor guardado por mês"
+            />
+            <input type="number" id="re-save" class="abc-input" min="50" max="500000" step="50" value="1000" />
+          </div>
+        </div>
+
+        <div class="abc-card calc-results">
+          <div class="kpi-grid">
+            <div class="kpi-box kpi-highlight">
+              <span class="kpi-label">Meta da Sua Reserva Ideal</span>
+              <strong class="kpi-value" id="re-res-target">R$ 24.000,00</strong>
+              <span class="kpi-sub" id="re-res-months-rec">Equivalente a 6 meses de custos essenciais</span>
+            </div>
+            <div class="kpi-box">
+              <span class="kpi-label">Falta Acumular</span>
+              <strong class="kpi-value" id="re-res-gap">R$ 20.000,00</strong>
+              <span class="kpi-sub" id="re-res-time">Conclusão em 18 meses (com rendimento CDI)</span>
+            </div>
+            <div class="kpi-box kpi-emerald">
+              <span class="kpi-label">Rendimento Passivo da Reserva Pronta</span>
+              <strong class="kpi-value" id="re-res-yield">+ R$ 216,00/mês</strong>
+              <span class="kpi-sub">Líquido de IR em 100% do CDI</span>
+            </div>
+          </div>
+
+          <div class="progress-card">
+            <div class="progress-head">
+              <strong>Progresso Atual da Sua Segurança Financeira</strong>
+              <span id="re-progress-pct">16,7% concluído</span>
+            </div>
+            <div class="progress-track">
+              <div id="re-progress-bar" class="progress-fill" style="width: 16.7%"></div>
+            </div>
+            <p id="re-profile-explanation" class="profile-note"></p>
+          </div>
+
+          <NextStepCard calculator={calc} />
+        </div>
+      </div>
+
+      <AdSlot slotId="calc-re-bottom" />
+
+      <section class="faq-section below-fold-deferred">
+        <h2>Perguntas Frequentes sobre Reserva de Emergência</h2>
+        <div class="faq-grid">
+          {calc.faqs.map((faq) => (
+            <div class="abc-card faq-card">
+              <h3>{faq.question}</h3>
+              <p>{faq.answer}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import { simulateEmergencyFund, formatBRL, formatPct, type EmploymentProfile } from '../../lib/finance';
+
+  const profileSelect = document.getElementById('re-profile') as HTMLSelectElement;
+  const costInput = document.getElementById('re-cost') as HTMLInputElement;
+  const costSlider = document.getElementById('re-cost-slider') as HTMLInputElement;
+  const currentInput = document.getElementById('re-current') as HTMLInputElement;
+  const currentSlider = document.getElementById('re-current-slider') as HTMLInputElement;
+  const saveInput = document.getElementById('re-save') as HTMLInputElement;
+  const saveSlider = document.getElementById('re-save-slider') as HTMLInputElement;
+
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('custo')) {
+    costInput.value = params.get('custo')!;
+    costSlider.value = params.get('custo')!;
+  }
+  if (params.get('perfil')) {
+    profileSelect.value = params.get('perfil')!;
+  }
+
+  function bindPair(num: HTMLInputElement, slider: HTMLInputElement) {
+    slider.addEventListener('input', () => {
+      num.value = slider.value;
+      recalc();
+    });
+    num.addEventListener('input', () => {
+      slider.value = num.value;
+      slider.dispatchEvent(new Event('input'));
+      recalc();
+    });
+  }
+
+  function recalc() {
+    const monthlyEssentialCost = Number(costInput.value) || 2000;
+    const currentReserve = Number(currentInput.value) || 0;
+    const monthlySavingsCapacity = Number(saveInput.value) || 500;
+    const profile = (profileSelect.value as EmploymentProfile) || 'clt';
+    const cdiAnnualPct = (window as any).__ABC_INDICATORS__?.cdi ?? 14.15;
+
+    document.getElementById('re-cost-out')!.textContent = formatBRL(monthlyEssentialCost);
+    document.getElementById('re-current-out')!.textContent = formatBRL(currentReserve);
+    document.getElementById('re-save-out')!.textContent = formatBRL(monthlySavingsCapacity);
+
+    const res = simulateEmergencyFund({
+      monthlyEssentialCost,
+      profile,
+      monthlySavingsCapacity,
+      currentReserve,
+      cdiAnnualPct,
+    });
+
+    document.getElementById('re-res-target')!.textContent = formatBRL(res.recommendedTarget);
+    document.getElementById('re-res-months-rec')!.textContent = `Equivalente a ${res.recommendedMonths} meses dos seus custos essenciais`;
+    document.getElementById('re-res-gap')!.textContent = formatBRL(res.gapToTarget);
+    document.getElementById('re-res-time')!.textContent =
+      res.gapToTarget <= 0
+        ? 'Parabéns! Sua Reserva já está 100% completa!'
+        : `Você completa em cerca de ${res.monthsToComplete} ${res.monthsToComplete === 1 ? 'mês' : 'meses'} aplicando a 100% do CDI`;
+    document.getElementById('re-res-yield')!.textContent = `+ ${formatBRL(res.monthlyNetYieldWhenComplete)}/mês`;
+
+    document.getElementById('re-progress-pct')!.textContent = `${formatPct(res.currentProgressPct, 1)} concluído`;
+    (document.getElementById('re-progress-bar') as HTMLElement).style.width = `${res.currentProgressPct}%`;
+    document.getElementById('re-profile-explanation')!.textContent = res.profileExplanation;
+  }
+
+  bindPair(costInput, costSlider);
+  bindPair(currentInput, currentSlider);
+  bindPair(saveInput, saveSlider);
+  profileSelect.addEventListener('change', recalc);
+
+  if ((window as any).__initAbcSliders) (window as any).__initAbcSliders();
+  recalc();
+</script>
+
+<style>
+  .calc-page-section {
+    padding-block: 2rem 3rem;
+  }
+  .breadcrumb {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-block-end: 1rem;
+    display: flex;
+    gap: 0.45rem;
+  }
+  .calc-header {
+    margin-block-end: 2rem;
+  }
+  .calc-header h1 {
+    font-size: clamp(1.6rem, 3vw, 2.25rem);
+    margin-block: 0.6rem 0.4rem;
+  }
+  .calc-workspace {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 1.5rem;
+    align-items: start;
+  }
+  .control-group {
+    margin-block-end: 1.15rem;
+  }
+  .block-label {
+    display: block;
+    font-size: 0.86rem;
+    font-weight: 700;
+    margin-block-end: 0.35rem;
+  }
+  .control-label-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.86rem;
+    font-weight: 600;
+    margin-block-end: 0.25rem;
+  }
+  .control-label-row output {
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-block-end: 1.25rem;
+  }
+  .kpi-box {
+    padding: 1.15rem;
+    border-radius: 0.9rem;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-elevated);
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .kpi-highlight {
+    border-color: rgba(2, 132, 199, 0.28);
+  }
+  .kpi-label {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+  }
+  .kpi-value {
+    font-size: 1.38rem;
+    font-weight: 700;
+  }
+  .kpi-emerald .kpi-value {
+    color: var(--text-primary);
+  }
+  .kpi-sub {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+  .progress-card {
+    padding: 1.25rem;
+    border-radius: 0.95rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+  }
+  .progress-head {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    margin-block-end: 0.6rem;
+  }
+  .progress-track {
+    block-size: 1.1rem;
+    border-radius: 999px;
+    background: var(--bg-canvas);
+    overflow: hidden;
+  }
+  .progress-fill {
+    block-size: 100%;
+    background: linear-gradient(90deg, #10b981, #34d399);
+    transition: width 0.25s ease;
+  }
+  .profile-note {
+    margin: 0.85rem 0 0;
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+  }
+  .faq-section {
+    margin-block-start: 3rem;
+  }
+  .faq-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.25rem;
+  }
+  @media (max-width: 980px) {
+    .calc-workspace,
+    .kpi-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

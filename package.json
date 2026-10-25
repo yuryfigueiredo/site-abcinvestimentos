@@ -1,0 +1,25 @@
+{
+  "name": "abcinvestimentos-com-br",
+  "type": "module",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ABC Investimentos — Calculadoras Financeiras, Guia do A ao Z e Consultor IA Educativo",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "build:planilha": "node scripts/build-planilha-abc.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "astro": "^5.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "exceljs": "^4.4.0",
+    "typescript": "^5.7.2",
+    "vitest": "^3.0.5"
+  }
+}

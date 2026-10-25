@@ -1,0 +1,530 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import HeroIA from '../components/HeroIA.astro';
+import FinanceIcon from '../components/icons/FinanceIcon.astro';
+import { CALCULATORS } from '../data/calculators';
+import { GUIDES, GLOSSARY_TERMS } from '../data/guides';
+import { SITE_CONFIG } from '../config/site';
+---
+
+<BaseLayout>
+  <!-- 1. Hero Principal: Consultor IA + 4 Ferramentas + Métricas (Estilo Mais Retorno) -->
+  <HeroIA />
+
+  <!-- 2. Catálogo de Todas as Ferramentas Gratuitas -->
+  <section class="section" id="ferramentas">
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <span class="badge-pill">Todas as Ferramentas</span>
+          <h2>Simuladores Financeiros Gratuitos</h2>
+          <p>Ferramentas matemáticas para você tomar as melhores decisões com o seu dinheiro.</p>
+        </div>
+      </div>
+
+      <div class="tools-catalog-grid">
+        {CALCULATORS.map((calc) => (
+          <a href={`/calculadoras/${calc.slug}`} class="catalog-card">
+            <div class="catalog-card-top">
+              <span class="catalog-icon" aria-hidden="true">
+                <FinanceIcon name={calc.icon} size={24} />
+              </span>
+              <span class="catalog-badge">{calc.badge}</span>
+            </div>
+            <div class="catalog-card-body">
+              <h3>{calc.title}</h3>
+              <p>{calc.subtitle}</p>
+            </div>
+            <div class="catalog-card-footer">
+              <span class="catalog-link-text">Acessar simulador</span>
+              <span class="catalog-arrow" aria-hidden="true">
+                <FinanceIcon name="arrow-right" size={16} />
+              </span>
+            </div>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. Destaque Especial: Planilha Oficial ABC 50/30/20 -->
+  <section class="section" id="planilha">
+    <div class="container">
+      <div class="flagship-card">
+        <div class="flagship-content">
+          <div class="flagship-pill">Kit Oficial de Organização Financeira</div>
+          <h2 class="flagship-title">Planilha ABC — Controle 50/30/20 & Rumo ao 1º Milhão</h2>
+          <p class="flagship-desc">
+            8 abas automatizadas em Excel e Google Sheets. Do controle do orçamento diário ao cálculo da Reserva de Emergência e projeção do seu patrimônio com inflação real (sem macros VBA).
+          </p>
+
+          <div class="flagship-features-grid">
+            <div class="feature-item">
+              <span class="feature-check"><FinanceIcon name="check" size={16} /></span>
+              <span>Regra 50/30/20 com alertas visuais</span>
+            </div>
+            <div class="feature-item">
+              <span class="feature-check"><FinanceIcon name="check" size={16} /></span>
+              <span>Reserva de Emergência por perfil</span>
+            </div>
+            <div class="feature-item">
+              <span class="feature-check"><FinanceIcon name="check" size={16} /></span>
+              <span>Visão anual de 12 meses consolidada</span>
+            </div>
+            <div class="feature-item">
+              <span class="feature-check"><FinanceIcon name="check" size={16} /></span>
+              <span>Projeção de 30 anos rumo ao R$ 1 Milhão</span>
+            </div>
+          </div>
+
+          <div class="flagship-cta-row">
+            <a href="/planilha-abc" class="btn btn-primary" style="padding: 0.85rem 1.6rem;">
+              Conhecer a Planilha por R$ {SITE_CONFIG.product.priceLaunch.toFixed(2).replace('.', ',')} →
+            </a>
+            <a href="/downloads/Planilha-ABC-Exemplo-Preenchido.xlsx" download class="btn btn-outline" style="padding: 0.85rem 1.4rem;">
+              Baixar Exemplo Demonstrativo (.xlsx)
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. Trilha Educativa: O ABC do Investidor (Do A ao C) -->
+  <section class="section" id="trilha-abc">
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <span class="badge-pill">Educação Financeira</span>
+          <h2>A Trilha do Investidor: Do Bê-á-bá à Renda Passiva</h2>
+          <p>Guias práticos e diretos ao ponto sem jargões desnecessários.</p>
+        </div>
+        <a href="/guia" class="btn btn-secondary">Ver Guia Completo & Dicionário →</a>
+      </div>
+
+      <div class="levels-grid">
+        {(['A', 'B', 'C'] as const).map((lvl) => {
+          const levelGuides = GUIDES.filter((g) => g.level === lvl);
+          const titles = {
+            A: 'Passo A — Reserva & Poupança',
+            B: 'Passo B — Renda Fixa & Inflação',
+            C: 'Passo C — Dividendos & FIIs',
+          };
+          return (
+            <div class="level-card">
+              <div class="level-card-head">
+                <span class="level-tag">Nível {lvl}</span>
+                <h3>{titles[lvl]}</h3>
+              </div>
+              <div class="level-guides-stack">
+                {levelGuides.map((g) => (
+                  <a href={`/guia/${g.slug}`} class="guide-item">
+                    <span class="guide-time">{g.readTime}</span>
+                    <strong class="guide-title">{g.title}</strong>
+                    <p class="guide-summary">{g.summary}</p>
+                    <span class="guide-link">Ler artigo →</span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. Biblioteca do Investidor (Livros Clássicos de Finanças) -->
+  <section class="section" id="livros">
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <span class="badge-pill">Leituras Recomendadas</span>
+          <h2>Biblioteca do Investidor</h2>
+          <p>Os 6 livros indispensáveis para formar mentalidade e estratégia sólida.</p>
+        </div>
+      </div>
+
+      <div class="books-grid">
+        {SITE_CONFIG.books.map((book) => (
+          <div class="book-card">
+            <span class="book-badge">{book.badge}</span>
+            <h3 class="book-title">{book.title}</h3>
+            <span class="book-author">por {book.author}</span>
+            <p class="book-summary">{book.summary}</p>
+            <a
+              href={book.amazonUrl}
+              target="_blank"
+              rel="noopener noreferrer sponsored"
+              class="btn btn-outline book-btn"
+            >
+              Ver na Amazon Brasil ↗
+            </a>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. Conformidade Legal & Ausência de Vínculo -->
+  <section class="section" style="padding-top: 1rem; padding-bottom: 3.5rem;">
+    <div class="container">
+      <div class="disclaimer-panel">
+        <p>
+          <strong>Aviso Legal & Transparência:</strong> {SITE_CONFIG.legalDisclaimer} Todas as simulações e ferramentas possuem finalidade estritamente didática e educativa.
+        </p>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  /* Tools Catalog Grid */
+  .tools-catalog-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  @media (min-width: 640px) {
+    .tools-catalog-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .tools-catalog-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .catalog-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+    backdrop-filter: blur(8px);
+    box-shadow: var(--card-shadow);
+    text-decoration: none;
+    min-height: 196px;
+  }
+
+  .catalog-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--border-hover);
+    background: var(--glass-elevated);
+  }
+
+  .catalog-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  .catalog-icon {
+    color: var(--brand-blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    background: var(--pill-bg);
+    border: 1px solid var(--pill-border);
+    transition: color 0.2s ease, border-color 0.2s ease;
+  }
+
+  .catalog-card:hover .catalog-icon {
+    color: var(--brand-blue);
+    border-color: var(--brand-blue);
+  }
+
+  .catalog-badge {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--pill-text);
+    background: var(--pill-bg);
+    border: 1px solid var(--pill-border);
+    padding: 0.18rem 0.55rem;
+    border-radius: 9999px;
+  }
+
+  .catalog-card-body h3 {
+    font-size: 1.06rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.4rem;
+    letter-spacing: -0.015em;
+    line-height: 1.3;
+  }
+
+  .catalog-card-body p {
+    font-size: 0.86rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  .catalog-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 1.25rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid var(--border-subtle);
+    font-size: 0.83rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    transition: color 0.15s ease;
+  }
+
+  .catalog-card:hover .catalog-card-footer {
+    color: var(--text-primary);
+  }
+
+  .catalog-arrow {
+    color: var(--text-muted);
+    transition: transform 0.2s ease, color 0.2s ease;
+  }
+
+  .catalog-card:hover .catalog-arrow {
+    color: var(--brand-blue);
+    transform: translateX(4px);
+  }
+
+  /* Flagship Planilha Card */
+  .flagship-card {
+    background: var(--glass-elevated);
+    border: 1px solid var(--border-card);
+    border-radius: 16px;
+    padding: clamp(1.75rem, 3.5vw, 2.75rem);
+    box-shadow: var(--card-shadow);
+  }
+
+  .flagship-pill {
+    display: inline-block;
+    background: var(--pill-bg);
+    border: 1px solid var(--pill-border);
+    color: var(--pill-text);
+    font-size: 0.74rem;
+    font-weight: 500;
+    padding: 0.22rem 0.7rem;
+    border-radius: 9999px;
+    margin-bottom: 1rem;
+    letter-spacing: 0.02em;
+  }
+
+  .flagship-title {
+    font-size: clamp(1.5rem, 2.6vw, 2rem);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.025em;
+  }
+
+  .flagship-desc {
+    font-size: 0.96rem;
+    color: var(--text-secondary);
+    max-width: 720px;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+  }
+
+  .flagship-features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+  }
+
+  .feature-item {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+  }
+
+  .feature-check {
+    color: var(--brand-blue);
+    display: inline-flex;
+  }
+
+  .flagship-cta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+  }
+
+  /* Levels Grid */
+  .levels-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  @media (min-width: 900px) {
+    .levels-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .level-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: var(--card-shadow);
+  }
+
+  .level-card-head {
+    margin-bottom: 1.15rem;
+    padding-bottom: 0.85rem;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .level-tag {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .level-card-head h3 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-top: 0.25rem;
+  }
+
+  .level-guides-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .guide-item {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    padding: 1.05rem;
+    display: block;
+    text-decoration: none;
+    transition: all 0.18s ease;
+  }
+
+  .guide-item:hover {
+    border-color: var(--border-hover);
+  }
+
+  .guide-time {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    display: block;
+    margin-bottom: 0.25rem;
+  }
+
+  .guide-title {
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: block;
+    margin-bottom: 0.35rem;
+    line-height: 1.35;
+  }
+
+  .guide-summary {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    line-height: 1.45;
+    margin-bottom: 0.65rem;
+  }
+
+  .guide-link {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    transition: color 0.15s ease;
+  }
+
+  .guide-item:hover .guide-link {
+    color: var(--brand-blue);
+  }
+
+  /* Books Grid */
+  .books-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.25rem;
+  }
+
+  .book-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: var(--card-shadow);
+  }
+
+  .book-badge {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--pill-text);
+    background: var(--pill-bg);
+    border: 1px solid var(--pill-border);
+    padding: 0.18rem 0.55rem;
+    border-radius: 9999px;
+    width: fit-content;
+    margin-bottom: 0.75rem;
+  }
+
+  .book-title {
+    font-size: 1.04rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.2rem;
+  }
+
+  .book-author {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+    display: block;
+  }
+
+  .book-summary {
+    font-size: 0.84rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: 1.25rem;
+  }
+
+  .book-btn {
+    width: 100%;
+    font-size: 0.84rem;
+  }
+
+  /* Disclaimer Panel */
+  .disclaimer-panel {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    padding: 1.25rem;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+    text-align: center;
+  }
+
+  .disclaimer-panel strong {
+    color: var(--text-secondary);
+  }
+</style>

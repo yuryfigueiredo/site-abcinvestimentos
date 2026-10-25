@@ -1,0 +1,481 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import NextStepCard from '../../components/NextStepCard.astro';
+import AdSlot from '../../components/AdSlot.astro';
+import { CALCULATORS } from '../../data/calculators';
+import { SITE_CONFIG } from '../../config/site';
+
+const calc = CALCULATORS.find((c) => c.slug === 'renda-fixa')!;
+const d = SITE_CONFIG.defaultIndicators;
+---
+
+<BaseLayout title={`${calc.title} | ABC Investimentos`} description={calc.seoDescription}>
+  <section class="calc-page-section">
+    <div class="container">
+      <nav class="breadcrumb" aria-label="Navegação estrutural">
+        <a href="/">Início</a> <span>/</span> <a href="/#ferramentas">Calculadoras</a> <span>/</span> <strong>{calc.shortTitle}</strong>
+      </nav>
+
+      <div class="calc-header">
+        <span class="badge-pill">{calc.badge}</span>
+        <h1>{calc.title}</h1>
+        <p>{calc.subtitle}</p>
+      </div>
+
+      <div class="calc-workspace">
+        <!-- Painel de Controles -->
+        <div class="abc-card calc-controls">
+          <h2>Dados da Aplicação</h2>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="rf-amount">Valor Inicial a Investir (R$)</label>
+              <output id="rf-amount-out" for="rf-amount">R$ 10.000,00</output>
+            </div>
+            <input
+              type="range"
+              id="rf-amount-slider"
+              class="abc-slider"
+              min="500"
+              max="250000"
+              step="500"
+              value="10000"
+              data-format="brl"
+              aria-label="Valor inicial em Reais"
+            />
+            <input type="number" id="rf-amount" class="abc-input" min="100" max="10000000" step="100" value="10000" />
+          </div>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="rf-monthly">Aporte Mensal Opcional (R$)</label>
+              <output id="rf-monthly-out" for="rf-monthly">R$ 0,00</output>
+            </div>
+            <input
+              type="range"
+              id="rf-monthly-slider"
+              class="abc-slider"
+              min="0"
+              max="15000"
+              step="100"
+              value="0"
+              data-format="brl"
+              aria-label="Aporte mensal em Reais"
+            />
+            <input type="number" id="rf-monthly" class="abc-input" min="0" max="1000000" step="100" value="0" />
+          </div>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="rf-months">Prazo até o Resgate (Meses)</label>
+              <output id="rf-months-out" for="rf-months">12 meses (IR: 17,5%)</output>
+            </div>
+            <input
+              type="range"
+              id="rf-months-slider"
+              class="abc-slider"
+              min="1"
+              max="60"
+              step="1"
+              value="12"
+              data-format="months"
+              aria-label="Prazo em meses"
+            />
+            <input type="number" id="rf-months" class="abc-input" min="1" max="360" step="1" value="12" />
+          </div>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="rf-cdb">Taxa do CDB (% do CDI)</label>
+              <output id="rf-cdb-out" for="rf-cdb">105% do CDI</output>
+            </div>
+            <input
+              type="range"
+              id="rf-cdb-slider"
+              class="abc-slider"
+              min="80"
+              max="130"
+              step="1"
+              value="105"
+              data-format="pct"
+              aria-label="Percentual do CDI no CDB"
+            />
+            <input type="number" id="rf-cdb" class="abc-input" min="50" max="200" step="1" value="105" />
+          </div>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="rf-lci">Taxa da LCI / LCA Isenta (% do CDI)</label>
+              <output id="rf-lci-out" for="rf-lci">92% do CDI</output>
+            </div>
+            <input
+              type="range"
+              id="rf-lci-slider"
+              class="abc-slider"
+              min="75"
+              max="115"
+              step="1"
+              value="92"
+              data-format="pct"
+              aria-label="Percentual do CDI na LCI ou LCA"
+            />
+            <input type="number" id="rf-lci" class="abc-input" min="50" max="150" step="1" value="92" />
+          </div>
+
+          <div class="rates-mini-grid">
+            <div>
+              <label for="rf-cdi">CDI (% a.a.)</label>
+              <input type="number" id="rf-cdi" class="abc-input" step="0.05" value={d.cdi} />
+            </div>
+            <div>
+              <label for="rf-selic">Selic (% a.a.)</label>
+              <input type="number" id="rf-selic" class="abc-input" step="0.05" value={d.selic} />
+            </div>
+            <div>
+              <label for="rf-ipca">IPCA (% a.a.)</label>
+              <input type="number" id="rf-ipca" class="abc-input" step="0.05" value={d.ipca12m} />
+            </div>
+          </div>
+        </div>
+
+        <!-- Painel de Resultados -->
+        <div class="abc-card calc-results">
+          <div class="winner-banner" id="rf-winner-banner">
+            <span class="winner-trophy" aria-hidden="true">🏆</span>
+            <div>
+              <strong id="rf-winner-title">Melhor Opção Líquida de Imposto de Renda:</strong>
+              <p id="rf-winner-desc">Calculando comparativo...</p>
+            </div>
+          </div>
+
+          <!-- Equivalência Rápida CDB vs LCI -->
+          <div class="equivalence-strip" id="rf-equivalence-strip"></div>
+
+          <!-- Gráficos de Barras Comparativas -->
+          <div class="bars-comparison" id="rf-bars-container"></div>
+
+          <!-- Tabela Comparativa Completa (responsive-table guide) -->
+          <div tabindex="0" role="region" aria-labelledby="rf-table-caption" class="table-wrapper">
+            <table
+              class="abc-table"
+              style='--label-2: "Taxa Líquida a.a."; --label-3: "Imposto (IR + B3)"; --label-4: "Lucro Líquido"; --label-5: "Saldo Líquido Final";'
+            >
+              <caption id="rf-table-caption">Comparativo Detalhado (Regras Fiscais 2026)</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Investimento</th>
+                  <th scope="col">Taxa Líquida a.a.</th>
+                  <th scope="col">Imposto (IR + B3)</th>
+                  <th scope="col">Lucro Líquido</th>
+                  <th scope="col">Saldo Líquido Final</th>
+                </tr>
+              </thead>
+              <tbody id="rf-table-body"></tbody>
+            </table>
+          </div>
+
+          <NextStepCard calculator={calc} />
+        </div>
+      </div>
+
+      <AdSlot slotId="calc-rf-bottom" />
+
+      <section class="faq-section below-fold-deferred">
+        <h2>Dúvidas Comuns sobre CDB, LCI, LCA e Tesouro Selic</h2>
+        <div class="faq-grid">
+          {calc.faqs.map((faq) => (
+            <div class="abc-card faq-card">
+              <h3>{faq.question}</h3>
+              <p>{faq.answer}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import { simulateFixedIncomeComparison, formatBRL, formatPct } from '../../lib/finance';
+
+  const amountInput = document.getElementById('rf-amount') as HTMLInputElement;
+  const amountSlider = document.getElementById('rf-amount-slider') as HTMLInputElement;
+  const monthlyInput = document.getElementById('rf-monthly') as HTMLInputElement;
+  const monthlySlider = document.getElementById('rf-monthly-slider') as HTMLInputElement;
+  const monthsInput = document.getElementById('rf-months') as HTMLInputElement;
+  const monthsSlider = document.getElementById('rf-months-slider') as HTMLInputElement;
+  const cdbInput = document.getElementById('rf-cdb') as HTMLInputElement;
+  const cdbSlider = document.getElementById('rf-cdb-slider') as HTMLInputElement;
+  const lciInput = document.getElementById('rf-lci') as HTMLInputElement;
+  const lciSlider = document.getElementById('rf-lci-slider') as HTMLInputElement;
+  const cdiInput = document.getElementById('rf-cdi') as HTMLInputElement;
+  const selicInput = document.getElementById('rf-selic') as HTMLInputElement;
+  const ipcaInput = document.getElementById('rf-ipca') as HTMLInputElement;
+
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('valor')) {
+    amountInput.value = params.get('valor')!;
+    amountSlider.value = params.get('valor')!;
+  }
+  if (params.get('prazo')) {
+    monthsInput.value = params.get('prazo')!;
+    monthsSlider.value = params.get('prazo')!;
+  }
+  if (params.get('cdb')) {
+    cdbInput.value = params.get('cdb')!;
+    cdbSlider.value = params.get('cdb')!;
+  }
+  if (params.get('lci')) {
+    lciInput.value = params.get('lci')!;
+    lciSlider.value = params.get('lci')!;
+  }
+
+  function bindPair(num: HTMLInputElement, slider: HTMLInputElement) {
+    slider.addEventListener('input', () => {
+      num.value = slider.value;
+      recalc();
+    });
+    num.addEventListener('input', () => {
+      slider.value = num.value;
+      slider.dispatchEvent(new Event('input'));
+      recalc();
+    });
+  }
+
+  function recalc() {
+    const amount = Number(amountInput.value) || 0;
+    const monthlyContribution = Number(monthlyInput.value) || 0;
+    const months = Number(monthsInput.value) || 1;
+    const cdbPctCdi = Number(cdbInput.value) || 100;
+    const lciLcaPctCdi = Number(lciInput.value) || 90;
+    const cdiAnnualPct = Number(cdiInput.value) || 14.15;
+    const selicAnnualPct = Number(selicInput.value) || 14.25;
+    const ipcaAnnualPct = Number(ipcaInput.value) || 4.56;
+
+    const res = simulateFixedIncomeComparison({
+      amount,
+      monthlyContribution,
+      months,
+      cdiAnnualPct,
+      selicAnnualPct,
+      ipcaAnnualPct,
+      cdbPctCdi,
+      lciLcaPctCdi,
+    });
+
+    document.getElementById('rf-amount-out')!.textContent = formatBRL(amount);
+    document.getElementById('rf-monthly-out')!.textContent = formatBRL(monthlyContribution);
+    document.getElementById('rf-months-out')!.textContent = `${months} ${months === 1 ? 'mês' : 'meses'} (IR: ${formatPct(res.irBracketPct, 1)})`;
+    document.getElementById('rf-cdb-out')!.textContent = `${cdbPctCdi}% do CDI`;
+    document.getElementById('rf-lci-out')!.textContent = `${lciLcaPctCdi}% do CDI`;
+
+    document.getElementById('rf-winner-title')!.textContent = `Vencedor Líquido: ${res.winner.name}`;
+    document.getElementById('rf-winner-desc')!.innerHTML = `Entrega <strong>${formatBRL(res.winner.netFinalAmount)} líquidos</strong> no resgate (lucro limpo de <strong>${formatBRL(res.winner.netProfit)}</strong>), rendendo <strong>+ ${formatBRL(res.differenceWinnerVsPoupanca)} a mais que a Poupança</strong> no mesmo período!`;
+
+    document.getElementById('rf-equivalence-strip')!.innerHTML = `
+      <span>⚖️ <strong>Equivalência de Imposto (${res.days} dias • IR ${formatPct(res.irBracketPct, 1)}):</strong> Uma LCI/LCA de <strong>${lciLcaPctCdi}% do CDI</strong> equivale exatamente a um CDB de <strong>${formatPct(res.equivalentCdbPctForLci, 1)} do CDI</strong>.</span>
+    `;
+
+    const maxProfit = Math.max(...res.options.map((o) => o.netProfit), 1);
+    document.getElementById('rf-bars-container')!.innerHTML = res.options
+      .map((opt) => {
+        const widthPct = Math.max(8, Math.round((opt.netProfit / maxProfit) * 100));
+        return `
+          <div class="bar-row ${opt.isWinner ? 'bar-winner' : ''}">
+            <div class="bar-meta">
+              <strong>${opt.name} ${opt.isWinner ? '🏆' : ''}</strong>
+              <span>Lucro Líquido: <strong>+ ${formatBRL(opt.netProfit)}</strong> (Ganho Real: ${formatPct(opt.realNetReturnPct)})</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill" style="width: ${widthPct}%"></div>
+            </div>
+          </div>
+        `;
+      })
+      .join('');
+
+    document.getElementById('rf-table-body')!.innerHTML = res.options
+      .map(
+        (opt) => `
+        <tr style="${opt.isWinner ? 'background: color-mix(in oklab, var(--brand-emerald) 10%, transparent);' : ''}">
+          <th scope="row">${opt.name} ${opt.isWinner ? '🏆' : ''}</th>
+          <td>${formatPct(opt.netAnnualRatePct)} a.a.</td>
+          <td>${opt.irAmount + opt.b3FeeAmount > 0 ? `- ${formatBRL(opt.irAmount + opt.b3FeeAmount)} (${opt.irRatePct}%)` : 'Isento (R$ 0,00)'}</td>
+          <td style="color: var(--brand-emerald); font-weight: 700;">+ ${formatBRL(opt.netProfit)}</td>
+          <td style="font-weight: 800;">${formatBRL(opt.netFinalAmount)}</td>
+        </tr>
+      `
+      )
+      .join('');
+  }
+
+  bindPair(amountInput, amountSlider);
+  bindPair(monthlyInput, monthlySlider);
+  bindPair(monthsInput, monthsSlider);
+  bindPair(cdbInput, cdbSlider);
+  bindPair(lciInput, lciSlider);
+  [cdiInput, selicInput, ipcaInput].forEach((el) => el.addEventListener('input', recalc));
+
+  window.addEventListener('abc:indicators-loaded', (e: any) => {
+    if (e.detail) {
+      cdiInput.value = String(e.detail.cdi);
+      selicInput.value = String(e.detail.selic);
+      ipcaInput.value = String(e.detail.ipca12m);
+      recalc();
+    }
+  });
+
+  if ((window as any).__initAbcSliders) (window as any).__initAbcSliders();
+  recalc();
+</script>
+
+<style>
+  .calc-page-section {
+    padding-block: 2rem 3rem;
+  }
+
+  .breadcrumb {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-block-end: 1rem;
+    display: flex;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+  }
+
+  .calc-header {
+    margin-block-end: 2rem;
+  }
+
+  .calc-header h1 {
+    font-size: clamp(1.6rem, 3vw, 2.25rem);
+    margin-block: 0.6rem 0.4rem;
+  }
+
+  .calc-header p {
+    margin: 0;
+    color: var(--text-secondary);
+  }
+
+  .calc-workspace {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 1.5rem;
+    align-items: start;
+  }
+
+  .control-group {
+    margin-block-end: 1.15rem;
+  }
+
+  .control-label-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.86rem;
+    font-weight: 600;
+    margin-block-end: 0.25rem;
+  }
+
+  .control-label-row output {
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+
+  .rates-mini-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.6rem;
+    padding-block-start: 0.75rem;
+    border-block-start: 1px solid var(--border-subtle);
+  }
+
+  .rates-mini-grid label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-block-end: 0.25rem;
+  }
+
+  .winner-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.9rem;
+    padding: 1.2rem;
+    border-radius: 0.95rem;
+    background: var(--bg-elevated);
+    border: 1px solid rgba(2, 132, 199, 0.28);
+    margin-block-end: 1rem;
+  }
+
+  .winner-trophy {
+    font-size: 1.85rem;
+  }
+
+  .winner-banner p {
+    margin: 0.3rem 0 0;
+    font-size: 0.92rem;
+    color: var(--text-secondary);
+  }
+
+  .equivalence-strip {
+    padding: 0.85rem 1.1rem;
+    border-radius: 0.75rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    font-size: 0.86rem;
+    margin-block-end: 1.35rem;
+  }
+
+  .bars-comparison {
+    display: grid;
+    gap: 0.85rem;
+    margin-block-end: 1.5rem;
+  }
+
+  :global(.bar-row) {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  :global(.bar-meta) {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    font-size: 0.85rem;
+  }
+
+  :global(.bar-track) {
+    block-size: 0.85rem;
+    border-radius: 999px;
+    background: var(--bg-elevated);
+    overflow: hidden;
+  }
+
+  :global(.bar-fill) {
+    block-size: 100%;
+    background: #64748b;
+    border-radius: 999px;
+    transition: width 0.25s ease;
+  }
+
+  :global(.bar-winner .bar-fill) {
+    background: var(--brand-blue);
+  }
+
+  .faq-section {
+    margin-block-start: 3rem;
+  }
+
+  .faq-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.25rem;
+  }
+
+  @media (max-width: 980px) {
+    .calc-workspace {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

@@ -1,0 +1,332 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { SITE_CONFIG } from '../config/site';
+
+const product = SITE_CONFIG.product;
+const mainProduct = {
+  price: `R$ ${product.priceLaunch.toFixed(2).replace('.', ',')}`,
+  originalPrice: `R$ ${product.priceOriginal.toFixed(2).replace('.', ',')}`,
+  checkoutUrl: product.externalCheckoutUrl || product.checkoutUrl,
+  guaranteeDays: product.guaranteeDays,
+  features: [
+    '8 abas integradas: Orçamento 50/30/20, Lançamentos, Painel Mensal, Visão Anual, Reserva, Metas e 1º Milhão',
+    'Compatível com Excel (Windows/Mac), Google Planilhas (Sheets) e LibreOffice Calc',
+    'Fórmulas 100% nativas e auditadas (zero macros VBA que travam ou bloqueiam)',
+    'Cálculo de Patrimônio Nominal vs. Patrimônio Real descontando a inflação (IPCA)',
+    'Células de cálculo protegidas contra exclusão acidental (destraváveis sem senha)',
+  ],
+};
+const secondaryProduct = {
+  name: 'Planilha PRO #2 — Rastreador de Dividendos, FIIs & Apuração de DARF IR',
+  subtitle: 'Controle de preço médio ajustado, calendário mensal de proventos isentos vs. tributados (Lei 15.270/2025) e cálculo auxiliar para a Declaração Anual do IRPF.',
+};
+
+const tabs = [
+  {
+    num: '01',
+    name: 'Comece Aqui',
+    badge: 'Boas-vindas & Passo a Passo',
+    desc: 'Instruções visuais em 3 minutos: código de cores (células editáveis vs. automáticas), filosofia 50/30/20 e checklist do primeiro acesso.',
+    highlights: ['Guia rápido ilustrado', 'Legenda de células editáveis vs. protegidas', 'Atalhos para cada aba']
+  },
+  {
+    num: '02',
+    name: 'Configuração',
+    badge: 'Parâmetros Pessoais',
+    desc: 'Onde você define sua renda líquida alvo, divisão ideal 50/30/20 (ex.: 50% Essenciais, 30% Estilo de Vida, 20% Aportes), categorias personalizadas e taxas (Selic, CDI, IPCA).',
+    highlights: ['Metas percentuais customizáveis', 'Lista de categorias e contas/bancos', 'Premissas de rentabilidade anual e mensal']
+  },
+  {
+    num: '03',
+    name: 'Lançamentos',
+    badge: 'Registro Rápido Diário/Semanal',
+    desc: 'Tabela estruturada com validação de dados (menus suspensos de Tipo, Categoria, Subgrupo 50/30/20, Forma de Pagamento e Status) e cálculo automático de Mês/Ano.',
+    highlights: ['Menus dropdown prontos sem erro de digitação', 'Classificação automática em Essencial, Desejo ou Aporte', 'Filtro por mês, categoria ou cartão/conta']
+  },
+  {
+    num: '04',
+    name: 'Painel do Mês',
+    badge: 'Dashboard 50/30/20',
+    desc: 'Visão executiva do mês selecionado: Receitas vs. Despesas, barras de progresso 50/30/20 (Orçado vs. Realizado) e alerta visual imediato se algum grupo estourar a meta.',
+    highlights: ['Termômetro 50/30/20 automático via SUMIFS', 'Resumo por categoria de gasto', 'Taxa de poupança/investimento real do mês']
+  },
+  {
+    num: '05',
+    name: 'Ano (12 Meses)',
+    badge: 'Visão Anual Consolidada',
+    desc: 'Matriz completa de Janeiro a Dezembro + Total Anual e Média Mensal. Veja a evolução da sua capacidade de aporte e identifique meses sazonais (IPVA, IPTU, férias, 13º).',
+    highlights: ['Fluxo de caixa dos 12 meses lado a lado', 'Evolução da taxa de aporte mensal (%)', 'Média mensal e acumulado no ano']
+  },
+  {
+    num: '06',
+    name: 'Reserva de Emergência',
+    badge: 'Colchão de Segurança',
+    desc: 'Cálculo automático da sua meta ideal (3, 6 ou 12 meses do seu custo essencial real) comparado ao saldo atual guardado em Tesouro Selic / CDB Liquidez Diária.',
+    highlights: ['Cálculo automático pelo seu perfil (CLT, Autônomo, PJ)', 'Percentual concluído da reserva (%)', 'Previsão de quantos meses faltam para completar 100%']
+  },
+  {
+    num: '07',
+    name: 'Metas Financeiras',
+    badge: 'Projetos de Curto e Médio Prazo',
+    desc: 'Planejador de objetivos específicos (viagem, troca de carro, entrada de imóvel, pós-graduação, quitação de dívida) com prazo, valor-alvo e aporte mensal necessário.',
+    highlights: ['Até 10 metas simultâneas com prioridade', 'Cálculo do aporte mensal ideal por meta', 'Barra de progresso percentual individual']
+  },
+  {
+    num: '08',
+    name: 'Rumo ao 1º Milhão',
+    badge: 'Simulador de Independência Financeira',
+    desc: 'Tabela de evolução patrimonial ano a ano (até 30 anos) comparando Patrimônio Nominal vs. Patrimônio Real (descontando IPCA) e renda passiva mensal estimada.',
+    highlights: ['Contagem regressiva até R$ 1.000.000', 'Separação entre Total Investido do Bolso vs. Juros Ganhos', 'Cálculo de Renda Passiva Mensal Segura']
+  }
+];
+---
+
+<BaseLayout
+  title="Planilha ABC — Controle Financeiro 50/30/20 & Rumo ao 1º Milhão"
+  description="Planilha profissional em Excel e Google Sheets com 8 abas integradas: Orçamento 50/30/20, Lançamentos Inteligentes, Reserva de Emergência e Simulador Rumo ao 1º Milhão."
+>
+  <section class="section">
+    <div class="container">
+      <!-- Hero do Produto -->
+      <div class="calc-workspace" style="align-items: center;">
+        <div>
+          <span class="badge-pill" style="margin-bottom: 1rem;">
+            Kit Oficial ABC Investimentos • Excel & Google Sheets
+          </span>
+          <h1 style="font-size: clamp(1.85rem, 3.6vw, 2.75rem); margin-bottom: 1rem; line-height: 1.12;">
+            Planilha ABC — Controle Financeiro <span class="text-gradient">50/30/20 & Rumo ao 1º Milhão</span>
+          </h1>
+          <p style="font-size: 1.08rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
+            Projetada para quem quer sair das contas de cabeça e organizar orçamento mensal, reserva de emergência e construção de patrimônio em um único arquivo limpo, sem macros perigosas e 100% automatizado.
+          </p>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 0.75rem; margin-bottom: 1.75rem;">
+            <div class="stat-box">
+              <div class="stat-box__label">Estrutura Completa</div>
+              <div class="stat-box__value" style="font-size: 1.15rem;">8 Abas Integradas</div>
+              <div class="stat-box__sub">Do gasto diário ao 1º Milhão</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-box__label">Segurança & Compatibilidade</div>
+              <div class="stat-box__value" style="font-size: 1.15rem;">Zero Macros (VBA)</div>
+              <div class="stat-box__sub">Roda em Excel, Google Sheets e LibreOffice</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-box__label">Fórmulas Protegidas</div>
+              <div class="stat-box__value" style="font-size: 1.15rem;">À Prova de Erros</div>
+              <div class="stat-box__sub">Células de cálculo travadas sem senha</div>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+            <a href={mainProduct.checkoutUrl} class="btn btn-primary" style="padding: 0.9rem 1.6rem; font-size: 1rem;">
+              Adquirir Planilha Completa por {mainProduct.price} →
+            </a>
+            <a
+              href="/downloads/Planilha-ABC-Exemplo-Preenchido.xlsx"
+              download
+              class="btn btn-outline"
+              style="padding: 0.9rem 1.35rem;"
+            >
+              ⬇ Baixar Versão Demonstrativa (.xlsx)
+            </a>
+          </div>
+
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">
+            Pagamento único (sem mensalidade) • Acesso vitalício às atualizações • {mainProduct.guaranteeDays} dias de garantia incondicional.
+          </p>
+        </div>
+
+        <!-- Card de Preview Interativo / Resumo da Oferta -->
+        <div class="calc-panel" style="border-color: var(--border-card); background: var(--glass-elevated);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.85rem; border-bottom: 1px solid var(--border-subtle);">
+            <div>
+              <span class="badge-pill">Versão 2026.1</span>
+              <h2 style="font-size: 1.2rem; margin: 0.35rem 0 0;">O que você recebe imediatamente</h2>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 0.78rem; color: var(--text-muted); text-decoration: line-through;">{mainProduct.originalPrice}</div>
+              <div style="font-size: 1.75rem; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums;">{mainProduct.price}</div>
+            </div>
+          </div>
+
+          <ul style="list-style: none; padding: 0; margin: 0 0 1.5rem; display: grid; gap: 0.65rem; font-size: 0.9rem;">
+            {mainProduct.features.map((feat) => (
+              <li style="display: flex; align-items: flex-start; gap: 0.55rem; color: var(--text-secondary);">
+                <span style="color: var(--brand-blue); font-weight: 600;">✓</span>
+                <span>{feat}</span>
+              </li>
+            ))}
+            <li style="display: flex; align-items: flex-start; gap: 0.55rem; color: var(--text-secondary);">
+              <span style="color: var(--brand-blue); font-weight: 600;">✓</span>
+              <span><strong>Bônus Incluso:</strong> Arquivo preenchido com exemplo realista de família brasileira para você entender cada aba em 2 minutos.</span>
+            </li>
+          </ul>
+
+          <div class="info-callout" style="margin-bottom: 1.25rem;">
+            <strong>Por que não usamos macros (VBA)?</strong> Muitas planilhas financeiras travam no Mac, no celular ou no Google Sheets e disparam alertas de vírus no Windows por causa de scripts VBA. A Planilha ABC usa exclusivamente fórmulas nativas universais do Excel/Sheets — rápida, leve e 100% auditável.
+          </div>
+
+          <a href="#explorar-abas" class="btn btn-outline" style="width: 100%; justify-content: center;">
+            Ver Detalhes das 8 Abas Abaixo ↓
+          </a>
+        </div>
+      </div>
+
+      <!-- Explorador das 8 Abas -->
+      <div id="explorar-abas" style="margin-top: 4rem;">
+        <div class="section-head">
+          <div>
+            <span class="badge-pill" style="margin-bottom: 0.5rem;">Arquitetura por Dentro</span>
+            <h2>Conheça as 8 Abas da Planilha ABC</h2>
+            <p>
+              Cada aba foi desenhada com hierarquia visual clara: células de entrada onde você digita seus números e células automáticas que calculam tudo sozinhas.
+            </p>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem;">
+          {tabs.map((tab) => (
+            <article class="calc-panel" style="display: flex; flex-direction: column; justify-content: space-between;">
+              <div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                  <span style="font-family: var(--font-mono); font-size: 0.74rem; font-weight: 600; color: var(--pill-text); background: var(--pill-bg); border: 1px solid var(--pill-border); padding: 0.2rem 0.55rem; border-radius: 6px;">
+                    ABA {tab.num}
+                  </span>
+                  <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">{tab.badge}</span>
+                </div>
+                <h3 style="font-size: 1.12rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-primary);">{tab.name}</h3>
+                <p style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 1rem;">
+                  {tab.desc}
+                </p>
+              </div>
+              <ul style="list-style: none; padding: 0.85rem 0 0; margin: 0; border-top: 1px solid var(--border-subtle); display: grid; gap: 0.35rem; font-size: 0.8rem; color: var(--text-muted);">
+                {tab.highlights.map((h) => (
+                  <li>• {h}</li>
+                ))}
+              </ul>
+            </article>
+          ))}
+        </div>
+      </div>
+
+      <!-- Comparativo: Planilha Comum vs Planilha ABC -->
+      <div style="margin-top: 4rem;">
+        <div class="calc-panel">
+          <h2 style="font-size: 1.4rem; margin-bottom: 0.5rem;">Por que a maioria das pessoas abandona planilhas na segunda semana?</h2>
+          <p style="font-size: 0.95rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
+            Porque planilhas gratuitas da internet costumam exigir que você anote até o cafezinho de R$ 4,00 em 45 categorias diferentes ou têm fórmulas quebradas (`#REF!`). Na Planilha ABC, aplicamos o método <strong>50/30/20 Automatizado</strong>:
+          </p>
+
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Critério</th>
+                  <th>Planilhas Genéricas Baixadas na Web</th>
+                  <th>Planilha Oficial ABC Investimentos</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Método de Orçamento</strong></td>
+                  <td>Apenas soma gastos passados sem mostrar o que corrigir</td>
+                  <td style="color: var(--text-primary); font-weight: 600;">Regra 50/30/20 automática (Essenciais, Desejos e Aportes)</td>
+                </tr>
+                <tr>
+                  <td><strong>Conexão com Investimentos</strong></td>
+                  <td>Para no controle de despesas do mês</td>
+                  <td style="color: var(--text-primary); font-weight: 600;">Integra Reserva de Emergência + Projeção Rumo ao 1º Milhão</td>
+                </tr>
+                <tr>
+                  <td><strong>Inflação (Poder de Compra)</strong></td>
+                  <td>Mostra apenas valores nominais ilusórios</td>
+                  <td style="color: var(--text-primary); font-weight: 600;">Calcula Patrimônio Nominal vs. Real descontando IPCA</td>
+                </tr>
+                <tr>
+                  <td><strong>Proteção de Fórmulas</strong></td>
+                  <td>Qualquer clique errado apaga a fórmula de soma</td>
+                  <td style="color: var(--text-primary); font-weight: 600;">Células de cálculo protegidas (destraváveis sem senha)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Próximo Produto (Lista de Espera / Em Breve) -->
+      <div style="margin-top: 3rem;">
+        <div class="calc-panel" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1.5rem;">
+          <div style="max-width: 64ch;">
+            <span class="badge-pill" style="margin-bottom: 0.65rem;">Em Desenvolvimento • Produto #2 da Linha PRO</span>
+            <h3 style="font-size: 1.2rem; font-weight: 600; margin-bottom: 0.35rem; color: var(--text-primary);">{secondaryProduct.name}</h3>
+            <p style="font-size: 0.9rem; color: var(--text-secondary); margin: 0;">{secondaryProduct.subtitle}</p>
+          </div>
+          <button
+            type="button"
+            class="btn btn-outline"
+            onclick="document.getElementById('parcerias-dialog')?.showModal()"
+          >
+            Entrar na Lista VIP de Lançamento
+          </button>
+        </div>
+      </div>
+
+      <!-- Perguntas Frequentes -->
+      <div style="margin-top: 4rem;">
+        <h2 style="font-size: 1.5rem; margin-bottom: 1.25rem;">Perguntas Frequentes (FAQ)</h2>
+        <div style="display: grid; gap: 1rem;">
+          <div class="calc-panel">
+            <h3 style="font-size: 1.05rem; margin-bottom: 0.35rem;">1. Preciso ter o Microsoft Excel pago instalado no computador?</h3>
+            <p style="font-size: 0.9rem; color: var(--text-secondary); margin: 0;">
+              Não! O arquivo `.xlsx` funciona perfeitamente tanto no Microsoft Excel (Windows e Mac) quanto gratuitamente no <strong>Google Planilhas (Google Sheets)</strong> pelo navegador ou celular, além do LibreOffice Calc.
+            </p>
+          </div>
+          <div class="calc-panel">
+            <h3 style="font-size: 1.05rem; margin-bottom: 0.35rem;">2. Posso adaptar os percentuais 50/30/20 para a minha realidade?</h3>
+            <p style="font-size: 0.9rem; color: var(--text-secondary); margin: 0;">
+              Sim! Na aba <strong>Configuração</strong> você pode ajustar livremente a divisão ideal da sua família (por exemplo: 60% Essenciais / 20% Estilo de Vida / 20% Aportes, ou 40% / 20% / 40% para quem busca independência financeira acelerada).
+            </p>
+          </div>
+          <div class="calc-panel">
+            <h3 style="font-size: 1.05rem; margin-bottom: 0.35rem;">3. E se eu quiser adicionar novas linhas ou ver as fórmulas por trás?</h3>
+            <p style="font-size: 0.9rem; color: var(--text-secondary); margin: 0;">
+              As células de fórmulas vêm protegidas apenas para evitar que você apague um cálculo sem querer no dia a dia, mas <strong>não possuem senha</strong>. Com 1 clique em "Desproteger Planilha" no Excel/Sheets você pode auditar ou personalizar tudo.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- CTA Final de Fechamento -->
+      <div style="margin-top: 4rem; text-align: center;" class="calc-panel">
+        <span class="badge-pill" style="margin-bottom: 0.75rem;">Acesso Imediato</span>
+        <h2 style="font-size: 1.6rem; margin: 0 0 0.5rem; color: var(--text-primary);">
+          Comece a organizar seu patrimônio ainda hoje
+        </h2>
+        <p style="font-size: 0.95rem; color: var(--text-secondary); max-width: 55ch; margin: 0 auto 1.5rem;">
+          Download imediato da Planilha Oficial ABC (.xlsx) com as 8 abas completas, compatível com Excel e Google Sheets.
+        </p>
+        <div style="display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 1rem;">
+          <a
+            href={mainProduct.checkoutUrl}
+            class="btn btn-primary"
+            style="padding: 0.95rem 2rem; font-size: 1.05rem;"
+          >
+            Adquirir Planilha Completa por {mainProduct.price} →
+          </a>
+          <a
+            href="/downloads/Planilha-ABC-Exemplo-Preenchido.xlsx"
+            download
+            class="btn btn-outline"
+            style="padding: 0.95rem 1.5rem;"
+          >
+            ⬇ Baixar Versão Demonstrativa Grátis
+          </a>
+        </div>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 1rem;">
+          Pagamento seguro via Pix ou Cartão processado pela Kiwify • {mainProduct.guaranteeDays} dias de garantia incondicional
+        </p>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

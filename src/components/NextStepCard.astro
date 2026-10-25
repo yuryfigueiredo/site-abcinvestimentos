@@ -1,0 +1,140 @@
+---
+import { SITE_CONFIG } from '../config/site';
+import type { CalculatorMeta } from '../data/calculators';
+
+interface Props {
+  calculator: CalculatorMeta;
+}
+
+const { calculator } = Astro.props;
+const book = SITE_CONFIG.books.find((b) => b.id === calculator.recommendedBookId) ?? SITE_CONFIG.books[0];
+---
+
+<aside class="next-step-wrap" aria-label="Próximo passo recomendado para o seu planejamento">
+  <div class="next-step-grid">
+    <!-- Card 1: Planilha Oficial ABC -->
+    <div class="next-card next-card-sheet">
+      <div class="next-badge-row">
+        <span class="badge-pill">Ferramenta Recomendada</span>
+        <span class="next-price-tag">R$ {SITE_CONFIG.product.priceLaunch.toFixed(2).replace('.', ',')}</span>
+      </div>
+      <h3>{calculator.nextStepTitle}</h3>
+      <p>{calculator.nextStepDescription}</p>
+      <ul class="next-benefits">
+        <li>✓ Excel e Google Planilhas (100% auditada, zero macros)</li>
+        <li>✓ 8 abas integradas: 50/30/20, Reserva, Metas e 1º Milhão</li>
+      </ul>
+      <div class="next-actions">
+        <a href={calculator.nextStepCtaUrl} class="btn btn-primary" style="font-size: 0.85rem; padding: 0.6rem 1.25rem;">
+          {calculator.nextStepCtaLabel} →
+        </a>
+      </div>
+    </div>
+
+    <!-- Card 2: Livro Clássico Recomendado -->
+    <div class="next-card next-card-book">
+      <div class="next-badge-row">
+        <span class="badge-pill">Leitura Complementar</span>
+      </div>
+      <h3>{book.title} <span class="book-author">por {book.author}</span></h3>
+      <p>{book.whyRead}</p>
+      <div class="next-actions">
+        <a
+          href={book.amazonUrl}
+          target="_blank"
+          rel="noopener noreferrer sponsored"
+          class="btn btn-outline"
+          style="font-size: 0.85rem; padding: 0.6rem 1.25rem;"
+        >
+          Ver na Amazon Brasil ↗
+        </a>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<style>
+  .next-step-wrap {
+    margin-top: 2.5rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .next-step-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  @media (min-width: 820px) {
+    .next-step-grid {
+      grid-template-columns: 1.2fr 1fr;
+    }
+  }
+
+  .next-card {
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 1px solid var(--border-card);
+    background: var(--bg-card);
+    box-shadow: var(--card-shadow);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 0.85rem;
+  }
+
+  .next-card-sheet {
+    background: var(--glass-elevated);
+    border-color: rgba(2, 132, 199, 0.28);
+  }
+
+  .next-badge-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .next-price-tag {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--brand-blue);
+    font-family: var(--font-mono);
+  }
+
+  .next-card h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .book-author {
+    font-weight: 400;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+
+  .next-card p {
+    margin: 0;
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  .next-benefits {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .next-actions {
+    margin-top: 0.5rem;
+  }
+</style>

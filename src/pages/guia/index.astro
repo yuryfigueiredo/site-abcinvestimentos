@@ -1,0 +1,240 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import AdSlot from '../../components/AdSlot.astro';
+import { GUIDES, GLOSSARY_TERMS } from '../../data/guides';
+---
+
+<BaseLayout
+  title="Guia O ABC do Investidor & Dicionário Financeiro (A–Z) | ABC Investimentos"
+  description="Aprenda a investir do zero ao avançado com a Trilha A-B-C (Reserva de Emergência, Renda Fixa Inteligente e Renda Passiva com FIIs e Dividendos) e consulte nosso Dicionário Financeiro."
+>
+  <section class="guide-hub-section">
+    <div class="container">
+      <div class="hub-header">
+        <span class="badge-pill">Educação Financeira Independente</span>
+        <h1>O ABC do Investidor: Trilha Prática & Dicionário de Bolso</h1>
+        <p>
+          Domine cada etapa da construção de patrimônio em linguagem simples, direta e conectada aos nossos simuladores matemáticos.
+        </p>
+      </div>
+
+      <!-- Os 6 Guias Completos -->
+      <div class="guides-full-grid">
+        {GUIDES.map((g) => (
+          <article class="abc-card guide-article-card">
+            <div class="guide-card-top">
+              <span class="badge-pill">Passo {g.level}</span>
+              <span class="read-time">{g.readTime}</span>
+            </div>
+            <h2><a href={`/guia/${g.slug}`}>{g.title}</a></h2>
+            <p>{g.summary}</p>
+            <div class="guide-card-footer">
+              <a href={`/guia/${g.slug}`} class="btn btn-primary">Ler Guia Completo →</a>
+              <a href={`/calculadoras/${g.relatedCalculatorSlug}`} class="btn btn-secondary">
+                {g.relatedCalculatorLabel}
+              </a>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <AdSlot slotId="guia-hub-mid" />
+
+      <!-- Dicionário Financeiro A-Z com Busca Instantânea -->
+      <section class="glossary-section" id="glossario">
+        <div class="glossary-head">
+          <div>
+            <span class="badge-pill">Consulta A–Z</span>
+            <h2>Dicionário Visual do Investidor Brasileiro</h2>
+            <p>Pesquise qualquer sigla ou conceito (CDI, Selic, IPCA, LCI, FGC, FIIs, P/VP, Bazin, Come-Cotas...).</p>
+          </div>
+          <div class="glossary-search-box">
+            <label for="glossary-search" class="sr-only">Buscar termo financeiro</label>
+            <input
+              type="search"
+              id="glossary-search"
+              class="abc-input"
+              placeholder="Filtrar termo (ex: CDI, FGC, LCI, Dividend Yield...)"
+            />
+          </div>
+        </div>
+
+        <div class="glossary-grid" id="glossary-grid">
+          {GLOSSARY_TERMS.map((item) => (
+            <div class="abc-card glossary-card" data-term={`${item.term.toLowerCase()} ${item.category.toLowerCase()} ${item.definition.toLowerCase()}`}>
+              <div class="glossary-card-top">
+                <h3>{item.term}</h3>
+                <span class="badge-pill">{item.category}</span>
+              </div>
+              <p class="glossary-def">{item.definition}</p>
+              <p class="glossary-ex"><strong>Na prática:</strong> {item.practicalExample}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  const searchInput = document.getElementById('glossary-search') as HTMLInputElement | null;
+  const cards = document.querySelectorAll<HTMLElement>('.glossary-card');
+
+  searchInput?.addEventListener('input', () => {
+    const q = searchInput.value.trim().toLowerCase();
+    cards.forEach((card) => {
+      const hay = card.getAttribute('data-term') || '';
+      card.hidden = q.length > 0 && !hay.includes(q);
+    });
+  });
+</script>
+
+<style>
+  .sr-only {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .guide-hub-section {
+    padding-block: 2.5rem 3.5rem;
+  }
+
+  .hub-header {
+    max-inline-size: 760px;
+    margin-block-end: 2.25rem;
+  }
+
+  .hub-header h1 {
+    font-size: clamp(1.8rem, 3.2vw, 2.5rem);
+    margin-block: 0.6rem 0.5rem;
+  }
+
+  .hub-header p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 1.05rem;
+  }
+
+  .guides-full-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.35rem;
+    margin-block-end: 3rem;
+  }
+
+  .guide-article-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .guide-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .read-time {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+
+  .guide-article-card h2 {
+    font-size: 1.25rem;
+    margin: 0;
+  }
+
+  .guide-article-card h2 a:hover {
+    color: var(--brand-emerald);
+  }
+
+  .guide-article-card p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.92rem;
+  }
+
+  .guide-card-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    margin-block-start: 0.5rem;
+  }
+
+  .glossary-section {
+    padding-block-start: 2rem;
+    border-block-start: 1px solid var(--border-subtle);
+  }
+
+  .glossary-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    margin-block-end: 1.75rem;
+  }
+
+  .glossary-head h2 {
+    margin: 0.45rem 0 0.25rem;
+  }
+
+  .glossary-head p {
+    margin: 0;
+    color: var(--text-secondary);
+  }
+
+  .glossary-search-box {
+    min-inline-size: min(380px, 100%);
+  }
+
+  .glossary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.15rem;
+  }
+
+  .glossary-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-block-end: 0.5rem;
+  }
+
+  .glossary-card-top h3 {
+    margin: 0;
+    font-size: 1.05rem;
+  }
+
+  .glossary-def {
+    margin: 0 0 0.6rem;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+  }
+
+  .glossary-ex {
+    margin: 0;
+    padding: 0.6rem 0.8rem;
+    border-radius: 0.6rem;
+    background: var(--bg-elevated);
+    font-size: 0.82rem;
+    color: var(--text-primary);
+  }
+
+  @media (max-width: 860px) {
+    .guides-full-grid,
+    .glossary-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

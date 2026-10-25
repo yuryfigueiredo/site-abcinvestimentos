@@ -1,0 +1,170 @@
+---
+import { SITE_CONFIG } from '../config/site';
+import { CALCULATORS } from '../data/calculators';
+import { GUIDES } from '../data/guides';
+---
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand-col">
+        <a href="/" class="footer-logo">
+          <span class="footer-mark">ABC</span>
+          <strong class="footer-name">INVESTIMENTOS</strong>
+        </a>
+        <p class="footer-desc">
+          Plataforma independente de educação e matemática financeira. Simuladores gratuitos calibrados com dados oficiais do Banco Central.
+        </p>
+        <button type="button" class="btn btn-outline" style="font-size: 0.8rem; padding: 0.5rem 1rem;" data-open-dialog="parcerias-dialog">
+          Parcerias Comerciais & Mídia Kit
+        </button>
+      </div>
+
+      <div>
+        <h4>Calculadoras</h4>
+        <ul class="footer-links">
+          {CALCULATORS.map((c) => (
+            <li><a href={`/calculadoras/${c.slug}`}>{c.shortTitle}</a></li>
+          ))}
+        </ul>
+      </div>
+
+      <div>
+        <h4>Guia ABC</h4>
+        <ul class="footer-links">
+          {GUIDES.map((g) => (
+            <li><a href={`/guia/${g.slug}`}>{g.title}</a></li>
+          ))}
+          <li><a href="/guia#glossario">Dicionário Financeiro A–Z</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h4>Transparência</h4>
+        <ul class="footer-links">
+          <li><a href="/planilha-abc">Planilha Oficial ABC (.xlsx)</a></li>
+          <li><a href="/aviso-legal">Aviso Legal & Compliance CVM</a></li>
+          <li><a href="/privacidade">Política de Privacidade (LGPD)</a></li>
+          <li><a href="/termos">Termos de Uso</a></li>
+          <li><a href="/ignorar-analytics" title="Excluir este dispositivo das métricas do Google Analytics">Excluir Meu Tráfego (Analytics)</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-legal-box">
+      <p>
+        <strong>Aviso Legal & Ausência de Vínculo:</strong> {SITE_CONFIG.legalDisclaimer}
+      </p>
+      <p class="footer-copy">
+        © {new Date().getFullYear()} {SITE_CONFIG.domain} — Todos os direitos reservados.
+      </p>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    margin-top: 5rem;
+    padding-top: 4rem;
+    padding-bottom: 3rem;
+    background: #05070c;
+    border-top: 1px solid #161c2c;
+  }
+
+  .footer-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+    padding-bottom: 3rem;
+    border-bottom: 1px solid #161c2c;
+  }
+
+  @media (min-width: 640px) {
+    .footer-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .footer-grid {
+      grid-template-columns: 1.4fr repeat(3, 1fr);
+    }
+  }
+
+  .footer-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    text-decoration: none;
+    margin-bottom: 1rem;
+  }
+
+  .footer-mark {
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    background: linear-gradient(135deg, #0284c7, #38bdf8);
+    color: #fff;
+    font-weight: 900;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+  }
+
+  .footer-name {
+    color: #ffffff;
+    font-size: 1rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+
+  .footer-desc {
+    font-size: 0.88rem;
+    color: #94a3b8;
+    line-height: 1.5;
+    margin-bottom: 1.25rem;
+    max-width: 320px;
+  }
+
+  h4 {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 1rem;
+    letter-spacing: -0.01em;
+  }
+
+  .footer-links {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+
+  .footer-links a {
+    color: #94a3b8;
+    font-size: 0.85rem;
+    text-decoration: none;
+    transition: color 0.15s ease;
+  }
+
+  .footer-links a:hover {
+    color: #38bdf8;
+  }
+
+  .footer-legal-box {
+    padding-top: 2rem;
+    font-size: 0.8rem;
+    color: #64748b;
+    line-height: 1.6;
+  }
+
+  .footer-legal-box strong {
+    color: #94a3b8;
+  }
+
+  .footer-copy {
+    margin-top: 1rem;
+    color: #475569;
+  }
+</style>
