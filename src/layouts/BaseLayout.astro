@@ -6,6 +6,7 @@ import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import PartnershipsDialog from '../components/PartnershipsDialog.astro';
 import ConsentBanner from '../components/ConsentBanner.astro';
+import Analytics from '@vercel/analytics/astro';
 
 interface Props {
   title?: string;
@@ -43,10 +44,6 @@ const gaEnabled = SITE_CONFIG.analytics.enabled && Boolean(gaMeasurementId);
 
     <!-- Vercel Web Analytics com Proteção Oficial de Exclusão de Tráfego Interno (Dev/Admin) -->
     <script is:inline>
-      window.va = window.va || function () {
-        (window.vaq = window.vaq || []).push(arguments);
-      };
-
       // 1. Suporte a ativação/desativação imediata por link (?ignorar_analytics=1 ou ?ignorar_analytics=0)
       try {
         const params = new URLSearchParams(window.location.search);
@@ -64,8 +61,8 @@ const gaEnabled = SITE_CONFIG.analytics.enabled && Boolean(gaMeasurementId);
         }
       } catch (e) {}
 
-      // 2. Interceptador beforeSend da Vercel: se estiver excluído, descarta o evento retornando null
-      window.va('beforeSend', function (event) {
+      // 2. Interceptador beforeSend da Vercel para descartar visitas do criador/admin
+      window.webAnalyticsBeforeSend = function (event) {
         try {
           const isExcluded =
             localStorage.getItem('abc_ignore_analytics') === 'true' ||
@@ -73,13 +70,17 @@ const gaEnabled = SITE_CONFIG.analytics.enabled && Boolean(gaMeasurementId);
             document.cookie.includes('abc_ignore_analytics=true') ||
             document.cookie.includes('va-disable=true');
           if (isExcluded) {
-            return null;
+            return null; // Retornar null descarta 100% do envio para o painel da Vercel Analytics
           }
         } catch (e) {}
         return event;
-      });
+      };
+
+      window.va = window.va || function () {
+        (window.vaq = window.vaq || []).push(arguments);
+      };
+      window.va('beforeSend', window.webAnalyticsBeforeSend);
     </script>
-    <script defer src="/_vercel/insights/script.js"></script>
 
     <!-- Google Analytics 4 (GA4) com Proteção de Exclusão de Tráfego Interno (Dev/Admin) -->
     {gaEnabled && (
@@ -295,5 +296,7 @@ const gaEnabled = SITE_CONFIG.analytics.enabled && Boolean(gaMeasurementId);
         crossorigin="anonymous"
       ></script>
     )}
+
+    <Analytics />
   </body>
 </html>
