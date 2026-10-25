@@ -306,7 +306,7 @@ async function createPlanilhaABC({ isDemo = false }) {
     ? [...starterTransactions, ...demoExtraTransactions]
     : starterTransactions;
 
-  const totalLancRows = 120;
+  const totalLancRows = 1000;
   for (let i = 0; i < totalLancRows; i++) {
     const rowIdx = 5 + i;
     const r = wsLanc.getRow(rowIdx);
@@ -344,11 +344,23 @@ async function createPlanilhaABC({ isDemo = false }) {
     markEditable(r.getCell(7), CURRENCY_FMT, 'right');
     markEditable(r.getCell(8), null, 'center');
 
-    // Data validations for Grupo and Status
+    // Validações de dados inteligentes (Dropdowns)
     r.getCell(3).dataValidation = {
       type: 'list',
       allowBlank: true,
       formulae: ['"Receita,Essencial (50%),Estilo de Vida (30%),Aportes (20%)"'],
+    };
+    r.getCell(4).dataValidation = {
+      type: 'list',
+      allowBlank: true,
+      showErrorMessage: false,
+      formulae: ['Configuração!$D$5:$D$19'],
+    };
+    r.getCell(6).dataValidation = {
+      type: 'list',
+      allowBlank: true,
+      showErrorMessage: false,
+      formulae: ['"PIX / Conta,Cartão Crédito,Boleto,Débito Automático,Corretora,Dinheiro / Outro"'],
     };
     r.getCell(8).dataValidation = {
       type: 'list',
@@ -394,7 +406,7 @@ async function createPlanilhaABC({ isDemo = false }) {
   rSel.getCell(3).value = 'Receita Realizada no Mês:';
   const janRec = sumByMonthAndGroup(1, 'Receita');
   rSel.getCell(4).value = {
-    formula: 'SUMIFS(Lançamentos!G$5:G$124,Lançamentos!B$5:B$124,B4,Lançamentos!C$5:C$124,"Receita")',
+    formula: 'SUMIFS(Lançamentos!G$5:G$1004,Lançamentos!B$5:B$1004,B4,Lançamentos!C$5:C$1004,"Receita")',
     result: janRec,
   };
   rSel.getCell(5).value = 'Saldo Livre em Caixa:';
@@ -408,6 +420,11 @@ async function createPlanilhaABC({ isDemo = false }) {
 
   markCalculated(rSel.getCell(1), null, 'left', true);
   markEditable(rSel.getCell(2), INT_FMT, 'center');
+  rSel.getCell(2).dataValidation = {
+    type: 'list',
+    allowBlank: false,
+    formulae: ['"1,2,3,4,5,6,7,8,9,10,11,12"'],
+  };
   markCalculated(rSel.getCell(3), null, 'right', true);
   markCalculated(rSel.getCell(4), CURRENCY_FMT, 'right', true);
   markCalculated(rSel.getCell(5), null, 'right', true);
@@ -465,7 +482,7 @@ async function createPlanilhaABC({ isDemo = false }) {
     r.getCell(1).value = g.label;
     r.getCell(2).value = { formula: `MAX($D$4,Configuração!B6)*${g.configPctCell}`, result: Math.max(janRec, 8500) * g.pctVal };
     r.getCell(3).value = {
-      formula: `SUMIFS(Lançamentos!G$5:G$124,Lançamentos!B$5:B$124,$B$4,Lançamentos!C$5:C$124,A${rowIdx})`,
+      formula: `SUMIFS(Lançamentos!G$5:G$1004,Lançamentos!B$5:B$1004,$B$4,Lançamentos!C$5:C$1004,A${rowIdx})`,
       result: g.realVal,
     };
     r.getCell(4).value = { formula: `IF($D$4>0,C${rowIdx}/$D$4,0)`, result: pctReal };
@@ -524,6 +541,7 @@ async function createPlanilhaABC({ isDemo = false }) {
   // Linha 3 oculta/auxiliar com o número do mês (1 a 12) para fórmulas SUMIFS limpas
   const rMonthNums = wsAno.getRow(3);
   rMonthNums.height = 18;
+  rMonthNums.hidden = true;
   rMonthNums.getCell(1).value = 'Nº do Mês';
   markCalculated(rMonthNums.getCell(1), null, 'left', true);
   for (let m = 1; m <= 12; m++) {
@@ -539,6 +557,8 @@ async function createPlanilhaABC({ isDemo = false }) {
   const rAnoHeader = wsAno.getRow(4);
   rAnoHeader.values = ['Grupo / Indicador', ...monthNames, 'Total Ano', 'Média Mensal'];
   styleHeaderRow(rAnoHeader);
+
+  const countActiveMonths = isDemo ? 3 : 1;
 
   const anoGroups = ['Receita', 'Essencial (50%)', 'Estilo de Vida (30%)', 'Aportes (20%)'];
   anoGroups.forEach((grp, gIdx) => {
@@ -556,7 +576,7 @@ async function createPlanilhaABC({ isDemo = false }) {
       annualTotal += val;
       const cell = r.getCell(colIdx);
       cell.value = {
-        formula: `SUMIFS(Lançamentos!$G$5:$G$124,Lançamentos!$B$5:$B$124,${colLetter}$3,Lançamentos!$C$5:$C$124,$A${rowIdx})`,
+        formula: `SUMIFS(Lançamentos!$G$5:$G$1004,Lançamentos!$B$5:$B$1004,${colLetter}$3,Lançamentos!$C$5:$C$1004,$A${rowIdx})`,
         result: val,
       };
       markCalculated(cell, CURRENCY_FMT, 'right', false);
@@ -567,7 +587,10 @@ async function createPlanilhaABC({ isDemo = false }) {
     markCalculated(cTot, CURRENCY_FMT, 'right', true);
 
     const cAvg = r.getCell(15);
-    cAvg.value = { formula: `AVERAGE(B${rowIdx}:M${rowIdx})`, result: annualTotal / 12 };
+    cAvg.value = {
+      formula: `IF(COUNTIF($B$5:$M$5,">0")>0,N${rowIdx}/COUNTIF($B$5:$M$5,">0"),0)`,
+      result: annualTotal / countActiveMonths,
+    };
     markCalculated(cAvg, CURRENCY_FMT, 'right', false);
   });
 
@@ -605,14 +628,17 @@ async function createPlanilhaABC({ isDemo = false }) {
 
   rSaldoAno.getCell(14).value = { formula: 'SUM(B9:M9)', result: totalSaldoAnual };
   markCalculated(rSaldoAno.getCell(14), CURRENCY_FMT, 'right', true);
-  rSaldoAno.getCell(15).value = { formula: 'AVERAGE(B9:M9)', result: totalSaldoAnual / 12 };
+  rSaldoAno.getCell(15).value = {
+    formula: `IF(COUNTIF($B$5:$M$5,">0")>0,N9/COUNTIF($B$5:$M$5,">0"),0)`,
+    result: totalSaldoAnual / countActiveMonths,
+  };
   markCalculated(rSaldoAno.getCell(15), CURRENCY_FMT, 'right', false);
 
   const totalRecAnual = wsAno.getRow(5).getCell(14).value.result;
   const totalApoAnual = wsAno.getRow(8).getCell(14).value.result;
   rTaxaAno.getCell(14).value = { formula: 'IF(N5>0,N8/N5,0)', result: totalRecAnual > 0 ? totalApoAnual / totalRecAnual : 0 };
   markCalculated(rTaxaAno.getCell(14), PERCENT_FMT, 'right', true);
-  rTaxaAno.getCell(15).value = { formula: 'IF(O5>0,O8/O5,0)', result: totalRecAnual > 0 ? totalApoAnual / totalRecAnual : 0 };
+  rTaxaAno.getCell(15).value = { formula: 'IF(N5>0,N8/N5,0)', result: totalRecAnual > 0 ? totalApoAnual / totalRecAnual : 0 };
   markCalculated(rTaxaAno.getCell(15), PERCENT_FMT, 'right', false);
 
   // =========================================================================
@@ -647,7 +673,7 @@ async function createPlanilhaABC({ isDemo = false }) {
   const mesesFaltantes = Math.ceil(faltaReserva / aporteReserva);
 
   const resRows = [
-    ['Seu Custo Mensal Essencial Médio (R$)', custoEssencialPadrao, 'Soma de moradia, alimentação, saúde, transporte e contas fixas', false, CURRENCY_FMT],
+    ['Seu Custo Mensal Essencial Médio (R$)', { formula: 'Configuração!B6*Configuração!B7', result: custoEssencialPadrao }, 'Calculado automaticamente (Renda Alvo × % Essenciais da Configuração)', true, CURRENCY_FMT],
     ['Meses de Segurança Recomendados', { formula: 'Configuração!B15', result: mesesSeguranca }, 'Puxado da aba Configuração (3 = Servidor, 6 = CLT, 12 = Autônomo/PJ)', true, INT_FMT],
     ['META TOTAL DA SUA RESERVA (R$)', { formula: 'B5*B6', result: metaReserva }, 'Valor total que traz paz de espírito para sua família', true, CURRENCY_FMT],
     ['Saldo Atual Já Guardado na Reserva (R$)', saldoReservaAtual, 'Some apenas aplicações de Liquidez Diária (Tesouro Selic / CDB 100% CDI)', false, CURRENCY_FMT],
@@ -752,6 +778,11 @@ async function createPlanilhaABC({ isDemo = false }) {
 
     markEditable(r.getCell(1), null, 'left');
     markEditable(r.getCell(2), null, 'center');
+    r.getCell(2).dataValidation = {
+      type: 'list',
+      allowBlank: true,
+      formulae: ['"Alta,Média,Baixa"'],
+    };
     markEditable(r.getCell(3), CURRENCY_FMT, 'right');
     markEditable(r.getCell(4), CURRENCY_FMT, 'right');
     markEditable(r.getCell(5), INT_FMT, 'center');
@@ -904,13 +935,19 @@ async function createPlanilhaABC({ isDemo = false }) {
 
 export async function generateWorkbooks() {
   const outDir = path.resolve('produtos/planilha-abc');
+  const parentProdutosDir = path.resolve('produtos');
   const publicDir = path.resolve('public/downloads');
   await fs.mkdir(outDir, { recursive: true });
+  await fs.mkdir(parentProdutosDir, { recursive: true });
   await fs.mkdir(publicDir, { recursive: true });
 
   const cleanWb = await createPlanilhaABC({ isDemo: false });
   const cleanPath = path.join(outDir, 'Planilha-ABC-Controle-Financeiro-e-1-Milhao.xlsx');
   await cleanWb.xlsx.writeFile(cleanPath);
+
+  // Mantém cópia oficial direta em produtos/Planilha-ABC-Oficial.xlsx
+  const oficialPath = path.join(parentProdutosDir, 'Planilha-ABC-Oficial.xlsx');
+  await fs.copyFile(cleanPath, oficialPath);
 
   const demoWb = await createPlanilhaABC({ isDemo: true });
   const demoPath = path.join(outDir, 'Planilha-ABC-Exemplo-Preenchido.xlsx');
@@ -919,15 +956,16 @@ export async function generateWorkbooks() {
   const publicDemoPath = path.join(publicDir, 'Planilha-ABC-Exemplo-Preenchido.xlsx');
   await fs.copyFile(demoPath, publicDemoPath);
 
-  return { cleanPath, demoPath, publicDemoPath };
+  return { cleanPath, oficialPath, demoPath, publicDemoPath };
 }
 
 // Execute when run directly via node
 if (import.meta.url.endsWith('build-planilha-abc.mjs')) {
   generateWorkbooks()
-    .then(({ cleanPath, demoPath, publicDemoPath }) => {
+    .then(({ cleanPath, oficialPath, demoPath, publicDemoPath }) => {
       console.log('Planilhas geradas com sucesso:');
-      console.log(' - Template Oficial:', cleanPath);
+      console.log(' - Template Oficial (planilha-abc):', cleanPath);
+      console.log(' - Template Oficial (produtos):', oficialPath);
       console.log(' - Exemplo Preenchido:', demoPath);
       console.log(' - Demo Público:', publicDemoPath);
     })

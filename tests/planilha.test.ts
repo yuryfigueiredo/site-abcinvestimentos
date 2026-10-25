@@ -18,6 +18,7 @@ const ERROR_TOKENS = ['#REF!', '#NAME?', '#VALUE!', '#DIV/0!', '#N/A', '#NUM!'];
 describe('Planilha ABC (.xlsx) — Auditoria Automatizada de Qualidade', () => {
   it('valida todas as 8 abas, fórmulas, resultados e ausência de erros no Template e no Exemplo', async () => {
     const files = [
+      path.resolve('produtos/Planilha-ABC-Oficial.xlsx'),
       path.resolve('produtos/planilha-abc/Planilha-ABC-Controle-Financeiro-e-1-Milhao.xlsx'),
       path.resolve('produtos/planilha-abc/Planilha-ABC-Exemplo-Preenchido.xlsx'),
     ];
@@ -53,11 +54,29 @@ describe('Planilha ABC (.xlsx) — Auditoria Automatizada de Qualidade', () => {
       expect(recMesCell.formula).toContain('SUMIFS');
       expect(Number(recMesCell.result)).toBeGreaterThan(8000);
 
-      // Verifica Reserva de Emergência (6 meses * 4250 = 25500)
+      // Verifica Reserva de Emergência (fórmula B5*B6 com B5 linkado à Configuração)
       const wsRes = wb.getWorksheet('Reserva de Emergência')!;
+      const custoB5 = wsRes.getCell('B5').value as ExcelJS.CellFormulaValue;
+      expect(custoB5.formula).toBe('Configuração!B6*Configuração!B7');
       const metaReservaCell = wsRes.getCell('B7').value as ExcelJS.CellFormulaValue;
       expect(metaReservaCell.formula).toBe('B5*B6');
       expect(metaReservaCell.result).toBe(25500);
+
+      // Verifica Validação de Dados nos Lançamentos (1.000 linhas)
+      const wsLanc = wb.getWorksheet('Lançamentos')!;
+      expect(wsLanc.rowCount).toBe(1004);
+      expect(wsLanc.getCell('C5').dataValidation?.type).toBe('list');
+      expect(wsLanc.getCell('D5').dataValidation?.type).toBe('list');
+      expect(wsLanc.getCell('F5').dataValidation?.type).toBe('list');
+      expect(wsLanc.getCell('H5').dataValidation?.type).toBe('list');
+
+      // Verifica Painel do Mês (Dropdown do mês e fórmula expandida até a linha 1004)
+      expect(wsMes.getCell('B4').dataValidation?.type).toBe('list');
+      expect(recMesCell.formula).toContain('1004');
+
+      // Verifica Ano (12 Meses) (Linha 3 oculta)
+      const wsAno = wb.getWorksheet('Ano (12 Meses)')!;
+      expect(wsAno.getRow(3).hidden).toBe(true);
 
       // Verifica Rumo ao 1º Milhão (30 anos de projeção e conquista do 1º Milhão)
       const wsMilhao = wb.getWorksheet('Rumo ao 1º Milhão')!;

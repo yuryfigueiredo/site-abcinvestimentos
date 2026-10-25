@@ -41,6 +41,46 @@ const gaEnabled = SITE_CONFIG.analytics.enabled && Boolean(gaMeasurementId);
       } catch (e) {}
     </script>
 
+    <!-- Vercel Web Analytics com Proteção Oficial de Exclusão de Tráfego Interno (Dev/Admin) -->
+    <script is:inline>
+      window.va = window.va || function () {
+        (window.vaq = window.vaq || []).push(arguments);
+      };
+
+      // 1. Suporte a ativação/desativação imediata por link (?ignorar_analytics=1 ou ?ignorar_analytics=0)
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const opt = params.get('ignorar_analytics') || params.get('optout');
+        if (opt === '1' || opt === 'true') {
+          localStorage.setItem('abc_ignore_analytics', 'true');
+          localStorage.setItem('va-disable', 'true');
+          document.cookie = 'abc_ignore_analytics=true;path=/;max-age=31536000;SameSite=Lax';
+          document.cookie = 'va-disable=true;path=/;max-age=31536000;SameSite=Lax';
+        } else if (opt === '0' || opt === 'false') {
+          localStorage.removeItem('abc_ignore_analytics');
+          localStorage.removeItem('va-disable');
+          document.cookie = 'abc_ignore_analytics=;path=/;max-age=0;SameSite=Lax';
+          document.cookie = 'va-disable=;path=/;max-age=0;SameSite=Lax';
+        }
+      } catch (e) {}
+
+      // 2. Interceptador beforeSend da Vercel: se estiver excluído, descarta o evento retornando null
+      window.va('beforeSend', function (event) {
+        try {
+          const isExcluded =
+            localStorage.getItem('abc_ignore_analytics') === 'true' ||
+            localStorage.getItem('va-disable') === 'true' ||
+            document.cookie.includes('abc_ignore_analytics=true') ||
+            document.cookie.includes('va-disable=true');
+          if (isExcluded) {
+            return null;
+          }
+        } catch (e) {}
+        return event;
+      });
+    </script>
+    <script defer src="/_vercel/insights/script.js"></script>
+
     <!-- Google Analytics 4 (GA4) com Proteção de Exclusão de Tráfego Interno (Dev/Admin) -->
     {gaEnabled && (
       <>

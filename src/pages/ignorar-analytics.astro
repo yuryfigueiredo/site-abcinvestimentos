@@ -103,8 +103,12 @@ const currentDomain = SITE_CONFIG.domain;
 <script>
   function checkStatus(): boolean {
     try {
-      const fromLocal = localStorage.getItem('abc_ignore_analytics') === 'true';
-      const fromCookie = document.cookie.includes('abc_ignore_analytics=true');
+      const fromLocal =
+        localStorage.getItem('abc_ignore_analytics') === 'true' ||
+        localStorage.getItem('va-disable') === 'true';
+      const fromCookie =
+        document.cookie.includes('abc_ignore_analytics=true') ||
+        document.cookie.includes('va-disable=true');
       return fromLocal || fromCookie;
     } catch {
       return false;
@@ -115,10 +119,14 @@ const currentDomain = SITE_CONFIG.domain;
     try {
       if (isIgnored) {
         localStorage.setItem('abc_ignore_analytics', 'true');
+        localStorage.setItem('va-disable', 'true');
         document.cookie = 'abc_ignore_analytics=true;path=/;max-age=31536000;SameSite=Lax';
+        document.cookie = 'va-disable=true;path=/;max-age=31536000;SameSite=Lax';
       } else {
         localStorage.removeItem('abc_ignore_analytics');
+        localStorage.removeItem('va-disable');
         document.cookie = 'abc_ignore_analytics=;path=/;max-age=0;SameSite=Lax';
+        document.cookie = 'va-disable=;path=/;max-age=0;SameSite=Lax';
       }
     } catch (e) {
       console.error(e);
@@ -140,14 +148,14 @@ const currentDomain = SITE_CONFIG.domain;
       beacon.className = 'status-beacon status-beacon--active';
       text.textContent = 'TRÁFEGO EXCLUÍDO (Analytics Desativado)';
       desc.innerHTML =
-        '<strong>Este dispositivo está protegido.</strong> Nenhuma visualização, clique ou interação deste aparelho será enviada para o seu painel do Google Analytics.';
+        '<strong>Este dispositivo está protegido.</strong> Nenhuma visualização, clique ou interação deste aparelho será enviada para o seu painel do Vercel Web Analytics ou Google Analytics.';
       if (disableBtn) disableBtn.disabled = true;
       if (enableBtn) enableBtn.disabled = false;
     } else {
       beacon.className = 'status-beacon status-beacon--inactive';
       text.textContent = 'TRÁFEGO MONITORADO (Analytics Ativo)';
       desc.innerHTML =
-        '<strong>Este dispositivo está sendo rastreado normalmente.</strong> Se este é o seu computador de trabalho ou celular pessoal, clique no botão abaixo para não poluir suas estatísticas.';
+        '<strong>Este dispositivo está sendo rastreado normalmente.</strong> Se este é o seu computador de trabalho ou celular pessoal, clique no botão abaixo para não poluir suas estatísticas da Vercel ou Google Analytics.';
       if (disableBtn) disableBtn.disabled = false;
       if (enableBtn) enableBtn.disabled = true;
     }
