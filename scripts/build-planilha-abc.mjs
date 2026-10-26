@@ -936,10 +936,8 @@ async function createPlanilhaABC({ isDemo = false }) {
 export async function generateWorkbooks() {
   const outDir = path.resolve('produtos/planilha-abc');
   const parentProdutosDir = path.resolve('produtos');
-  const publicDir = path.resolve('public/downloads');
   await fs.mkdir(outDir, { recursive: true });
   await fs.mkdir(parentProdutosDir, { recursive: true });
-  await fs.mkdir(publicDir, { recursive: true });
 
   const cleanWb = await createPlanilhaABC({ isDemo: false });
   const cleanPath = path.join(outDir, 'Planilha-ABC-Controle-Financeiro-e-1-Milhao.xlsx');
@@ -953,21 +951,17 @@ export async function generateWorkbooks() {
   const demoPath = path.join(outDir, 'Planilha-ABC-Exemplo-Preenchido.xlsx');
   await demoWb.xlsx.writeFile(demoPath);
 
-  const publicDemoPath = path.join(publicDir, 'Planilha-ABC-Exemplo-Preenchido.xlsx');
-  await fs.copyFile(demoPath, publicDemoPath);
-
-  return { cleanPath, oficialPath, demoPath, publicDemoPath };
+  return { cleanPath, oficialPath, demoPath };
 }
 
 // Execute when run directly via node
 if (import.meta.url.endsWith('build-planilha-abc.mjs')) {
   generateWorkbooks()
-    .then(({ cleanPath, oficialPath, demoPath, publicDemoPath }) => {
+    .then(({ cleanPath, oficialPath, demoPath }) => {
       console.log('Planilhas geradas com sucesso:');
       console.log(' - Template Oficial (planilha-abc):', cleanPath);
       console.log(' - Template Oficial (produtos):', oficialPath);
-      console.log(' - Exemplo Preenchido:', demoPath);
-      console.log(' - Demo Público:', publicDemoPath);
+      console.log(' - Exemplo Preenchido (Bônus):', demoPath);
     })
     .catch((err) => {
       console.error('Erro ao gerar planilhas:', err);
