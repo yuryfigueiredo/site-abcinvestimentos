@@ -52,6 +52,7 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
           class="search-input"
           placeholder="Pergunte sobre CDB, FIIs, Selic ou simule..."
           maxlength="300"
+          inputmode="search"
           required
         />
         <button type="submit" id="hero-ia-submit" class="search-submit-btn" aria-label="Consultar nossa IA Especialista">
@@ -680,19 +681,19 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
   }
 
   .hero-title {
-    font-size: clamp(2.2rem, 4.5vw, 3.6rem);
+    font-size: clamp(1.75rem, 5.2vw, 3.6rem);
     font-weight: 700;
-    line-height: 1.12;
+    line-height: 1.16;
     letter-spacing: -0.035em;
     color: var(--text-primary);
-    margin-bottom: 1.25rem;
+    margin-bottom: 1.15rem;
     text-wrap: balance;
   }
 
   .hero-subtitle {
-    font-size: clamp(1rem, 1.8vw, 1.2rem);
+    font-size: clamp(0.95rem, 2.5vw, 1.2rem);
     color: var(--text-secondary);
-    line-height: 1.5;
+    line-height: 1.55;
     max-width: 720px;
     margin-inline: auto;
     letter-spacing: -0.01em;
@@ -812,7 +813,7 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
     background: transparent;
     border: none;
     color: var(--text-primary);
-    font-size: 0.95rem;
+    font-size: 16px; /* Evita auto-zoom forçado do iOS Safari */
     outline: none;
     min-width: 0;
     padding-inline-end: 0.85rem;
@@ -911,11 +912,28 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
   }
 
   @media (max-width: 600px) {
-    .search-submit-btn span {
-      display: none;
+    .search-capsule {
+      height: 54px;
+      padding: 0.25rem 0.35rem 0.25rem 0.95rem;
+    }
+    .search-divider {
+      margin-inline: 0.55rem;
+      height: 20px;
     }
     .search-submit-btn {
-      padding-inline: 0.95rem;
+      height: 44px;
+      padding-inline: 0.85rem;
+      font-size: 0.82rem;
+      gap: 0.4rem;
+    }
+    .search-submit-btn span {
+      display: inline-block;
+    }
+  }
+
+  @media (max-width: 380px) {
+    .search-submit-btn span {
+      font-size: 0.78rem;
     }
   }
 
@@ -1582,23 +1600,32 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
 
   .tools-grid-4 {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.85rem;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
     width: 100%;
   }
 
-  @media (min-width: 900px) {
+  @media (min-width: 560px) {
+    .tools-grid-4 {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.85rem;
+    }
+  }
+
+  @media (min-width: 960px) {
     .tools-grid-4 {
       grid-template-columns: repeat(4, 1fr);
     }
   }
 
   .tool-card-mr {
-    height: 155px;
+    min-height: 105px;
+    height: auto;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    border-radius: 10px;
+    gap: 0.75rem;
+    border-radius: 12px;
     border: 1px solid var(--border-card);
     background: var(--glass-bg);
     box-shadow: var(--card-shadow);

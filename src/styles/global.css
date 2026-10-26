@@ -51,8 +51,8 @@
   --bg-card-dark: rgba(17, 24, 43, 0.78);
 
   --text-primary-dark: #f8fafc;
-  --text-secondary-dark: #94a3b8;
-  --text-muted-dark: #64748b;
+  --text-secondary-dark: #cbd5e1;
+  --text-muted-dark: #94a3b8;
 
   --border-subtle-dark: #1e273d;
   --border-card-dark: #26314d;
@@ -76,7 +76,7 @@
 
   --text-primary-light: #0f172a;
   --text-secondary-light: #334155;
-  --text-muted-light: #64748b;
+  --text-muted-light: #475569;
 
   --border-subtle-light: #e2e8f0;
   --border-card-light: #cbd5e1;
@@ -300,7 +300,13 @@ button, input, select, textarea {
   width: 100%;
   max-width: 1240px;
   margin-inline: auto;
-  padding-inline: 1.25rem;
+  padding-inline: 1rem;
+}
+
+@media (min-width: 480px) {
+  .container {
+    padding-inline: 1.25rem;
+  }
 }
 
 @media (min-width: 768px) {
@@ -310,7 +316,13 @@ button, input, select, textarea {
 }
 
 .section {
-  padding-block: 3.5rem;
+  padding-block: 2.25rem;
+}
+
+@media (min-width: 768px) {
+  .section {
+    padding-block: 3.5rem;
+  }
 }
 
 @media (min-width: 1024px) {
@@ -386,7 +398,8 @@ button, input, select, textarea {
   font-weight: 500;
   font-size: 0.88rem;
   line-height: 1.2;
-  padding: 0.68rem 1.25rem;
+  min-height: 44px; /* WCAG 2.2 / UI Pro Max: 44px touch target */
+  padding: 0.65rem 1.25rem;
   border-radius: 9999px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -479,6 +492,13 @@ button, input, select, textarea {
   box-shadow: var(--card-shadow);
 }
 
+@media (max-width: 640px) {
+  .calc-panel {
+    padding: 1.15rem 1rem;
+    border-radius: 12px;
+  }
+}
+
 .control-group {
   margin-bottom: 1.25rem;
 }
@@ -511,13 +531,13 @@ button, input, select, textarea {
 .abc-input,
 .abc-select {
   width: 100%;
-  height: 44px;
+  height: 46px;
   border-radius: 8px;
   border: 1px solid var(--border-card);
   background: var(--bg-surface);
   color: var(--text-primary);
   padding-inline: 0.85rem;
-  font-size: 0.92rem;
+  font-size: 16px; /* UI Pro Max: 16px mandatory to prevent iOS auto-zoom */
   font-variant-numeric: tabular-nums;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
@@ -554,21 +574,21 @@ button, input, select, textarea {
 
 .abc-slider {
   width: 100%;
-  height: 5px;
+  height: 7px;
   border-radius: 999px;
   background: var(--border-card);
   outline: none;
   -webkit-appearance: none;
   appearance: none;
   cursor: pointer;
-  margin-block: 0.35rem 0.55rem;
+  margin-block: 0.45rem 0.65rem;
 }
 
 .abc-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 16px;
-  height: 16px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   background: #ffffff;
   border: 3px solid #0284c7;
@@ -579,6 +599,16 @@ button, input, select, textarea {
 
 .abc-slider::-webkit-slider-thumb:hover {
   transform: scale(1.15);
+}
+
+@media (max-width: 640px) {
+  .abc-slider {
+    height: 8px;
+  }
+  .abc-slider::-webkit-slider-thumb {
+    width: 26px;
+    height: 26px;
+  }
 }
 
 /* Result Stats & Cards */

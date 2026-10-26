@@ -749,6 +749,30 @@ const dolarChars = splitNumberChars(d.dolar);
     }
   }
 
+  @media (max-width: 768px) {
+    .ticker-bar {
+      mask-image: linear-gradient(to right, transparent, black 14px, black calc(100% - 14px), transparent);
+      -webkit-mask-image: linear-gradient(to right, transparent, black 14px, black calc(100% - 14px), transparent);
+    }
+
+    .ticker-inner {
+      gap: 0.85rem;
+      padding-inline: 0.85rem;
+    }
+
+    .ticker-items {
+      gap: 0.85rem;
+    }
+
+    .ticker-label {
+      font-size: 0.7rem;
+    }
+
+    .flap-board {
+      font-size: 11px;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .flap-cell {
       animation: none;

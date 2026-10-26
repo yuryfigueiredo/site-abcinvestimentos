@@ -420,32 +420,32 @@ import { SITE_CONFIG } from '../config/site';
   }
 
   .guide-time {
-    font-size: 0.72rem;
+    font-size: 0.76rem;
     color: var(--text-muted);
     display: block;
     margin-bottom: 0.25rem;
   }
 
   .guide-title {
-    font-size: 0.92rem;
+    font-size: 0.98rem;
     font-weight: 600;
     color: var(--text-primary);
     display: block;
     margin-bottom: 0.35rem;
-    line-height: 1.35;
+    line-height: 1.38;
   }
 
   .guide-summary {
-    font-size: 0.82rem;
+    font-size: 0.88rem;
     color: var(--text-secondary);
-    line-height: 1.45;
+    line-height: 1.55;
     margin-bottom: 0.65rem;
   }
 
   .guide-link {
-    font-size: 0.78rem;
-    font-weight: 500;
-    color: var(--text-secondary);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--brand-blue);
     transition: color 0.15s ease;
   }
 
@@ -523,5 +523,21 @@ import { SITE_CONFIG } from '../config/site';
 
   .disclaimer-panel strong {
     color: var(--text-secondary);
+  }
+
+  @media (max-width: 640px) {
+    .catalog-card,
+    .level-card,
+    .book-card {
+      padding: 1.15rem 1rem;
+    }
+    .flagship-card {
+      padding: 1.25rem 1rem;
+    }
+    .catalog-card-body p,
+    .book-summary {
+      font-size: 0.88rem;
+      line-height: 1.55;
+    }
   }
 </style>
