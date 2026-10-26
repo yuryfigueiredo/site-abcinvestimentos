@@ -27,16 +27,16 @@ const gaEnabled = SITE_CONFIG.analytics.enabled && Boolean(gaMeasurementId);
 ---
 
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- MANDATORY (dark-mode & dark-mode-toggle): meta color-scheme + inline FOUC-prevention script -->
-    <meta name="color-scheme" content="dark light" />
+    <!-- Meta color-scheme & Script inline anti-FOUC para sincronização perfeita de tema -->
+    <meta name="color-scheme" content="dark" />
     <script is:inline>
       try {
         const savedScheme = localStorage.getItem('color-scheme');
-        const resolved = savedScheme === 'light' || savedScheme === 'dark' ? savedScheme : 'dark';
+        const resolved = savedScheme === 'light' ? 'light' : 'dark';
         document.querySelector('meta[name="color-scheme"]').content = resolved;
         document.documentElement.dataset.theme = resolved;
       } catch (e) {}

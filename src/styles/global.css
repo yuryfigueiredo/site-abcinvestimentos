@@ -44,73 +44,33 @@
   --font-display: 'Inter', 'Inter Fallback', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-  /* Paleta — Modo Escuro Padrão (Midnight Navy Iluminado) */
-  --bg-canvas-dark: #0a0f1d;
-  --bg-surface-dark: #101729;
-  --bg-elevated-dark: #162038;
-  --bg-card-dark: rgba(17, 24, 43, 0.78);
+  /* ==========================================================================
+     Paleta Padrão — Modo Escuro Institucional (Midnight Navy)
+     Garante 100% de leitura cristalina em qualquer celular / Safari iOS
+     ========================================================================== */
+  color-scheme: dark;
+  --bg-canvas: #0a0f1d;
+  --bg-surface: #101729;
+  --bg-elevated: #162038;
+  --bg-card: rgba(17, 24, 43, 0.78);
 
-  --text-primary-dark: #f8fafc;
-  --text-secondary-dark: #cbd5e1;
-  --text-muted-dark: #94a3b8;
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
 
-  --border-subtle-dark: #1e273d;
-  --border-card-dark: #26314d;
-  --border-hover-dark: #43527d;
+  --border-subtle: #1e273d;
+  --border-card: #26314d;
+  --border-hover: #43527d;
 
-  /* Acento contido e institucional (usado com parcimônia < 5% da tela) */
-  --brand-blue-dark: #38bdf8;
-  --brand-indigo-dark: #2563eb;
-  --brand-primary-dark: #0284c7;
-  --brand-hover-dark: #0ea5e9;
-  --brand-positive-dark: #34d399;
+  --brand-blue: #38bdf8;
+  --brand-indigo: #2563eb;
+  --brand-primary: #0284c7;
+  --brand-hover: #0ea5e9;
+  --brand-positive: #34d399;
 
-  --danger-dark: #f87171;
-  --danger-bg-dark: #271217;
+  --danger: #f87171;
+  --danger-bg: #271217;
 
-  /* Modo Claro (Clean Slate Editorial de Alta Leitura) */
-  --bg-canvas-light: #f8fafc;
-  --bg-surface-light: #ffffff;
-  --bg-elevated-light: #f1f5f9;
-  --bg-card-light: #ffffff;
-
-  --text-primary-light: #0f172a;
-  --text-secondary-light: #334155;
-  --text-muted-light: #475569;
-
-  --border-subtle-light: #e2e8f0;
-  --border-card-light: #cbd5e1;
-  --border-hover-light: #94a3b8;
-
-  --brand-blue-light: #0284c7;
-  --brand-indigo-light: #2563eb;
-  --brand-primary-light: #0284c7;
-  --brand-hover-light: #0369a1;
-  --brand-positive-light: #059669;
-
-  --danger-light: #dc2626;
-  --danger-bg-light: #fef2f2;
-
-  /* Variáveis Dinâmicas Padrão */
-  --bg-canvas: var(--bg-canvas-dark);
-  --bg-surface: var(--bg-surface-dark);
-  --bg-elevated: var(--bg-elevated-dark);
-  --bg-card: var(--bg-card-dark);
-  --text-primary: var(--text-primary-dark);
-  --text-secondary: var(--text-secondary-dark);
-  --text-muted: var(--text-muted-dark);
-  --border-subtle: var(--border-subtle-dark);
-  --border-card: var(--border-card-dark);
-  --border-hover: var(--border-hover-dark);
-  --brand-blue: var(--brand-blue-dark);
-  --brand-indigo: var(--brand-indigo-dark);
-  --brand-primary: var(--brand-primary-dark);
-  --brand-hover: var(--brand-hover-dark);
-  --brand-positive: var(--brand-positive-dark);
-  --danger: var(--danger-dark);
-  --danger-bg: var(--danger-bg-dark);
-
-  /* Superfícies Adaptativas para Vidro, Pílulas e Sombras */
   --glass-bg: rgba(17, 24, 43, 0.78);
   --glass-elevated: rgba(19, 27, 48, 0.9);
   --pill-bg: rgba(255, 255, 255, 0.05);
@@ -120,106 +80,87 @@
   --header-bg: rgba(10, 15, 29, 0.84);
   --header-stuck-bg: rgba(10, 15, 29, 0.95);
 
-  /* Aliases semânticos discretos (evita azul neon espalhado em textos comuns) */
   --brand-emerald: var(--text-primary);
   --brand-emerald-subtle: var(--pill-bg);
   --brand-gold: var(--text-secondary);
 
-  @media (prefers-color-scheme: light) {
-    --bg-canvas: var(--bg-canvas-light);
-    --bg-surface: var(--bg-surface-light);
-    --bg-elevated: var(--bg-elevated-light);
-    --bg-card: var(--bg-card-light);
-    --text-primary: var(--text-primary-light);
-    --text-secondary: var(--text-secondary-light);
-    --text-muted: var(--text-muted-light);
-    --border-subtle: var(--border-subtle-light);
-    --border-card: var(--border-card-light);
-    --border-hover: var(--border-hover-light);
-    --brand-blue: var(--brand-blue-light);
-    --brand-indigo: var(--brand-indigo-light);
-    --brand-primary: var(--brand-primary-light);
-    --brand-hover: var(--brand-hover-light);
-    --brand-positive: var(--brand-positive-light);
-    --danger: var(--danger-light);
-    --danger-bg: var(--danger-bg-light);
-    --glass-bg: rgba(255, 255, 255, 0.94);
-    --glass-elevated: #ffffff;
-    --pill-bg: #f1f5f9;
-    --pill-border: #cbd5e1;
-    --pill-text: #334155;
-    --card-shadow: 0 10px 28px -12px rgba(15, 23, 42, 0.08);
-    --header-bg: rgba(255, 255, 255, 0.88);
-    --header-stuck-bg: rgba(255, 255, 255, 0.96);
-  }
-
-  @supports (color: light-dark(white, black)) {
-    --bg-canvas: light-dark(var(--bg-canvas-light), var(--bg-canvas-dark));
-    --bg-surface: light-dark(var(--bg-surface-light), var(--bg-surface-dark));
-    --bg-elevated: light-dark(var(--bg-elevated-light), var(--bg-elevated-dark));
-    --bg-card: light-dark(var(--bg-card-light), var(--bg-card-dark));
-    --text-primary: light-dark(var(--text-primary-light), var(--text-primary-dark));
-    --text-secondary: light-dark(var(--text-secondary-light), var(--text-secondary-dark));
-    --text-muted: light-dark(var(--text-muted-light), var(--text-muted-dark));
-    --border-subtle: light-dark(var(--border-subtle-light), var(--border-subtle-dark));
-    --border-card: light-dark(var(--border-card-light), var(--border-card-dark));
-    --border-hover: light-dark(var(--border-hover-light), var(--border-hover-dark));
-    --brand-blue: light-dark(var(--brand-blue-light), var(--brand-blue-dark));
-    --brand-indigo: light-dark(var(--brand-indigo-light), var(--brand-indigo-dark));
-    --brand-primary: light-dark(var(--brand-primary-light), var(--brand-primary-dark));
-    --brand-hover: light-dark(var(--brand-hover-light), var(--brand-hover-dark));
-    --brand-positive: light-dark(var(--brand-positive-light), var(--brand-positive-dark));
-    --danger: light-dark(var(--danger-light), var(--danger-dark));
-    --danger-bg: light-dark(var(--danger-bg-light), var(--danger-bg-dark));
-    --glass-bg: light-dark(rgba(255, 255, 255, 0.94), rgba(17, 24, 43, 0.78));
-    --glass-elevated: light-dark(#ffffff, rgba(19, 27, 48, 0.9));
-    --pill-bg: light-dark(#f1f5f9, rgba(255, 255, 255, 0.05));
-    --pill-border: light-dark(#cbd5e1, rgba(255, 255, 255, 0.1));
-    --pill-text: light-dark(#334155, #cbd5e1);
-    --card-shadow: light-dark(0 10px 28px -12px rgba(15, 23, 42, 0.08), 0 10px 28px -12px rgba(0, 0, 0, 0.45));
-    --header-bg: light-dark(rgba(255, 255, 255, 0.88), rgba(10, 15, 29, 0.84));
-    --header-stuck-bg: light-dark(rgba(255, 255, 255, 0.96), rgba(10, 15, 29, 0.95));
-  }
-
-  color-scheme: dark light;
-
-  &:has(> head > meta[name="color-scheme"][content="dark"]),
-  &[data-theme="dark"] {
-    color-scheme: dark;
-  }
-  &:has(> head > meta[name="color-scheme"][content="light"]),
-  &[data-theme="light"] {
-    color-scheme: light;
-    --bg-canvas: var(--bg-canvas-light);
-    --bg-surface: var(--bg-surface-light);
-    --bg-elevated: var(--bg-elevated-light);
-    --bg-card: var(--bg-card-light);
-    --text-primary: var(--text-primary-light);
-    --text-secondary: var(--text-secondary-light);
-    --text-muted: var(--text-muted-light);
-    --border-subtle: var(--border-subtle-light);
-    --border-card: var(--border-card-light);
-    --border-hover: var(--border-hover-light);
-    --brand-blue: var(--brand-blue-light);
-    --brand-indigo: var(--brand-indigo-light);
-    --brand-primary: var(--brand-primary-light);
-    --brand-hover: var(--brand-hover-light);
-    --brand-positive: var(--brand-positive-light);
-    --danger: var(--danger-light);
-    --danger-bg: var(--danger-bg-light);
-    --glass-bg: rgba(255, 255, 255, 0.94);
-    --glass-elevated: #ffffff;
-    --pill-bg: #f1f5f9;
-    --pill-border: #cbd5e1;
-    --pill-text: #334155;
-    --card-shadow: 0 10px 28px -12px rgba(15, 23, 42, 0.08);
-    --header-bg: rgba(255, 255, 255, 0.88);
-    --header-stuck-bg: rgba(255, 255, 255, 0.96);
-  }
-
   accent-color: var(--brand-primary);
   scrollbar-width: thin;
-  scrollbar-color: light-dark(#cbd5e1, #293048) light-dark(#f1f5f9, #0a0f1d);
+  scrollbar-color: #43527d #0a0f1d;
+}
+
+/* Modo Escuro Explícito */
+:root[data-theme="dark"],
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-canvas: #0a0f1d;
+  --bg-surface: #101729;
+  --bg-elevated: #162038;
+  --bg-card: rgba(17, 24, 43, 0.78);
+
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+
+  --border-subtle: #1e273d;
+  --border-card: #26314d;
+  --border-hover: #43527d;
+
+  --brand-blue: #38bdf8;
+  --brand-indigo: #2563eb;
+  --brand-primary: #0284c7;
+  --brand-hover: #0ea5e9;
+  --brand-positive: #34d399;
+
+  --danger: #f87171;
+  --danger-bg: #271217;
+
+  --glass-bg: rgba(17, 24, 43, 0.78);
+  --glass-elevated: rgba(19, 27, 48, 0.9);
+  --pill-bg: rgba(255, 255, 255, 0.05);
+  --pill-border: rgba(255, 255, 255, 0.1);
+  --pill-text: #cbd5e1;
+  --card-shadow: 0 10px 28px -12px rgba(0, 0, 0, 0.45);
+  --header-bg: rgba(10, 15, 29, 0.84);
+  --header-stuck-bg: rgba(10, 15, 29, 0.95);
+}
+
+/* Modo Claro Explícito (Ativado exclusivamente ao alternar tema) */
+:root[data-theme="light"],
+html[data-theme="light"] {
+  color-scheme: light;
+  --bg-canvas: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-elevated: #f1f5f9;
+  --bg-card: #ffffff;
+
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #475569;
+
+  --border-subtle: #e2e8f0;
+  --border-card: #cbd5e1;
+  --border-hover: #94a3b8;
+
+  --brand-blue: #0284c7;
+  --brand-indigo: #2563eb;
+  --brand-primary: #0284c7;
+  --brand-hover: #0369a1;
+  --brand-positive: #059669;
+
+  --danger: #dc2626;
+  --danger-bg: #fef2f2;
+
+  --glass-bg: rgba(255, 255, 255, 0.94);
+  --glass-elevated: #ffffff;
+  --pill-bg: #f1f5f9;
+  --pill-border: #cbd5e1;
+  --pill-text: #334155;
+  --card-shadow: 0 10px 28px -12px rgba(15, 23, 42, 0.08);
+  --header-bg: rgba(255, 255, 255, 0.88);
+  --header-stuck-bg: rgba(255, 255, 255, 0.96);
+
+  scrollbar-color: #cbd5e1 #f1f5f9;
 }
 
 /* Forced Colors Mode Accessibility (color guide) */

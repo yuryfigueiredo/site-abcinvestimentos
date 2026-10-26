@@ -519,13 +519,14 @@ const isPlanilhaActive = pathname.startsWith('/planilha-abc');
     display: none;
   }
 
-  :root:has(> head > meta[name="color-scheme"][content="light"]) .theme-icon-moon,
-  :root[data-theme="light"] .theme-icon-moon {
+  :global(html[data-theme="light"]) .theme-icon-moon,
+  :global(:root[data-theme="light"]) .theme-icon-moon {
     display: block;
   }
 
-  :root:has(> head > meta[name="color-scheme"][content="dark"]) .theme-icon-sun,
-  :root[data-theme="dark"] .theme-icon-sun {
+  :global(html[data-theme="dark"]) .theme-icon-sun,
+  :global(:root[data-theme="dark"]) .theme-icon-sun,
+  :global(html:not([data-theme="light"])) .theme-icon-sun {
     display: block;
   }
 

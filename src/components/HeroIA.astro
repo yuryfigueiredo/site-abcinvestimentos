@@ -587,8 +587,8 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
       );
   }
 
-  :global(:root[data-theme="light"]) .hero-section,
-  :global(:root:has(> head > meta[name="color-scheme"][content="light"])) .hero-section {
+  :global(html[data-theme="light"]) .hero-section,
+  :global(:root[data-theme="light"]) .hero-section {
     background:
       radial-gradient(
         ellipse 75% 60% at 50% 30%,
