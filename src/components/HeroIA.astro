@@ -525,10 +525,13 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
         ]);
 
         if (iaBadgeSource) {
-          if (data.source === 'gemini-1.5-flash') {
+          if (data.source === 'cloudflare-ai') {
             iaBadgeSource.className = 'ia-badge-live';
-            iaBadgeSource.textContent = 'IA Especialista ABC • Alta Precisão';
-          } else if (data.source === 'gemini-3.5-flash' || data.source === 'gemini-flash') {
+            iaBadgeSource.textContent = 'IA Especialista ABC • Cloudflare Ultra-Rápida';
+          } else if (data.source === 'groq-llama') {
+            iaBadgeSource.className = 'ia-badge-live';
+            iaBadgeSource.textContent = 'IA Especialista ABC • Alta Velocidade Groq';
+          } else if (data.source === 'gemini-3.5-flash' || data.source === 'gemini-flash' || data.source === 'gemini-1.5-flash') {
             iaBadgeSource.className = 'ia-badge-live';
             iaBadgeSource.textContent = 'IA Especialista ABC • Análise em Tempo Real';
           } else if (data.source === 'openrouter-free') {

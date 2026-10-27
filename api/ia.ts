@@ -28,6 +28,7 @@ async function saveConversation(question: string, answer: string, mode: string):
       Authorization: `Bearer ${authToken}`,
       'Content-Type': 'application/json',
     },
+    signal: AbortSignal.timeout(5000),
     body: JSON.stringify({
       requests: [
         {
@@ -75,12 +76,21 @@ interface ProviderStatus {
   error?: string;
 }
 
+const SYSTEM_PROMPT =
+  'Você é o consultor educativo do portal ABC Investimentos (abcinvestimentos.com.br). Responda em português do Brasil, de forma didática e objetiva (máximo 3 parágrafos ou tópicos claros). Não peça dados pessoais e não recomende compra ou venda de ativos específicos. Explique conceitos, riscos, liquidez, impostos e cálculos.';
+
 async function askGemini(question: string): Promise<{ result: ProviderResult | null; status: ProviderStatus }> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return { result: null, status: { configured: false, error: 'missing_key' } };
 
-  const models = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+  const models = [
+    'gemini-3.5-flash',
+    'gemini-3.1-flash-lite',
+    'gemini-3.6-flash',
+    'gemini-3-flash-preview',
+  ];
   let lastError = 'no_valid_response';
+
   for (const model of models) {
     try {
       const result = await fetch(
@@ -88,13 +98,10 @@ async function askGemini(question: string): Promise<{ result: ProviderResult | n
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout(5000),
           body: JSON.stringify({
             system_instruction: {
-              parts: [
-                {
-                  text: 'Você é o consultor educativo do portal ABC Investimentos. Responda em português do Brasil, de forma didática e objetiva. Não peça dados pessoais e não recomende compra ou venda de ativos específicos. Explique conceitos, riscos, liquidez, impostos e cálculos.',
-                },
-              ],
+              parts: [{ text: SYSTEM_PROMPT }],
             },
             contents: [{ role: 'user', parts: [{ text: question }] }],
             generationConfig: { temperature: 0.4, maxOutputTokens: 500 },
@@ -115,7 +122,110 @@ async function askGemini(question: string): Promise<{ result: ProviderResult | n
       if (answer) return { result: { answer, model }, status: { configured: true } };
     } catch (error) {
       console.error(`[ABC IA] Falha no modelo Gemini ${model}:`, error);
-      lastError = 'network_error';
+      lastError = 'timeout_or_network_error';
+    }
+  }
+
+  return { result: null, status: { configured: true, error: lastError } };
+}
+
+async function askCloudflare(question: string): Promise<{ result: ProviderResult | null; status: ProviderStatus }> {
+  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+  const apiToken = process.env.CLOUDFLARE_API_TOKEN;
+  if (!accountId || !apiToken) return { result: null, status: { configured: false, error: 'missing_credentials' } };
+
+  const models = [
+    '@cf/meta/llama-3.1-8b-instruct',
+    '@cf/meta/llama-3.2-3b-instruct',
+  ];
+  let lastError = 'no_valid_response';
+
+  for (const model of models) {
+    try {
+      const result = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiToken}`,
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(5000),
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user', content: question },
+          ],
+        }),
+      });
+
+      if (!result.ok) {
+        console.error(`[ABC IA] Cloudflare recusou o modelo ${model}: HTTP ${result.status}`);
+        lastError = `http_${result.status}`;
+        continue;
+      }
+
+      const data = (await result.json()) as {
+        result?: {
+          response?: string;
+          choices?: Array<{ message?: { content?: string } }>;
+        };
+      };
+
+      const answer = data.result?.response?.trim() || data.result?.choices?.[0]?.message?.content?.trim();
+      if (answer) {
+        return { result: { answer, model }, status: { configured: true } };
+      }
+    } catch (error) {
+      console.error(`[ABC IA] Falha no Cloudflare (${model}):`, error);
+      lastError = 'timeout_or_network_error';
+    }
+  }
+
+  return { result: null, status: { configured: true, error: lastError } };
+}
+
+async function askGroq(question: string): Promise<{ result: ProviderResult | null; status: ProviderStatus }> {
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) return { result: null, status: { configured: false, error: 'missing_key' } };
+
+  const models = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+  let lastError = 'no_valid_response';
+
+  for (const model of models) {
+    try {
+      const result = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(5000),
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user', content: question },
+          ],
+          temperature: 0.4,
+          max_tokens: 500,
+        }),
+      });
+
+      if (!result.ok) {
+        console.error(`[ABC IA] Groq recusou o modelo ${model}: HTTP ${result.status}`);
+        lastError = `http_${result.status}`;
+        continue;
+      }
+
+      const data = (await result.json()) as {
+        choices?: Array<{ message?: { content?: string } }>;
+      };
+      const answer = data.choices?.[0]?.message?.content?.trim();
+      if (answer) {
+        return { result: { answer, model }, status: { configured: true } };
+      }
+    } catch (error) {
+      console.error(`[ABC IA] Falha no Groq (${model}):`, error);
+      lastError = 'timeout_or_network_error';
     }
   }
 
@@ -132,7 +242,8 @@ async function askOpenRouter(question: string): Promise<{ result: ProviderResult
       configuredModel,
       'openrouter/free',
       'meta-llama/llama-3.2-3b-instruct:free',
-      'deepseek/deepseek-r1:free',
+      'meta-llama/llama-3.1-8b-instruct:free',
+      'qwen/qwen-2.5-7b-instruct:free',
     ])
   );
   let lastError = 'no_valid_response';
@@ -140,26 +251,23 @@ async function askOpenRouter(question: string): Promise<{ result: ProviderResult
   for (const model of models) {
     try {
       const result = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://www.abcinvestimentos.com.br',
-        'X-Title': 'ABC Investimentos',
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          {
-            role: 'system',
-            content:
-              'Você é o consultor educativo do portal ABC Investimentos. Responda em português do Brasil, de forma didática e objetiva. Não peça dados pessoais e não recomende compra ou venda de ativos específicos. Explique conceitos, riscos, liquidez, impostos e cálculos.',
-          },
-          { role: 'user', content: question },
-        ],
-        temperature: 0.4,
-        max_tokens: 500,
-      }),
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://www.abcinvestimentos.com.br',
+          'X-Title': 'ABC Investimentos',
+        },
+        signal: AbortSignal.timeout(5000),
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user', content: question },
+          ],
+          temperature: 0.4,
+          max_tokens: 500,
+        }),
       });
 
       if (!result.ok) {
@@ -184,7 +292,7 @@ async function askOpenRouter(question: string): Promise<{ result: ProviderResult
       };
     } catch (error) {
       console.error(`[ABC IA] Falha no OpenRouter (${model}):`, error);
-      lastError = 'network_error';
+      lastError = 'timeout_or_network_error';
     }
   }
 
@@ -206,17 +314,42 @@ export default async function handler(request: VercelRequest, response: VercelRe
       return;
     }
 
-    const geminiAttempt = await askGemini(question);
-    const openRouterAttempt = geminiAttempt.result
+    // Cascata de Provedores com timeout de 5 segundos em cada chamada:
+    // 1. Cloudflare Workers AI (Titular)
+    const cloudflareAttempt = await askCloudflare(question);
+
+    // 2. Groq (se chave configurada)
+    const groqAttempt = cloudflareAttempt.result
       ? { result: null, status: { configured: false } }
-      : await askOpenRouter(question);
-    const generated = geminiAttempt.result || openRouterAttempt.result;
+      : await askGroq(question);
+
+    // 3. Gemini (Google AI Studio)
+    const geminiAttempt = cloudflareAttempt.result || groqAttempt.result
+      ? { result: null, status: { configured: false } }
+      : await askGemini(question);
+
+    // 4. OpenRouter (rotas gratuitas)
+    const openRouterAttempt =
+      cloudflareAttempt.result || groqAttempt.result || geminiAttempt.result
+        ? { result: null, status: { configured: false } }
+        : await askOpenRouter(question);
+
+    const generated =
+      cloudflareAttempt.result ||
+      groqAttempt.result ||
+      geminiAttempt.result ||
+      openRouterAttempt.result;
+
     const answer = generated?.answer || fallbackAnswer(question);
-    const mode = geminiAttempt.result
-      ? 'gemini-live'
-      : openRouterAttempt.result
-        ? 'openrouter-live'
-        : 'educational-engine';
+    const mode = cloudflareAttempt.result
+      ? 'cloudflare-live'
+      : groqAttempt.result
+        ? 'groq-live'
+        : geminiAttempt.result
+          ? 'gemini-live'
+          : openRouterAttempt.result
+            ? 'openrouter-live'
+            : 'educational-engine';
 
     if (body.conversationConsent === true) {
       try {

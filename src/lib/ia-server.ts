@@ -1,12 +1,17 @@
 /**
  * Server handler compartilhado por Cloudflare Pages e Vercel: /api/ia
- * Protege a chave GEMINI_API_KEY no servidor (nunca exposta no navegador),
+ * Protege as chaves no servidor (nunca expostas no navegador),
  * aplica limite de 3 perguntas gratuitas por dia por visitante e garante
  * respostas puramente educativas conforme regras da CVM e legislação fiscal de 2026.
  */
 
 interface Env {
   GEMINI_API_KEY?: string;
+  CLOUDFLARE_ACCOUNT_ID?: string;
+  CLOUDFLARE_API_TOKEN?: string;
+  GROQ_API_KEY?: string;
+  OPENROUTER_API_KEY?: string;
+  OPENROUTER_MODEL?: string;
   TURSO_DATABASE_URL?: string;
   TURSO_AUTH_TOKEN?: string;
 }
@@ -21,7 +26,7 @@ interface IaRequestBody {
   conversationConsent?: boolean;
 }
 
-// Controle em memória por instância edge (complementado por cookie HttpOnly e controle local)
+// Controle em memória por instância edge
 const dailyIpUsage = new Map<string, { date: string; count: number }>();
 const MAX_DAILY_FREE_QUESTIONS = 3;
 
@@ -43,6 +48,7 @@ async function saveConversation(
         Authorization: `Bearer ${authToken}`,
         'Content-Type': 'application/json',
       },
+      signal: AbortSignal.timeout(5000),
       body: JSON.stringify({
         requests: [
           {
@@ -112,6 +118,185 @@ function buildEducationalFallbackAnswer(question: string, selic = 14.25, cdi = 1
   };
 }
 
+async function requestGemini(apiKey: string, question: string, systemInstruction: string): Promise<string | null> {
+  const models = [
+    'gemini-3.5-flash',
+    'gemini-3.1-flash-lite',
+    'gemini-3.6-flash',
+    'gemini-3-flash-preview',
+  ];
+
+  for (const model of models) {
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout(5000),
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: systemInstruction }] },
+            contents: [{ role: 'user', parts: [{ text: question }] }],
+            generationConfig: { temperature: 0.4, maxOutputTokens: 500 },
+          }),
+        }
+      );
+
+      if (!res.ok) continue;
+
+      const data = (await res.json()) as {
+        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+      };
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      if (text) return text;
+    } catch {
+      // Timeout de 5s ou erro de rede: tenta próximo modelo
+    }
+  }
+
+  return null;
+}
+
+async function requestCloudflare(
+  accountId: string,
+  apiToken: string,
+  question: string,
+  systemInstruction: string
+): Promise<string | null> {
+  const models = [
+    '@cf/meta/llama-3.1-8b-instruct',
+    '@cf/meta/llama-3.2-3b-instruct',
+  ];
+
+  for (const model of models) {
+    try {
+      const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiToken}`,
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(5000),
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: systemInstruction },
+            { role: 'user', content: question },
+          ],
+        }),
+      });
+
+      if (!res.ok) continue;
+
+      const data = (await res.json()) as {
+        result?: {
+          response?: string;
+          choices?: Array<{ message?: { content?: string } }>;
+        };
+      };
+
+      const text = data.result?.response?.trim() || data.result?.choices?.[0]?.message?.content?.trim();
+      if (text) return text;
+    } catch {
+      // Timeout de 5s ou erro de rede: tenta próximo modelo
+    }
+  }
+
+  return null;
+}
+
+async function requestGroq(apiKey: string, question: string, systemInstruction: string): Promise<string | null> {
+  const models = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+
+  for (const model of models) {
+    try {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(5000),
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: systemInstruction },
+            { role: 'user', content: question },
+          ],
+          temperature: 0.4,
+          max_tokens: 500,
+        }),
+      });
+
+      if (!res.ok) continue;
+
+      const data = (await res.json()) as {
+        choices?: Array<{ message?: { content?: string } }>;
+      };
+      const text = data.choices?.[0]?.message?.content?.trim();
+      if (text) return text;
+    } catch {
+      // Timeout de 5s ou erro de rede: tenta próximo modelo
+    }
+  }
+
+  return null;
+}
+
+async function requestOpenRouter(
+  apiKey: string,
+  configuredModel: string | undefined,
+  question: string,
+  systemInstruction: string
+): Promise<string | null> {
+  const models = Array.from(
+    new Set([
+      configuredModel?.trim() || 'openrouter/free',
+      'openrouter/free',
+      'meta-llama/llama-3.2-3b-instruct:free',
+      'meta-llama/llama-3.1-8b-instruct:free',
+      'qwen/qwen-2.5-7b-instruct:free',
+    ])
+  );
+
+  for (const model of models) {
+    try {
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://www.abcinvestimentos.com.br',
+          'X-Title': 'ABC Investimentos',
+        },
+        signal: AbortSignal.timeout(5000),
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: systemInstruction },
+            { role: 'user', content: question },
+          ],
+          temperature: 0.4,
+          max_tokens: 500,
+        }),
+      });
+
+      if (!res.ok) continue;
+
+      const data = (await res.json()) as {
+        choices?: Array<{ message?: { content?: string } }>;
+      };
+      const text = data.choices?.[0]?.message?.content?.trim();
+      if (text && !/^user safety:\s*safe$/i.test(text)) {
+        return text;
+      }
+    } catch {
+      // Timeout de 5s ou erro de rede: tenta próximo modelo
+    }
+  }
+
+  return null;
+}
+
 export const onRequestPost = async (context: { request: Request; env: Env }): Promise<Response> => {
   try {
     const ip =
@@ -157,27 +342,6 @@ export const onRequestPost = async (context: { request: Request; env: Env }): Pr
     const remainingFree = Math.max(0, MAX_DAILY_FREE_QUESTIONS - newCount);
     const conversationConsent = body.conversationConsent === true;
 
-    const apiKey = context.env?.GEMINI_API_KEY;
-    if (!apiKey) {
-      const fallback = buildEducationalFallbackAnswer(rawQuestion, selic, cdi, ipca);
-      await saveConversation(
-        context.env?.TURSO_DATABASE_URL,
-        context.env?.TURSO_AUTH_TOKEN,
-        conversationConsent,
-        rawQuestion,
-        fallback.answer,
-        'educational-engine'
-      );
-      return new Response(
-        JSON.stringify({
-          ...fallback,
-          remainingFree,
-          mode: 'educational-engine',
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' } }
-      );
-    }
-
     const systemInstruction = `Você é o Consultor Educativo do portal ABC Investimentos (abcinvestimentos.com.br).
 Regras obrigatórias:
 1. Seja didático, elegante, objetivo (máximo 3 parágrafos curtos ou tópicos claros) e use exemplos em Reais (R$).
@@ -186,67 +350,61 @@ Regras obrigatórias:
 4. COMPLIANCE CVM: Nunca recomende a compra ou venda de ações ou FIIs específicos (ex: não mande comprar PETR4 ou HGLG11). Explique sempre os conceitos matemáticos e classes de ativos de forma educativa.
 5. Nunca peça dados pessoais (CPF, conta bancária ou senhas).`;
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-    const geminiRes = await fetch(geminiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: systemInstruction }] },
-        contents: [{ role: 'user', parts: [{ text: rawQuestion }] }],
-        generationConfig: {
-          temperature: 0.4,
-          maxOutputTokens: 500,
-        },
-      }),
-    });
+    let aiText: string | null = null;
+    let mode = 'educational-engine';
 
-    if (!geminiRes.ok) {
-      const fallback = buildEducationalFallbackAnswer(rawQuestion, selic, cdi, ipca);
-      await saveConversation(
-        context.env?.TURSO_DATABASE_URL,
-        context.env?.TURSO_AUTH_TOKEN,
-        conversationConsent,
-        rawQuestion,
-        fallback.answer,
-        'educational-engine-fallback'
-      );
-      return new Response(
-        JSON.stringify({
-          ...fallback,
-          remainingFree,
-          mode: 'educational-engine-fallback',
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' } }
-      );
+    // 1. Tenta Cloudflare Workers AI (Titular, 5s timeout)
+    const cfAccountId = context.env?.CLOUDFLARE_ACCOUNT_ID;
+    const cfApiToken = context.env?.CLOUDFLARE_API_TOKEN;
+    if (cfAccountId && cfApiToken) {
+      aiText = await requestCloudflare(cfAccountId, cfApiToken, rawQuestion, systemInstruction);
+      if (aiText) mode = 'cloudflare-live';
     }
 
-    const geminiData = (await geminiRes.json()) as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-    };
-    const aiText =
-      geminiData.candidates?.[0]?.content?.parts?.[0]?.text ||
-      buildEducationalFallbackAnswer(rawQuestion, selic, cdi, ipca).answer;
+    // 2. Se falhar, tenta Groq (se chave configurada, 5s timeout)
+    const groqKey = context.env?.GROQ_API_KEY;
+    if (!aiText && groqKey) {
+      aiText = await requestGroq(groqKey, rawQuestion, systemInstruction);
+      if (aiText) mode = 'groq-live';
+    }
 
-    const fallbackSuggestion = buildEducationalFallbackAnswer(rawQuestion, selic, cdi, ipca).suggestedTool;
+    // 3. Se falhar, tenta Gemini (5s timeout por modelo)
+    const geminiKey = context.env?.GEMINI_API_KEY;
+    if (!aiText && geminiKey) {
+      aiText = await requestGemini(geminiKey, rawQuestion, systemInstruction);
+      if (aiText) mode = 'gemini-live';
+    }
+
+    // 4. Se falhar, tenta OpenRouter (5s timeout)
+    const openRouterKey = context.env?.OPENROUTER_API_KEY;
+    if (!aiText && openRouterKey) {
+      aiText = await requestOpenRouter(openRouterKey, context.env?.OPENROUTER_MODEL, rawQuestion, systemInstruction);
+      if (aiText) mode = 'openrouter-live';
+    }
+
+    const fallbackData = buildEducationalFallbackAnswer(rawQuestion, selic, cdi, ipca);
+    const finalAnswer = aiText || fallbackData.answer;
+
     await saveConversation(
       context.env?.TURSO_DATABASE_URL,
       context.env?.TURSO_AUTH_TOKEN,
       conversationConsent,
       rawQuestion,
-      aiText,
-      'gemini-live'
+      finalAnswer,
+      mode
     );
 
     return new Response(
       JSON.stringify({
-        answer: aiText,
-        suggestedTool: fallbackSuggestion,
+        answer: finalAnswer,
+        suggestedTool: fallbackData.suggestedTool,
         remainingFree,
-        mode: 'gemini-live',
+        mode,
       }),
       { status: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' } }
     );
-  } catch {
+  } catch (error) {
+    console.error('[ABC IA] Falha no handler:', error);
     return new Response(
       JSON.stringify({
         error: 'Não foi possível processar sua pergunta no momento. Tente novamente em instantes.',

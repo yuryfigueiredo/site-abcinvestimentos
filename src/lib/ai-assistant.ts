@@ -16,7 +16,7 @@ export interface RecommendedCalculator {
 
 export interface AssistantResponse {
   answer: string;
-  source: 'gemini-flash' | 'gemini-1.5-flash' | 'gemini-3.5-flash' | 'openrouter-free' | 'abc-expert-engine';
+  source: 'gemini-flash' | 'gemini-1.5-flash' | 'gemini-3.5-flash' | 'cloudflare-ai' | 'groq-llama' | 'openrouter-free' | 'abc-expert-engine';
   modelUsed?: string;
   recommendedCalculators: RecommendedCalculator[];
 }
@@ -512,7 +512,11 @@ export async function processConsultantQuery(
             source:
               data.mode === 'gemini-live'
                 ? 'gemini-flash'
-                : data.mode === 'openrouter-live'
+                : data.mode === 'cloudflare-live'
+                  ? 'cloudflare-ai'
+                  : data.mode === 'groq-live'
+                    ? 'groq-llama'
+                    : data.mode === 'openrouter-live'
                   ? 'openrouter-free'
                   : 'abc-expert-engine',
             recommendedCalculators: detectRecommendedCalculators(question),
