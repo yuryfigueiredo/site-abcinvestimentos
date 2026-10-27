@@ -16,8 +16,14 @@ interface Env {
   TURSO_AUTH_TOKEN?: string;
 }
 
+interface ChatHistoryItem {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 interface IaRequestBody {
   question?: string;
+  history?: ChatHistoryItem[];
   indicators?: {
     selic?: number;
     cdi?: number;
@@ -118,13 +124,27 @@ function buildEducationalFallbackAnswer(question: string, selic = 14.25, cdi = 1
   };
 }
 
-async function requestGemini(apiKey: string, question: string, systemInstruction: string): Promise<string | null> {
+async function requestGemini(apiKey: string, question: string, systemInstruction: string, history: ChatHistoryItem[] = []): Promise<string | null> {
   const models = [
+    'gemini-1.5-flash',
+    'gemini-1.5-flash-latest',
+    'gemini-2.0-flash',
     'gemini-3.5-flash',
     'gemini-3.1-flash-lite',
-    'gemini-3.6-flash',
-    'gemini-3-flash-preview',
   ];
+
+  const contents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
+  if (Array.isArray(history) && history.length > 0) {
+    for (const h of history) {
+      if (h.content && h.content.trim()) {
+        contents.push({
+          role: h.role === 'user' ? 'user' : 'model',
+          parts: [{ text: h.content.trim() }],
+        });
+      }
+    }
+  }
+  contents.push({ role: 'user', parts: [{ text: question }] });
 
   for (const model of models) {
     try {
@@ -136,8 +156,8 @@ async function requestGemini(apiKey: string, question: string, systemInstruction
           signal: AbortSignal.timeout(5000),
           body: JSON.stringify({
             system_instruction: { parts: [{ text: systemInstruction }] },
-            contents: [{ role: 'user', parts: [{ text: question }] }],
-            generationConfig: { temperature: 0.4, maxOutputTokens: 500 },
+            contents,
+            generationConfig: { temperature: 0.4, maxOutputTokens: 650 },
           }),
         }
       );
@@ -161,12 +181,28 @@ async function requestCloudflare(
   accountId: string,
   apiToken: string,
   question: string,
-  systemInstruction: string
+  systemInstruction: string,
+  history: ChatHistoryItem[] = []
 ): Promise<string | null> {
   const models = [
     '@cf/meta/llama-3.1-8b-instruct',
     '@cf/meta/llama-3.2-3b-instruct',
   ];
+
+  const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+    { role: 'system', content: systemInstruction },
+  ];
+  if (Array.isArray(history) && history.length > 0) {
+    for (const h of history) {
+      if (h.content && h.content.trim()) {
+        messages.push({
+          role: h.role === 'user' ? 'user' : 'assistant',
+          content: h.content.trim(),
+        });
+      }
+    }
+  }
+  messages.push({ role: 'user', content: question });
 
   for (const model of models) {
     try {
@@ -177,12 +213,7 @@ async function requestCloudflare(
           'Content-Type': 'application/json',
         },
         signal: AbortSignal.timeout(5000),
-        body: JSON.stringify({
-          messages: [
-            { role: 'system', content: systemInstruction },
-            { role: 'user', content: question },
-          ],
-        }),
+        body: JSON.stringify({ messages }),
       });
 
       if (!res.ok) continue;
@@ -204,8 +235,23 @@ async function requestCloudflare(
   return null;
 }
 
-async function requestGroq(apiKey: string, question: string, systemInstruction: string): Promise<string | null> {
+async function requestGroq(apiKey: string, question: string, systemInstruction: string, history: ChatHistoryItem[] = []): Promise<string | null> {
   const models = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+
+  const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+    { role: 'system', content: systemInstruction },
+  ];
+  if (Array.isArray(history) && history.length > 0) {
+    for (const h of history) {
+      if (h.content && h.content.trim()) {
+        messages.push({
+          role: h.role === 'user' ? 'user' : 'assistant',
+          content: h.content.trim(),
+        });
+      }
+    }
+  }
+  messages.push({ role: 'user', content: question });
 
   for (const model of models) {
     try {
@@ -218,12 +264,9 @@ async function requestGroq(apiKey: string, question: string, systemInstruction: 
         signal: AbortSignal.timeout(5000),
         body: JSON.stringify({
           model,
-          messages: [
-            { role: 'system', content: systemInstruction },
-            { role: 'user', content: question },
-          ],
+          messages,
           temperature: 0.4,
-          max_tokens: 500,
+          max_tokens: 650,
         }),
       });
 
@@ -246,7 +289,8 @@ async function requestOpenRouter(
   apiKey: string,
   configuredModel: string | undefined,
   question: string,
-  systemInstruction: string
+  systemInstruction: string,
+  history: ChatHistoryItem[] = []
 ): Promise<string | null> {
   const models = Array.from(
     new Set([
@@ -257,6 +301,21 @@ async function requestOpenRouter(
       'qwen/qwen-2.5-7b-instruct:free',
     ])
   );
+
+  const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+    { role: 'system', content: systemInstruction },
+  ];
+  if (Array.isArray(history) && history.length > 0) {
+    for (const h of history) {
+      if (h.content && h.content.trim()) {
+        messages.push({
+          role: h.role === 'user' ? 'user' : 'assistant',
+          content: h.content.trim(),
+        });
+      }
+    }
+  }
+  messages.push({ role: 'user', content: question });
 
   for (const model of models) {
     try {
@@ -271,12 +330,9 @@ async function requestOpenRouter(
         signal: AbortSignal.timeout(5000),
         body: JSON.stringify({
           model,
-          messages: [
-            { role: 'system', content: systemInstruction },
-            { role: 'user', content: question },
-          ],
+          messages,
           temperature: 0.4,
-          max_tokens: 500,
+          max_tokens: 650,
         }),
       });
 
@@ -325,6 +381,7 @@ export const onRequestPost = async (context: { request: Request; env: Env }): Pr
 
     const body = (await context.request.json()) as IaRequestBody;
     const rawQuestion = (body.question || '').trim().slice(0, 500);
+    const history = Array.isArray(body.history) ? body.history.slice(-10) : [];
 
     if (!rawQuestion) {
       return new Response(JSON.stringify({ error: 'Digite uma dúvida sobre investimentos.' }), {
@@ -345,10 +402,11 @@ export const onRequestPost = async (context: { request: Request; env: Env }): Pr
     const systemInstruction = `Você é o Consultor Educativo do portal ABC Investimentos (abcinvestimentos.com.br).
 Regras obrigatórias:
 1. Seja didático, elegante, objetivo (máximo 3 parágrafos curtos ou tópicos claros) e use exemplos em Reais (R$).
-2. Contexto econômico atual do Brasil (2026): Taxa Selic = ${selic}% a.a., CDI = ${cdi}% a.a., IPCA 12m = ${ipca}% a.a.
-3. Regras fiscais vigentes em 2026: Tabela regressiva de IR da Renda Fixa (22,5% até 180d, 20% até 360d, 17,5% até 720d, 15% acima de 720d). LCI, LCA, CRI, CRA e FIIs continuam isentos de IR para pessoa física. Dividendos de uma mesma empresa acima de R$ 50 mil/mês têm retenção de 10% (Lei 15.270/2025).
-4. COMPLIANCE CVM: Nunca recomende a compra ou venda de ações ou FIIs específicos (ex: não mande comprar PETR4 ou HGLG11). Explique sempre os conceitos matemáticos e classes de ativos de forma educativa.
-5. Nunca peça dados pessoais (CPF, conta bancária ou senhas).`;
+2. Se o investidor fizer uma pergunta de continuação, mantenha o contexto do assunto anterior com coerência.
+3. Contexto econômico atual do Brasil (2026): Taxa Selic = ${selic}% a.a., CDI = ${cdi}% a.a., IPCA 12m = ${ipca}% a.a.
+4. Regras fiscais vigentes em 2026: Tabela regressiva de IR da Renda Fixa (22,5% até 180d, 20% até 360d, 17,5% até 720d, 15% acima de 720d). LCI, LCA, CRI, CRA e FIIs continuam isentos de IR para pessoa física. Dividendos de uma mesma empresa acima de R$ 50 mil/mês têm retenção de 10% (Lei 15.270/2025).
+5. COMPLIANCE CVM: Nunca recomende a compra ou venda de ações ou FIIs específicos (ex: não mande comprar PETR4 ou HGLG11). Explique sempre os conceitos matemáticos e classes de ativos de forma educativa.
+6. Nunca peça dados pessoais (CPF, conta bancária ou senhas).`;
 
     let aiText: string | null = null;
     let mode = 'educational-engine';
@@ -357,28 +415,28 @@ Regras obrigatórias:
     const cfAccountId = context.env?.CLOUDFLARE_ACCOUNT_ID;
     const cfApiToken = context.env?.CLOUDFLARE_API_TOKEN;
     if (cfAccountId && cfApiToken) {
-      aiText = await requestCloudflare(cfAccountId, cfApiToken, rawQuestion, systemInstruction);
+      aiText = await requestCloudflare(cfAccountId, cfApiToken, rawQuestion, systemInstruction, history);
       if (aiText) mode = 'cloudflare-live';
     }
 
     // 2. Se falhar, tenta Groq (se chave configurada, 5s timeout)
     const groqKey = context.env?.GROQ_API_KEY;
     if (!aiText && groqKey) {
-      aiText = await requestGroq(groqKey, rawQuestion, systemInstruction);
+      aiText = await requestGroq(groqKey, rawQuestion, systemInstruction, history);
       if (aiText) mode = 'groq-live';
     }
 
     // 3. Se falhar, tenta Gemini (5s timeout por modelo)
     const geminiKey = context.env?.GEMINI_API_KEY;
     if (!aiText && geminiKey) {
-      aiText = await requestGemini(geminiKey, rawQuestion, systemInstruction);
+      aiText = await requestGemini(geminiKey, rawQuestion, systemInstruction, history);
       if (aiText) mode = 'gemini-live';
     }
 
     // 4. Se falhar, tenta OpenRouter (5s timeout)
     const openRouterKey = context.env?.OPENROUTER_API_KEY;
     if (!aiText && openRouterKey) {
-      aiText = await requestOpenRouter(openRouterKey, context.env?.OPENROUTER_MODEL, rawQuestion, systemInstruction);
+      aiText = await requestOpenRouter(openRouterKey, context.env?.OPENROUTER_MODEL, rawQuestion, systemInstruction, history);
       if (aiText) mode = 'openrouter-live';
     }
 

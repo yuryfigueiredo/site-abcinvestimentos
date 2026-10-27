@@ -28,8 +28,14 @@ export interface EconomicIndicators {
   dolar: number;
 }
 
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export interface ConsultantQueryOptions {
   conversationConsent?: boolean;
+  history?: ChatMessage[];
 }
 
 export function getSystemPrompt(indicators: EconomicIndicators): string {
@@ -497,6 +503,7 @@ export async function processConsultantQuery(
           question,
           indicators,
           conversationConsent: options.conversationConsent === true,
+          history: options.history,
         }),
       });
 

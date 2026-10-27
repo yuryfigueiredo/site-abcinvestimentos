@@ -76,20 +76,40 @@ interface ProviderStatus {
   error?: string;
 }
 
-const SYSTEM_PROMPT =
-  'Você é o consultor educativo do portal ABC Investimentos (abcinvestimentos.com.br). Responda em português do Brasil, de forma didática e objetiva (máximo 3 parágrafos ou tópicos claros). Não peça dados pessoais e não recomende compra ou venda de ativos específicos. Explique conceitos, riscos, liquidez, impostos e cálculos.';
+export interface ChatHistoryItem {
+  role: 'user' | 'assistant';
+  content: string;
+}
 
-async function askGemini(question: string): Promise<{ result: ProviderResult | null; status: ProviderStatus }> {
+const SYSTEM_PROMPT =
+  'Você é o consultor educativo do portal ABC Investimentos (abcinvestimentos.com.br). Responda em português do Brasil, de forma didática e objetiva (máximo 3 parágrafos ou tópicos claros). Se o investidor fizer uma pergunta de continuação, mantenha o contexto do assunto anterior com coerência. Não peça dados pessoais e não recomende compra ou venda de ativos específicos. Explique conceitos, riscos, liquidez, impostos e cálculos.';
+
+async function askGemini(question: string, history: ChatHistoryItem[] = []): Promise<{ result: ProviderResult | null; status: ProviderStatus }> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return { result: null, status: { configured: false, error: 'missing_key' } };
 
   const models = [
+    'gemini-1.5-flash',
+    'gemini-1.5-flash-latest',
+    'gemini-2.0-flash',
     'gemini-3.5-flash',
     'gemini-3.1-flash-lite',
-    'gemini-3.6-flash',
-    'gemini-3-flash-preview',
+    'gemini-1.5-pro',
   ];
   let lastError = 'no_valid_response';
+
+  const contents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
+  if (Array.isArray(history) && history.length > 0) {
+    for (const h of history) {
+      if (h.content && h.content.trim()) {
+        contents.push({
+          role: h.role === 'user' ? 'user' : 'model',
+          parts: [{ text: h.content.trim() }],
+        });
+      }
+    }
+  }
+  contents.push({ role: 'user', parts: [{ text: question }] });
 
   for (const model of models) {
     try {
@@ -103,8 +123,8 @@ async function askGemini(question: string): Promise<{ result: ProviderResult | n
             system_instruction: {
               parts: [{ text: SYSTEM_PROMPT }],
             },
-            contents: [{ role: 'user', parts: [{ text: question }] }],
-            generationConfig: { temperature: 0.4, maxOutputTokens: 500 },
+            contents,
+            generationConfig: { temperature: 0.4, maxOutputTokens: 650 },
           }),
         }
       );
@@ -129,7 +149,7 @@ async function askGemini(question: string): Promise<{ result: ProviderResult | n
   return { result: null, status: { configured: true, error: lastError } };
 }
 
-async function askCloudflare(question: string): Promise<{ result: ProviderResult | null; status: ProviderStatus }> {
+async function askCloudflare(question: string, history: ChatHistoryItem[] = []): Promise<{ result: ProviderResult | null; status: ProviderStatus }> {
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
   const apiToken = process.env.CLOUDFLARE_API_TOKEN;
   if (!accountId || !apiToken) return { result: null, status: { configured: false, error: 'missing_credentials' } };
@@ -140,6 +160,21 @@ async function askCloudflare(question: string): Promise<{ result: ProviderResult
   ];
   let lastError = 'no_valid_response';
 
+  const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+    { role: 'system', content: SYSTEM_PROMPT },
+  ];
+  if (Array.isArray(history) && history.length > 0) {
+    for (const h of history) {
+      if (h.content && h.content.trim()) {
+        messages.push({
+          role: h.role === 'user' ? 'user' : 'assistant',
+          content: h.content.trim(),
+        });
+      }
+    }
+  }
+  messages.push({ role: 'user', content: question });
+
   for (const model of models) {
     try {
       const result = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`, {
@@ -149,12 +184,7 @@ async function askCloudflare(question: string): Promise<{ result: ProviderResult
           'Content-Type': 'application/json',
         },
         signal: AbortSignal.timeout(5000),
-        body: JSON.stringify({
-          messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: question },
-          ],
-        }),
+        body: JSON.stringify({ messages }),
       });
 
       if (!result.ok) {
@@ -183,12 +213,27 @@ async function askCloudflare(question: string): Promise<{ result: ProviderResult
   return { result: null, status: { configured: true, error: lastError } };
 }
 
-async function askGroq(question: string): Promise<{ result: ProviderResult | null; status: ProviderStatus }> {
+async function askGroq(question: string, history: ChatHistoryItem[] = []): Promise<{ result: ProviderResult | null; status: ProviderStatus }> {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) return { result: null, status: { configured: false, error: 'missing_key' } };
 
   const models = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
   let lastError = 'no_valid_response';
+
+  const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+    { role: 'system', content: SYSTEM_PROMPT },
+  ];
+  if (Array.isArray(history) && history.length > 0) {
+    for (const h of history) {
+      if (h.content && h.content.trim()) {
+        messages.push({
+          role: h.role === 'user' ? 'user' : 'assistant',
+          content: h.content.trim(),
+        });
+      }
+    }
+  }
+  messages.push({ role: 'user', content: question });
 
   for (const model of models) {
     try {
@@ -201,12 +246,9 @@ async function askGroq(question: string): Promise<{ result: ProviderResult | nul
         signal: AbortSignal.timeout(5000),
         body: JSON.stringify({
           model,
-          messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: question },
-          ],
+          messages,
           temperature: 0.4,
-          max_tokens: 500,
+          max_tokens: 650,
         }),
       });
 
@@ -232,7 +274,84 @@ async function askGroq(question: string): Promise<{ result: ProviderResult | nul
   return { result: null, status: { configured: true, error: lastError } };
 }
 
-async function askOpenRouter(question: string): Promise<{ result: ProviderResult | null; status: ProviderStatus }> {
+async function askOpenRouter(question: string, history: ChatHistoryItem[] = []): Promise<{ result: ProviderResult | null; status: ProviderStatus }> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) return { result: null, status: { configured: false, error: 'missing_key' } };
+
+  const configuredModel = process.env.OPENROUTER_MODEL?.trim() || 'openrouter/free';
+  const models = Array.from(
+    new Set([
+      configuredModel,
+      'openrouter/free',
+      'meta-llama/llama-3.2-3b-instruct:free',
+      'meta-llama/llama-3.1-8b-instruct:free',
+      'qwen/qwen-2.5-7b-instruct:free',
+    ])
+  );
+  let lastError = 'no_valid_response';
+
+  const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+    { role: 'system', content: SYSTEM_PROMPT },
+  ];
+  if (Array.isArray(history) && history.length > 0) {
+    for (const h of history) {
+      if (h.content && h.content.trim()) {
+        messages.push({
+          role: h.role === 'user' ? 'user' : 'assistant',
+          content: h.content.trim(),
+        });
+      }
+    }
+  }
+  messages.push({ role: 'user', content: question });
+
+  for (const model of models) {
+    try {
+      const result = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://www.abcinvestimentos.com.br',
+          'X-Title': 'ABC Investimentos',
+        },
+        signal: AbortSignal.timeout(5000),
+        body: JSON.stringify({
+          model,
+          messages,
+          temperature: 0.4,
+          max_tokens: 650,
+        }),
+      });
+
+      if (!result.ok) {
+        console.error(`[ABC IA] OpenRouter recusou o modelo ${model}: HTTP ${result.status}`);
+        lastError = `http_${result.status}`;
+        continue;
+      }
+
+      const data = (await result.json()) as {
+        choices?: Array<{ message?: { content?: string } }>;
+        error?: { code?: number | string; message?: string };
+      };
+      const answer = data.choices?.[0]?.message?.content?.trim();
+      if (!answer || /^user safety:\s*safe$/i.test(answer)) {
+        lastError = 'empty_or_safety_response';
+        continue;
+      }
+
+      return {
+        result: { answer, model },
+        status: { configured: true },
+      };
+    } catch (error) {
+      console.error(`[ABC IA] Falha no OpenRouter (${model}):`, error);
+      lastError = 'timeout_or_network_error';
+    }
+  }
+
+  return { result: null, status: { configured: true, error: lastError } };
+}
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) return { result: null, status: { configured: false, error: 'missing_key' } };
 
@@ -307,8 +426,13 @@ export default async function handler(request: VercelRequest, response: VercelRe
   }
 
   try {
-    const body = (request.body || {}) as { question?: string; conversationConsent?: boolean };
+    const body = (request.body || {}) as {
+      question?: string;
+      conversationConsent?: boolean;
+      history?: ChatHistoryItem[];
+    };
     const question = (body.question || '').trim().slice(0, 500);
+    const history = Array.isArray(body.history) ? body.history.slice(-10) : [];
     if (!question) {
       json(response, 400, { error: 'Digite uma dúvida sobre investimentos.' });
       return;
@@ -316,23 +440,23 @@ export default async function handler(request: VercelRequest, response: VercelRe
 
     // Cascata de Provedores com timeout de 5 segundos em cada chamada:
     // 1. Cloudflare Workers AI (Titular)
-    const cloudflareAttempt = await askCloudflare(question);
+    const cloudflareAttempt = await askCloudflare(question, history);
 
     // 2. Groq (se chave configurada)
     const groqAttempt = cloudflareAttempt.result
       ? { result: null, status: { configured: false } }
-      : await askGroq(question);
+      : await askGroq(question, history);
 
     // 3. Gemini (Google AI Studio)
     const geminiAttempt = cloudflareAttempt.result || groqAttempt.result
       ? { result: null, status: { configured: false } }
-      : await askGemini(question);
+      : await askGemini(question, history);
 
     // 4. OpenRouter (rotas gratuitas)
     const openRouterAttempt =
       cloudflareAttempt.result || groqAttempt.result || geminiAttempt.result
         ? { result: null, status: { configured: false } }
-        : await askOpenRouter(question);
+        : await askOpenRouter(question, history);
 
     const generated =
       cloudflareAttempt.result ||

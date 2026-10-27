@@ -91,7 +91,7 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
         </button>
       </div>
 
-      <!-- Resposta Inteligente da IA ao Vivo -->
+      <!-- Resposta Inteligente da IA ao Vivo (Estilo Google AI Overview + Continuação de Assunto) -->
       <div id="hero-ia-response" class="ia-response-modal" hidden aria-live="polite">
         <div class="ia-response-head">
           <div class="ia-response-title">
@@ -101,8 +101,83 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
           </div>
           <button type="button" id="ia-close-btn" class="ia-close-btn" aria-label="Fechar resposta">×</button>
         </div>
-        <div class="ia-response-body" id="hero-ia-answer-text"></div>
-        <div class="ia-response-actions" id="hero-ia-actions"></div>
+
+        <!-- Thread da Conversa com Histórico Acumulado -->
+        <div class="ia-chat-thread" id="ia-chat-thread">
+          <div class="ia-response-body" id="hero-ia-answer-text"></div>
+          <div class="ia-response-actions" id="hero-ia-actions"></div>
+        </div>
+
+        <!-- Caixinha Estilo Google AI para Responder em Cima e Continuar no Mesmo Assunto -->
+        <div class="chat-followup-area" id="chat-followup-area">
+          <form id="chat-followup-form" class="chat-followup-form">
+            <div class="chat-followup-capsule">
+              <span class="chat-followup-icon" aria-hidden="true">
+                <FinanceIcon name="sparkles" size={17} />
+              </span>
+              <input
+                type="text"
+                id="chat-followup-input"
+                class="chat-followup-input"
+                placeholder="Pergunte o que quiser ou continue sobre este assunto..."
+                maxlength="300"
+                inputmode="search"
+                autocomplete="off"
+                required
+              />
+              <button type="submit" id="chat-followup-submit" class="chat-followup-btn" aria-label="Enviar pergunta de continuação">
+                <span>Perguntar</span>
+                <span class="followup-arrow" aria-hidden="true">→</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Gate / Modal de Captura de Lead na Segunda Pergunta -->
+        <div class="lead-capture-overlay" id="lead-capture-overlay" hidden>
+          <div class="lead-capture-card">
+            <div class="lead-card-header">
+              <span class="lead-sparkle-badge">✨ Consultor Exclusivo ABC</span>
+              <h3 class="lead-card-title">Continue sua consultoria personalizada</h3>
+              <p class="lead-card-desc">
+                Você concluiu sua 1ª consulta gratuita! Para continuar esta conversa com nossa IA Especialista e receber o resumo das simulações, informe seu Nome e WhatsApp (ou E-mail):
+              </p>
+            </div>
+
+            <form id="lead-capture-form" class="lead-card-form">
+              <div class="lead-form-group">
+                <label for="lead-name-input">Seu Nome Completo:</label>
+                <input
+                  type="text"
+                  id="lead-name-input"
+                  class="lead-form-input"
+                  placeholder="Ex: Carlos Eduardo Silva"
+                  required
+                />
+              </div>
+
+              <div class="lead-form-group">
+                <label for="lead-contact-input">WhatsApp com DDD ou E-mail:</label>
+                <input
+                  type="text"
+                  id="lead-contact-input"
+                  class="lead-form-input"
+                  placeholder="Ex: (21) 99750-6921 ou seu@email.com"
+                  required
+                />
+              </div>
+
+              <button type="submit" id="lead-form-submit" class="lead-form-btn">
+                <span>Liberar Consultor IA & Continuar</span>
+                <span class="lead-btn-arrow">→</span>
+              </button>
+
+              <p class="lead-security-note">
+                🔒 Seus dados estão 100% seguros. Não enviamos spam nem compartilhamos com terceiros.
+              </p>
+            </form>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -416,7 +491,7 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
       .join('');
   }
 
-  // 2. Interações do Consultor IA e Chips
+  // 2. Interações do Consultor IA, Thread de Conversa estilo Google e Captura de Lead
   const iaForm = document.getElementById('hero-ia-form') as HTMLFormElement | null;
   const iaInput = document.getElementById('hero-ia-input') as HTMLInputElement | null;
   const iaSubmit = document.getElementById('hero-ia-submit') as HTMLButtonElement | null;
@@ -425,7 +500,319 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
   const iaActions = document.getElementById('hero-ia-actions');
   const iaCloseBtn = document.getElementById('ia-close-btn');
   const iaBadgeSource = document.getElementById('ia-badge-source');
+  const chatThread = document.getElementById('ia-chat-thread');
 
+  // Elementos da Caixinha de Continuação estilo IA do Google
+  const followupForm = document.getElementById('chat-followup-form') as HTMLFormElement | null;
+  const followupInput = document.getElementById('chat-followup-input') as HTMLInputElement | null;
+  const followupSubmit = document.getElementById('chat-followup-submit') as HTMLButtonElement | null;
+
+  // Elementos do Modal de Captura de Lead
+  const leadOverlay = document.getElementById('lead-capture-overlay');
+  const leadForm = document.getElementById('lead-capture-form') as HTMLFormElement | null;
+  const leadNameInput = document.getElementById('lead-name-input') as HTMLInputElement | null;
+  const leadContactInput = document.getElementById('lead-contact-input') as HTMLInputElement | null;
+
+  // Histórico de conversa mantido em memória para continuidade contextual (estilo Google AI)
+  let conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+  let pendingQuestion = '';
+
+  function escapeHtml(str: string): string {
+    return str.replace(/[&<>'"]/g, (tag) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      "'": '&#39;',
+      '"': '&quot;',
+    }[tag] || tag));
+  }
+
+  function getQuestionCount(): number {
+    try {
+      return parseInt(localStorage.getItem('abc_ia_question_count') || '0', 10);
+    } catch {
+      return 0;
+    }
+  }
+
+  function isLeadCaptured(): boolean {
+    try {
+      return localStorage.getItem('abc_lead_captured') === 'true';
+    } catch {
+      return false;
+    }
+  }
+
+  function renderCalculatorLinks(calculators: Array<{ title: string; slug: string; params?: string }>): string {
+    if (!Array.isArray(calculators) || calculators.length === 0) return '';
+    const linksHtml = calculators
+      .map(
+        (calc) => `
+        <a href="/calculadoras/${calc.slug}${calc.params || ''}" class="btn-ia-action">
+          <span class="btn-action-text">${calc.title}</span>
+          <span class="btn-arrow" aria-hidden="true">→</span>
+        </a>
+      `
+      )
+      .join('');
+    return `
+      <div class="ia-rec-title">Simulação Completa nas Ferramentas:</div>
+      <div class="ia-rec-list">${linksHtml}</div>
+    `;
+  }
+
+  async function executeQuestion(questionText: string, isFollowUp = false) {
+    const q = questionText.trim();
+    if (!q) return;
+
+    // Regra do Captador de Informações na Segunda Pergunta:
+    // 1ª pergunta: totalmente gratuita e sem cadastro
+    // 2ª pergunta em diante: bloqueia com modal até preencher Nome e WhatsApp/E-mail
+    const count = getQuestionCount();
+    if (count >= 1 && !isLeadCaptured()) {
+      pendingQuestion = q;
+      if (leadOverlay) {
+        leadOverlay.hidden = false;
+        leadOverlay.classList.add('is-open');
+        leadNameInput?.focus();
+      }
+      return;
+    }
+
+    if (iaSubmit) iaSubmit.disabled = true;
+    if (followupSubmit) followupSubmit.disabled = true;
+
+    if (iaResponse && iaResponse.hidden) {
+      iaResponse.hidden = false;
+      iaResponse.classList.add('is-open');
+      requestAnimationFrame(() => {
+        iaResponse.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+    }
+
+    // Registra incremento no contador de perguntas
+    try {
+      localStorage.setItem('abc_ia_question_count', String(count + 1));
+    } catch {}
+
+    let followupLoadingElem: HTMLElement | null = null;
+
+    if (!isFollowUp) {
+      // Primeira pergunta: reinicia histórico e exibe card de carregamento principal
+      conversationHistory = [];
+      if (iaAnswerText) {
+        iaAnswerText.innerHTML = `
+          <div class="ia-agent-loading">
+            <div class="loading-header">
+              <div class="loading-badge">
+                <span class="loading-pulse-ring" aria-hidden="true"></span>
+                <span class="loading-badge-text">Agente Especialista ABC • Análise em Tempo Real</span>
+              </div>
+            </div>
+            <div class="loading-content">
+              <p class="loading-headline">
+                Nosso consultor com treinamento especializado está analisando seu cenário e buscando as melhores informações para você.
+              </p>
+              <p class="loading-subline">
+                Cruzando taxas oficiais do <strong>Banco Central</strong> com as diretrizes fiscais de <strong>2026</strong>...
+              </p>
+            </div>
+            <div class="loading-steps">
+              <div class="loading-step step-done">
+                <span class="step-icon">✓</span>
+                <span class="step-text">Taxas BCB (Selic, CDI, IPCA)</span>
+              </div>
+              <div class="loading-step step-pulse">
+                <span class="step-spinner" aria-hidden="true"></span>
+                <span class="step-text">Processando Inteligência em Nuvem</span>
+              </div>
+              <div class="loading-step step-pending">
+                <span class="step-icon">○</span>
+                <span class="step-text">Estruturando Estratégia & Simulação</span>
+              </div>
+            </div>
+            <div class="loading-progress-wrap">
+              <progress class="ia-loading-progress" aria-label="Processando análise patrimonial"></progress>
+            </div>
+          </div>
+        `;
+      }
+      if (iaActions) iaActions.innerHTML = '';
+    } else {
+      // Pergunta de continuação: adiciona bolha do usuário e bolha de loading na thread
+      if (chatThread) {
+        const userBubble = document.createElement('div');
+        userBubble.className = 'chat-turn-user';
+        userBubble.innerHTML = `
+          <span class="user-turn-badge">Sua Pergunta de Continuação:</span>
+          <div class="user-turn-text">${escapeHtml(q)}</div>
+        `;
+        chatThread.appendChild(userBubble);
+
+        followupLoadingElem = document.createElement('div');
+        followupLoadingElem.className = 'chat-turn-loading';
+        followupLoadingElem.innerHTML = `
+          <div class="step-spinner" aria-hidden="true"></div>
+          <span>Analisando continuidade da dúvida mantendo o mesmo assunto...</span>
+        `;
+        chatThread.appendChild(followupLoadingElem);
+
+        requestAnimationFrame(() => {
+          followupLoadingElem?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+      }
+    }
+
+    try {
+      const indicators = (window as any).__ABC_INDICATORS__ || undefined;
+      const [data] = await Promise.all([
+        processConsultantQuery(q, indicators, {
+          conversationConsent: true,
+          history: conversationHistory,
+        }),
+        new Promise((resolve) => setTimeout(resolve, 320)),
+      ]);
+
+      if (iaBadgeSource) {
+        if (data.source === 'cloudflare-ai') {
+          iaBadgeSource.className = 'ia-badge-live';
+          iaBadgeSource.textContent = 'IA Especialista ABC • Cloudflare Ultra-Rápida';
+        } else if (data.source === 'groq-llama') {
+          iaBadgeSource.className = 'ia-badge-live';
+          iaBadgeSource.textContent = 'IA Especialista ABC • Alta Velocidade Groq';
+        } else if (data.source === 'gemini-3.5-flash' || data.source === 'gemini-flash' || data.source === 'gemini-1.5-flash') {
+          iaBadgeSource.className = 'ia-badge-live';
+          iaBadgeSource.textContent = 'IA Especialista ABC • Análise em Tempo Real';
+        } else if (data.source === 'openrouter-free') {
+          iaBadgeSource.className = 'ia-badge-live';
+          iaBadgeSource.textContent = 'IA Especialista ABC • Modelo de Reserva';
+        } else {
+          iaBadgeSource.className = 'ia-badge-live ia-badge-local';
+          iaBadgeSource.textContent = 'Motor Heurístico ABC • Auditoria Local';
+        }
+      }
+
+      // Adiciona ao histórico conversacional para próximas perguntas
+      conversationHistory.push({ role: 'user', content: q });
+      conversationHistory.push({ role: 'assistant', content: data.answer });
+
+      if (!isFollowUp) {
+        if (iaAnswerText) iaAnswerText.innerHTML = renderMarkdown(data.answer);
+        if (iaActions) iaActions.innerHTML = renderCalculatorLinks(data.recommendedCalculators);
+      } else {
+        if (followupLoadingElem && followupLoadingElem.parentNode) {
+          followupLoadingElem.parentNode.removeChild(followupLoadingElem);
+        }
+        if (chatThread) {
+          const assistantTurn = document.createElement('div');
+          assistantTurn.className = 'chat-turn-assistant';
+          assistantTurn.innerHTML = `
+            <div class="assistant-turn-head">
+              <span class="ia-spark-lead">✨</span>
+              <strong>Consultor IA Especialista</strong>
+            </div>
+            <div class="assistant-turn-body">${renderMarkdown(data.answer)}</div>
+          `;
+          chatThread.appendChild(assistantTurn);
+
+          if (iaActions) {
+            iaActions.innerHTML = renderCalculatorLinks(data.recommendedCalculators);
+            chatThread.appendChild(iaActions);
+          }
+        }
+      }
+
+      if (iaInput) iaInput.value = '';
+      if (followupInput) followupInput.value = '';
+
+      requestAnimationFrame(() => {
+        const area = document.getElementById('chat-followup-area');
+        if (area) area.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+    } catch {
+      if (followupLoadingElem && followupLoadingElem.parentNode) {
+        followupLoadingElem.parentNode.removeChild(followupLoadingElem);
+      }
+      if (!isFollowUp) {
+        if (iaAnswerText) {
+          iaAnswerText.innerHTML = `<p>Para esta comparação, acesse diretamente nossos simuladores gratuitos:</p>`;
+        }
+      }
+      if (iaActions) {
+        iaActions.innerHTML = `
+          <div class="ia-rec-title">Acesse diretamente os simuladores gratuitos:</div>
+          <div class="ia-rec-list">
+            <a href="/calculadoras/renda-fixa" class="btn-ia-action">
+              <span class="btn-action-text">Simulador Renda Fixa (CDB vs LCI)</span>
+              <span class="btn-arrow">→</span>
+            </a>
+            <a href="/calculadoras/juros-compostos" class="btn-ia-action">
+              <span class="btn-action-text">Juros Compostos & 1º Milhão</span>
+              <span class="btn-arrow">→</span>
+            </a>
+          </div>
+        `;
+      }
+    } finally {
+      if (iaSubmit) iaSubmit.disabled = false;
+      if (followupSubmit) followupSubmit.disabled = false;
+    }
+  }
+
+  // 1. Envio do Formulário Principal do Hero
+  if (iaForm && iaInput) {
+    iaForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const question = iaInput.value.trim();
+      if (!question) return;
+      const isFollowUp = conversationHistory.length > 0 && iaResponse && !iaResponse.hidden;
+      executeQuestion(question, isFollowUp);
+    });
+  }
+
+  // 2. Envio da Caixinha de Continuação estilo Google
+  if (followupForm && followupInput) {
+    followupForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const question = followupInput.value.trim();
+      if (!question) return;
+      executeQuestion(question, true);
+    });
+  }
+
+  // 3. Submissão do Modal de Captura de Lead
+  if (leadForm && leadOverlay && leadNameInput && leadContactInput) {
+    leadForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = leadNameInput.value.trim();
+      const contact = leadContactInput.value.trim();
+      if (!name || !contact) return;
+
+      try {
+        localStorage.setItem('abc_lead_captured', 'true');
+        localStorage.setItem('abc_lead_data', JSON.stringify({ name, contact, date: new Date().toISOString() }));
+      } catch {}
+
+      // Grava no servidor de forma assíncrona
+      fetch('/api/lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, contact, question: pendingQuestion }),
+      }).catch(() => {});
+
+      leadOverlay.classList.remove('is-open');
+      leadOverlay.hidden = true;
+
+      // Desbloqueia e executa a pergunta pendente na mesma hora sem o usuário ter que redigitar
+      if (pendingQuestion) {
+        const q = pendingQuestion;
+        pendingQuestion = '';
+        executeQuestion(q, true);
+      }
+    });
+  }
+
+  // Fechamento e light-dismiss do Modal de Resposta
   if (iaCloseBtn && iaResponse) {
     iaCloseBtn.addEventListener('click', () => {
       iaResponse.classList.remove('is-open');
@@ -433,9 +820,14 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
     });
   }
 
-  // Light-dismiss acessível (Modern Web Guidance)
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && iaResponse && !iaResponse.hidden) {
+      if (leadOverlay && !leadOverlay.hidden) {
+        leadOverlay.classList.remove('is-open');
+        leadOverlay.hidden = true;
+        pendingQuestion = '';
+        return;
+      }
       iaResponse.classList.remove('is-open');
       iaResponse.hidden = true;
     }
@@ -451,6 +843,7 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
     }
   });
 
+  // Atalhos rápidos dos Chips
   document.querySelectorAll<HTMLButtonElement>('.search-chip').forEach((chip) => {
     chip.addEventListener('click', () => {
       const prompt = chip.dataset.iaPrompt;
@@ -460,127 +853,6 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
       }
     });
   });
-
-  if (iaForm && iaInput && iaSubmit && iaResponse && iaAnswerText && iaActions) {
-    iaForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const question = iaInput.value.trim();
-      if (!question) return;
-
-      iaSubmit.disabled = true;
-      if (iaResponse.hidden) {
-        iaResponse.hidden = false;
-        iaResponse.classList.add('is-open');
-        requestAnimationFrame(() => {
-          iaResponse.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        });
-      }
-      iaAnswerText.innerHTML = `
-        <div class="ia-agent-loading">
-          <div class="loading-header">
-            <div class="loading-badge">
-              <span class="loading-pulse-ring" aria-hidden="true"></span>
-              <span class="loading-badge-text">Agente Especialista ABC • Análise em Tempo Real</span>
-            </div>
-          </div>
-
-          <div class="loading-content">
-            <p class="loading-headline">
-              Nosso consultor com treinamento especializado está analisando seu cenário e buscando as melhores informações para você.
-            </p>
-            <p class="loading-subline">
-              Cruzando taxas oficiais do <strong>Banco Central</strong> com as diretrizes fiscais de <strong>2026</strong>...
-            </p>
-          </div>
-
-          <div class="loading-steps">
-            <div class="loading-step step-done">
-              <span class="step-icon">✓</span>
-              <span class="step-text">Taxas BCB (Selic, CDI, IPCA)</span>
-            </div>
-            <div class="loading-step step-pulse">
-              <span class="step-spinner" aria-hidden="true"></span>
-              <span class="step-text">Processando Inteligência em Nuvem</span>
-            </div>
-            <div class="loading-step step-pending">
-              <span class="step-icon">○</span>
-              <span class="step-text">Estruturando Estratégia & Simulação</span>
-            </div>
-          </div>
-
-          <div class="loading-progress-wrap">
-            <progress class="ia-loading-progress" aria-label="Processando análise patrimonial"></progress>
-          </div>
-        </div>
-      `;
-      iaActions.innerHTML = '';
-
-      try {
-        const indicators = (window as any).__ABC_INDICATORS__ || undefined;
-        const [data] = await Promise.all([
-          processConsultantQuery(question, indicators, {
-            conversationConsent: true,
-          }),
-          new Promise((resolve) => setTimeout(resolve, 350)),
-        ]);
-
-        if (iaBadgeSource) {
-          if (data.source === 'cloudflare-ai') {
-            iaBadgeSource.className = 'ia-badge-live';
-            iaBadgeSource.textContent = 'IA Especialista ABC • Cloudflare Ultra-Rápida';
-          } else if (data.source === 'groq-llama') {
-            iaBadgeSource.className = 'ia-badge-live';
-            iaBadgeSource.textContent = 'IA Especialista ABC • Alta Velocidade Groq';
-          } else if (data.source === 'gemini-3.5-flash' || data.source === 'gemini-flash' || data.source === 'gemini-1.5-flash') {
-            iaBadgeSource.className = 'ia-badge-live';
-            iaBadgeSource.textContent = 'IA Especialista ABC • Análise em Tempo Real';
-          } else if (data.source === 'openrouter-free') {
-            iaBadgeSource.className = 'ia-badge-live';
-            iaBadgeSource.textContent = 'IA Especialista ABC • Modelo de Reserva';
-          } else {
-            iaBadgeSource.className = 'ia-badge-live ia-badge-local';
-            iaBadgeSource.textContent = 'Motor Heurístico ABC • Auditoria Local';
-          }
-        }
-
-        iaAnswerText.innerHTML = renderMarkdown(data.answer);
-
-        if (Array.isArray(data.recommendedCalculators) && data.recommendedCalculators.length > 0) {
-          const linksHtml = data.recommendedCalculators
-            .map(
-              (calc) => `
-              <a href="/calculadoras/${calc.slug}${calc.params || ''}" class="btn-ia-action">
-                <span class="btn-action-text">${calc.title}</span>
-                <span class="btn-arrow" aria-hidden="true">→</span>
-              </a>
-            `
-            )
-            .join('');
-          iaActions.innerHTML = `
-            <div class="ia-rec-title">Simulação Completa nas Ferramentas:</div>
-            <div class="ia-rec-list">${linksHtml}</div>
-          `;
-        }
-      } catch {
-        iaAnswerText.innerHTML = `<p>Para esta comparação, acesse diretamente nossos simuladores gratuitos:</p>`;
-        iaActions.innerHTML = `
-          <div class="ia-rec-title">Acesse diretamente os simuladores gratuitos:</div>
-          <div class="ia-rec-list">
-            <a href="/calculadoras/renda-fixa" class="btn-ia-action">
-              <span class="btn-action-text">Simulador Renda Fixa (CDB vs LCI)</span>
-              <span class="btn-arrow">→</span>
-            </a>
-            <a href="/calculadoras/juros-compostos" class="btn-ia-action">
-              <span class="btn-action-text">Juros Compostos & 1º Milhão</span>
-              <span class="btn-arrow">→</span>
-            </a>
-          </div>
-        `;
-      } finally {
-        iaSubmit.disabled = false;
-      }
-    });
-  }
 </script>
 
 <style>
@@ -1619,6 +1891,318 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 0.75rem;
     }
+  }
+
+  /* Thread da Conversa estilo Google AI */
+  .ia-chat-thread {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    width: 100%;
+  }
+
+  .ia-chat-thread :global(.chat-turn-user) {
+    background: rgba(56, 189, 248, 0.08);
+    border: 1px solid rgba(56, 189, 248, 0.22);
+    border-radius: 14px;
+    padding: 0.85rem 1.15rem;
+    text-align: left;
+    margin-top: 0.5rem;
+  }
+
+  :root[data-theme="light"] .ia-chat-thread :global(.chat-turn-user),
+  html[data-theme="light"] .ia-chat-thread :global(.chat-turn-user) {
+    background: #f0f9ff;
+    border-color: #bae6fd;
+  }
+
+  .ia-chat-thread :global(.user-turn-badge) {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--brand-blue);
+    margin-bottom: 0.25rem;
+    display: block;
+  }
+
+  .ia-chat-thread :global(.user-turn-text) {
+    font-size: 0.96rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.45;
+  }
+
+  .ia-chat-thread :global(.chat-turn-assistant) {
+    background: rgba(15, 23, 42, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 14px;
+    padding: 1.15rem 1.25rem;
+    text-align: left;
+  }
+
+  :root[data-theme="light"] .ia-chat-thread :global(.chat-turn-assistant),
+  html[data-theme="light"] .ia-chat-thread :global(.chat-turn-assistant) {
+    background: #ffffff;
+    border-color: #e2e8f0;
+  }
+
+  .ia-chat-thread :global(.assistant-turn-head) {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--brand-blue);
+    margin-bottom: 0.85rem;
+  }
+
+  .ia-chat-thread :global(.chat-turn-loading) {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    background: rgba(15, 23, 42, 0.35);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
+
+  /* Caixinha Estilo IA do Google (Follow-up Input) */
+  .chat-followup-area {
+    margin-top: 1.5rem;
+    padding-top: 1.15rem;
+    border-top: 1px solid var(--border-subtle);
+    width: 100%;
+  }
+
+  .chat-followup-form {
+    width: 100%;
+  }
+
+  .chat-followup-capsule {
+    display: flex;
+    align-items: center;
+    background: var(--bg-surface);
+    border: 1.5px solid var(--border-card);
+    border-radius: 9999px;
+    height: 52px;
+    padding: 0.25rem 0.35rem 0.25rem 1.15rem;
+    box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.25);
+    transition: all 0.2s ease;
+    width: 100%;
+  }
+
+  :root[data-theme="light"] .chat-followup-capsule,
+  html[data-theme="light"] .chat-followup-capsule {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+  }
+
+  .chat-followup-capsule:focus-within {
+    border-color: var(--brand-blue);
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+  }
+
+  .chat-followup-icon {
+    color: var(--brand-blue);
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .chat-followup-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-size: 16px; /* Impede auto-zoom no iOS Safari */
+    outline: none;
+    min-width: 0;
+    padding-inline: 0.75rem 0.5rem;
+    text-overflow: ellipsis;
+  }
+
+  .chat-followup-input::placeholder {
+    color: var(--text-muted);
+    font-size: 0.92rem;
+  }
+
+  .chat-followup-btn {
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 9999px;
+    height: 42px;
+    padding-inline: 1.15rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+  }
+
+  .chat-followup-btn:hover {
+    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.4);
+  }
+
+  .followup-arrow {
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  /* Overlay de Captura de Lead na Segunda Pergunta */
+  .lead-capture-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 15, 29, 0.88);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-radius: 18px;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem;
+    animation: leadOverlayFade 0.25s ease forwards;
+  }
+
+  @keyframes leadOverlayFade {
+    from {
+      opacity: 0;
+      transform: scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  :root[data-theme="light"] .lead-capture-overlay,
+  html[data-theme="light"] .lead-capture-overlay {
+    background: rgba(248, 250, 252, 0.92);
+  }
+
+  .lead-capture-card {
+    background: var(--bg-surface);
+    border: 1.5px solid rgba(56, 189, 248, 0.35);
+    border-radius: 16px;
+    padding: clamp(1.25rem, 3.5vw, 2rem);
+    max-width: 480px;
+    width: 100%;
+    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(56, 189, 248, 0.15);
+    text-align: left;
+  }
+
+  :root[data-theme="light"] .lead-capture-card,
+  html[data-theme="light"] .lead-capture-card {
+    background: #ffffff;
+    border-color: #bae6fd;
+    box-shadow: 0 20px 45px -10px rgba(15, 23, 42, 0.12);
+  }
+
+  .lead-sparkle-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: #38bdf8;
+    background: rgba(14, 165, 233, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.28);
+    padding: 0.22rem 0.7rem;
+    border-radius: 9999px;
+    margin-bottom: 0.75rem;
+  }
+
+  .lead-card-title {
+    font-size: clamp(1.15rem, 2.5vw, 1.45rem);
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.45rem;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+  }
+
+  .lead-card-desc {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    line-height: 1.55;
+    margin-bottom: 1.25rem;
+  }
+
+  .lead-card-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.95rem;
+  }
+
+  .lead-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .lead-form-group label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .lead-form-input {
+    height: 46px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-card);
+    border-radius: 10px;
+    padding: 0 0.95rem;
+    font-size: 16px; /* 16px obrigatório para não dar zoom no iOS */
+    color: var(--text-primary);
+    outline: none;
+    transition: all 0.2s ease;
+  }
+
+  .lead-form-input:focus {
+    border-color: var(--brand-blue);
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.18);
+  }
+
+  .lead-form-btn {
+    width: 100%;
+    height: 48px;
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    font-size: 0.92rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    margin-top: 0.4rem;
+    box-shadow: 0 4px 14px -2px rgba(2, 132, 199, 0.45);
+    transition: all 0.2s ease;
+  }
+
+  .lead-form-btn:hover {
+    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(56, 189, 248, 0.45);
+  }
+
+  .lead-security-note {
+    font-size: 0.74rem;
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: 0.25rem;
   }
 
   /* Start Section — Os 4 Cards (Estilo Mais Retorno) */
