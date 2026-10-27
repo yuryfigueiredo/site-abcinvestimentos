@@ -230,10 +230,6 @@ export default async function handler(request: VercelRequest, response: VercelRe
       answer,
       mode,
       modelUsed: generated?.model,
-      providerStatus: {
-        gemini: geminiAttempt.status,
-        openrouter: openRouterAttempt.status,
-      },
       remainingFree: 3,
       suggestedTool: {
         label: 'Explorar as calculadoras ABC',
