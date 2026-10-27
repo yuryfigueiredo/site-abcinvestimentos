@@ -1,4 +1,4 @@
-import { onRequestPost } from '../functions/api/ia';
+import { onRequestPost } from '../src/lib/ia-server';
 
 export const config = {
   runtime: 'nodejs',
