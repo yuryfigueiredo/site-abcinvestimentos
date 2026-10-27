@@ -89,10 +89,15 @@ async function askGemini(question: string): Promise<string | null> {
   );
 
   if (!result.ok) return null;
-  const data = (await result.json()) as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-  };
-  return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
+  try {
+    const data = (await result.json()) as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    };
+    return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
+  } catch (error) {
+    console.error('[ABC IA] Resposta inválida do Gemini:', error);
+    return null;
+  }
 }
 
 export default async function handler(request: VercelRequest, response: VercelResponse): Promise<void> {
@@ -132,9 +137,6 @@ export default async function handler(request: VercelRequest, response: VercelRe
     });
   } catch (error) {
     console.error('[ABC IA] Falha ao processar pergunta:', error);
-    json(response, 500, {
-      error: 'Não foi possível processar sua pergunta no momento.',
-      diagnostic: error instanceof Error ? error.message : String(error),
-    });
+    json(response, 500, { error: 'Não foi possível processar sua pergunta no momento.' });
   }
 }
