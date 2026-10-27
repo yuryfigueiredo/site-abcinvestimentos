@@ -109,6 +109,51 @@ async function askGemini(question: string): Promise<{ answer: string; model: str
   return null;
 }
 
+async function askOpenRouter(question: string): Promise<{ answer: string; model: string } | null> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) return null;
+
+  const model = process.env.OPENROUTER_MODEL || 'openrouter/free';
+  try {
+    const result = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://www.abcinvestimentos.com.br',
+        'X-Title': 'ABC Investimentos',
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          {
+            role: 'system',
+            content:
+              'Você é o consultor educativo do portal ABC Investimentos. Responda em português do Brasil, de forma didática e objetiva. Não peça dados pessoais e não recomende compra ou venda de ativos específicos. Explique conceitos, riscos, liquidez, impostos e cálculos.',
+          },
+          { role: 'user', content: question },
+        ],
+        temperature: 0.4,
+        max_tokens: 500,
+      }),
+    });
+
+    if (!result.ok) {
+      console.error(`[ABC IA] OpenRouter recusou o modelo ${model}: HTTP ${result.status}`);
+      return null;
+    }
+
+    const data = (await result.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
+    const answer = data.choices?.[0]?.message?.content?.trim();
+    return answer ? { answer, model } : null;
+  } catch (error) {
+    console.error('[ABC IA] Falha no OpenRouter:', error);
+    return null;
+  }
+}
+
 export default async function handler(request: VercelRequest, response: VercelResponse): Promise<void> {
   if (request.method !== 'POST') {
     response.setHeader('Allow', 'POST');
@@ -125,8 +170,10 @@ export default async function handler(request: VercelRequest, response: VercelRe
     }
 
     const gemini = await askGemini(question);
-    const answer = gemini?.answer || fallbackAnswer(question);
-    const mode = gemini ? 'gemini-live' : 'educational-engine';
+    const openRouter = gemini ? null : await askOpenRouter(question);
+    const generated = gemini || openRouter;
+    const answer = generated?.answer || fallbackAnswer(question);
+    const mode = gemini ? 'gemini-live' : openRouter ? 'openrouter-live' : 'educational-engine';
 
     if (body.conversationConsent === true) {
       try {
@@ -139,7 +186,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
     json(response, 200, {
       answer,
       mode,
-      modelUsed: gemini?.model,
+      modelUsed: generated?.model,
       remainingFree: 3,
       suggestedTool: {
         label: 'Explorar as calculadoras ABC',

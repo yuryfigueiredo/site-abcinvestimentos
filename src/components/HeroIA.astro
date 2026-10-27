@@ -62,7 +62,7 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
       </form>
       <label class="ia-consent-label">
         <input type="checkbox" id="ia-conversation-consent" />
-        <span>Permito o registro anônimo desta conversa para melhorar os conteúdos do site.</span>
+        <span>Autorizo o uso desta conversa para treinar e melhorar a IA do ABC Investimentos.</span>
         <a href="/privacidade">Saiba mais</a>
       </label>
 
@@ -533,6 +533,9 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
           } else if (data.source === 'gemini-3.5-flash' || data.source === 'gemini-flash') {
             iaBadgeSource.className = 'ia-badge-live';
             iaBadgeSource.textContent = 'IA Especialista ABC • Análise em Tempo Real';
+          } else if (data.source === 'openrouter-free') {
+            iaBadgeSource.className = 'ia-badge-live';
+            iaBadgeSource.textContent = 'IA Especialista ABC • Modelo de Reserva';
           } else {
             iaBadgeSource.className = 'ia-badge-live ia-badge-local';
             iaBadgeSource.textContent = 'Motor Heurístico ABC • Auditoria Local';

@@ -16,7 +16,7 @@ export interface RecommendedCalculator {
 
 export interface AssistantResponse {
   answer: string;
-  source: 'gemini-flash' | 'gemini-1.5-flash' | 'gemini-3.5-flash' | 'abc-expert-engine';
+  source: 'gemini-flash' | 'gemini-1.5-flash' | 'gemini-3.5-flash' | 'openrouter-free' | 'abc-expert-engine';
   modelUsed?: string;
   recommendedCalculators: RecommendedCalculator[];
 }
@@ -509,7 +509,12 @@ export async function processConsultantQuery(
         if (typeof data.answer === 'string' && data.answer.trim()) {
           return {
             answer: data.answer,
-            source: data.mode === 'gemini-live' ? 'gemini-flash' : 'abc-expert-engine',
+            source:
+              data.mode === 'gemini-live'
+                ? 'gemini-flash'
+                : data.mode === 'openrouter-live'
+                  ? 'openrouter-free'
+                  : 'abc-expert-engine',
             recommendedCalculators: detectRecommendedCalculators(question),
           };
         }
