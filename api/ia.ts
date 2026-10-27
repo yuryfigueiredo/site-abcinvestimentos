@@ -126,9 +126,15 @@ async function askOpenRouter(question: string): Promise<{ result: ProviderResult
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) return { result: null, status: { configured: false, error: 'missing_key' } };
 
-  const model = process.env.OPENROUTER_MODEL || 'openrouter/free';
-  try {
-    const result = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  const configuredModel = process.env.OPENROUTER_MODEL || 'openrouter/free';
+  const models = Array.from(
+    new Set([configuredModel, 'meta-llama/llama-3.2-3b-instruct:free', 'deepseek/deepseek-r1:free'])
+  );
+  let lastError = 'no_valid_response';
+
+  for (const model of models) {
+    try {
+      const result = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -149,34 +155,35 @@ async function askOpenRouter(question: string): Promise<{ result: ProviderResult
         temperature: 0.4,
         max_tokens: 500,
       }),
-    });
+      });
 
-    if (!result.ok) {
-      console.error(`[ABC IA] OpenRouter recusou o modelo ${model}: HTTP ${result.status}`);
-      return { result: null, status: { configured: true, error: `http_${result.status}` } };
+      if (!result.ok) {
+        console.error(`[ABC IA] OpenRouter recusou o modelo ${model}: HTTP ${result.status}`);
+        lastError = `http_${result.status}`;
+        continue;
+      }
+
+      const data = (await result.json()) as {
+        choices?: Array<{ message?: { content?: string } }>;
+        error?: { code?: number | string; message?: string };
+      };
+      const answer = data.choices?.[0]?.message?.content?.trim();
+      if (!answer || /^user safety:\s*safe$/i.test(answer)) {
+        lastError = 'empty_or_safety_response';
+        continue;
+      }
+
+      return {
+        result: { answer, model },
+        status: { configured: true },
+      };
+    } catch (error) {
+      console.error(`[ABC IA] Falha no OpenRouter (${model}):`, error);
+      lastError = 'network_error';
     }
-
-    const data = (await result.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-      error?: { code?: number | string; message?: string };
-    };
-    const answer = data.choices?.[0]?.message?.content?.trim();
-    if (!answer) {
-      const providerError = data.error
-        ? `${data.error.code || 'unknown'}:${data.error.message || 'empty_response'}`
-        : 'empty_response';
-      console.error(`[ABC IA] OpenRouter não retornou conteúdo: ${providerError}`);
-      return { result: null, status: { configured: true, error: providerError } };
-    }
-
-    return {
-      result: { answer, model },
-      status: { configured: true },
-    };
-  } catch (error) {
-    console.error('[ABC IA] Falha no OpenRouter:', error);
-    return { result: null, status: { configured: true, error: 'network_error' } };
   }
+
+  return { result: null, status: { configured: true, error: lastError } };
 }
 
 export default async function handler(request: VercelRequest, response: VercelResponse): Promise<void> {
