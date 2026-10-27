@@ -1,5 +1,9 @@
 import { onRequestPost } from '../functions/api/ia';
 
+export const config = {
+  runtime: 'nodejs',
+};
+
 interface VercelRequest {
   method?: string;
   body?: unknown;
