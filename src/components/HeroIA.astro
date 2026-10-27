@@ -60,6 +60,11 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
           <span>Consultar IA Especialista</span>
         </button>
       </form>
+      <label class="ia-consent-label">
+        <input type="checkbox" id="ia-conversation-consent" />
+        <span>Permito o registro anônimo desta conversa para melhorar os conteúdos do site.</span>
+        <a href="/privacidade">Saiba mais</a>
+      </label>
 
       <!-- Chips de Teste em 1 Clique (Cápsulas de Vidro Escuro) -->
       <div class="search-chips-row">
@@ -268,8 +273,14 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
         continue;
       }
 
-      // Converte negritos **texto** -> <strong>texto</strong>
-      const formatted = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      const escaped = line.replace(/[&<>"']/g, (character) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+      })[character] || character);
+      const formatted = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
       if (line.startsWith('- ') || line.startsWith('* ')) {
         if (!inList) {
@@ -410,6 +421,7 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
   const iaForm = document.getElementById('hero-ia-form') as HTMLFormElement | null;
   const iaInput = document.getElementById('hero-ia-input') as HTMLInputElement | null;
   const iaSubmit = document.getElementById('hero-ia-submit') as HTMLButtonElement | null;
+  const iaConversationConsent = document.getElementById('ia-conversation-consent') as HTMLInputElement | null;
   const iaResponse = document.getElementById('hero-ia-response');
   const iaAnswerText = document.getElementById('hero-ia-answer-text');
   const iaActions = document.getElementById('hero-ia-actions');
@@ -508,7 +520,9 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
       try {
         const indicators = (window as any).__ABC_INDICATORS__ || undefined;
         const [data] = await Promise.all([
-          processConsultantQuery(question, indicators),
+          processConsultantQuery(question, indicators, {
+            conversationConsent: iaConversationConsent?.checked === true,
+          }),
           new Promise((resolve) => setTimeout(resolve, 350)),
         ]);
 
@@ -708,6 +722,29 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
     display: flex;
     flex-direction: column;
     align-items: center;
+  }
+
+  .ia-consent-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    margin: 0.7rem auto 0;
+    max-width: 760px;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    line-height: 1.4;
+  }
+
+  .ia-consent-label input {
+    accent-color: var(--brand-blue);
+    flex: 0 0 auto;
+  }
+
+  .ia-consent-label a {
+    color: var(--brand-blue);
+    text-decoration: underline;
+    white-space: nowrap;
   }
 
   /* IA Authority Marketing Tag */

@@ -1,5 +1,5 @@
 /**
- * Cloudflare Pages Function: /api/ia
+ * Server handler compartilhado por Cloudflare Pages e Vercel: /api/ia
  * Protege a chave GEMINI_API_KEY no servidor (nunca exposta no navegador),
  * aplica limite de 3 perguntas gratuitas por dia por visitante e garante
  * respostas puramente educativas conforme regras da CVM e legislação fiscal de 2026.
@@ -7,6 +7,8 @@
 
 interface Env {
   GEMINI_API_KEY?: string;
+  TURSO_DATABASE_URL?: string;
+  TURSO_AUTH_TOKEN?: string;
 }
 
 interface IaRequestBody {
@@ -16,11 +18,56 @@ interface IaRequestBody {
     cdi?: number;
     ipca12m?: number;
   };
+  conversationConsent?: boolean;
 }
 
 // Controle em memória por instância edge (complementado por cookie HttpOnly e controle local)
 const dailyIpUsage = new Map<string, { date: string; count: number }>();
 const MAX_DAILY_FREE_QUESTIONS = 3;
+
+async function saveConversation(
+  databaseUrl: string | undefined,
+  authToken: string | undefined,
+  consent: boolean,
+  question: string,
+  answer: string,
+  mode: string
+): Promise<void> {
+  if (!databaseUrl || !authToken || !consent) return;
+
+  try {
+    const endpoint = databaseUrl.replace(/^libsql:\/\//, 'https://').replace(/\/+$/, '') + '/v2/pipeline';
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        requests: [
+          {
+            type: 'execute',
+            stmt: {
+              sql: 'INSERT INTO ai_conversations (question, answer, mode) VALUES (?, ?, ?)',
+              args: [
+                { type: 'text', value: question },
+                { type: 'text', value: answer },
+                { type: 'text', value: mode },
+              ],
+            },
+          },
+          { type: 'close' },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Turso HTTP ${response.status}`);
+    }
+  } catch (error) {
+    console.error('[ABC IA] Falha ao registrar conversa:', error);
+  }
+}
 
 function buildEducationalFallbackAnswer(question: string, selic = 14.25, cdi = 14.15, ipca = 4.56) {
   const q = question.toLowerCase();
@@ -67,7 +114,11 @@ function buildEducationalFallbackAnswer(question: string, selic = 14.25, cdi = 1
 
 export const onRequestPost = async (context: { request: Request; env: Env }): Promise<Response> => {
   try {
-    const ip = context.request.headers.get('CF-Connecting-IP') || 'local-visitor';
+    const ip =
+      context.request.headers.get('CF-Connecting-IP') ||
+      context.request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+      context.request.headers.get('x-real-ip') ||
+      'local-visitor';
     const today = new Date().toISOString().slice(0, 10);
     const currentUsage = dailyIpUsage.get(ip);
 
@@ -104,10 +155,19 @@ export const onRequestPost = async (context: { request: Request; env: Env }): Pr
     const newCount = currentUsage && currentUsage.date === today ? currentUsage.count + 1 : 1;
     dailyIpUsage.set(ip, { date: today, count: newCount });
     const remainingFree = Math.max(0, MAX_DAILY_FREE_QUESTIONS - newCount);
+    const conversationConsent = body.conversationConsent === true;
 
     const apiKey = context.env?.GEMINI_API_KEY;
     if (!apiKey) {
       const fallback = buildEducationalFallbackAnswer(rawQuestion, selic, cdi, ipca);
+      await saveConversation(
+        context.env?.TURSO_DATABASE_URL,
+        context.env?.TURSO_AUTH_TOKEN,
+        conversationConsent,
+        rawQuestion,
+        fallback.answer,
+        'educational-engine'
+      );
       return new Response(
         JSON.stringify({
           ...fallback,
@@ -142,6 +202,14 @@ Regras obrigatórias:
 
     if (!geminiRes.ok) {
       const fallback = buildEducationalFallbackAnswer(rawQuestion, selic, cdi, ipca);
+      await saveConversation(
+        context.env?.TURSO_DATABASE_URL,
+        context.env?.TURSO_AUTH_TOKEN,
+        conversationConsent,
+        rawQuestion,
+        fallback.answer,
+        'educational-engine-fallback'
+      );
       return new Response(
         JSON.stringify({
           ...fallback,
@@ -160,6 +228,14 @@ Regras obrigatórias:
       buildEducationalFallbackAnswer(rawQuestion, selic, cdi, ipca).answer;
 
     const fallbackSuggestion = buildEducationalFallbackAnswer(rawQuestion, selic, cdi, ipca).suggestedTool;
+    await saveConversation(
+      context.env?.TURSO_DATABASE_URL,
+      context.env?.TURSO_AUTH_TOKEN,
+      conversationConsent,
+      rawQuestion,
+      aiText,
+      'gemini-live'
+    );
 
     return new Response(
       JSON.stringify({

@@ -28,6 +28,10 @@ export interface EconomicIndicators {
   dolar: number;
 }
 
+export interface ConsultantQueryOptions {
+  conversationConsent?: boolean;
+}
+
 export function getSystemPrompt(indicators: EconomicIndicators): string {
   const { selic, cdi, ipca12m, dolar } = indicators;
   return `VOCÊ É: O Consultor Sênior de Inteligência Financeira e Patrimonial do portal ABC Investimentos (abcinvestimentos.com.br).
@@ -474,7 +478,8 @@ Evite concentrar patrimônio em um único banco ou produto financeiro. Aplique a
  */
 export async function processConsultantQuery(
   question: string,
-  indicatorsOverride?: Partial<EconomicIndicators>
+  indicatorsOverride?: Partial<EconomicIndicators>,
+  options: ConsultantQueryOptions = {}
 ): Promise<AssistantResponse> {
   const indicators: EconomicIndicators = {
     selic: indicatorsOverride?.selic ?? SITE_CONFIG.defaultIndicators.selic,
@@ -483,14 +488,35 @@ export async function processConsultantQuery(
     dolar: indicatorsOverride?.dolar ?? SITE_CONFIG.defaultIndicators.dolar,
   };
 
-  const apiKey =
-    (typeof import.meta !== 'undefined' ? ((import.meta as any).env?.PUBLIC_GEMINI_API_KEY || (import.meta as any).env?.GEMINI_API_KEY) : undefined) ||
-    (typeof process !== 'undefined' ? (process.env?.PUBLIC_GEMINI_API_KEY || process.env?.GEMINI_API_KEY) : undefined) ||
-    '';
+  if (typeof window !== 'undefined') {
+    try {
+      const response = await fetch('/api/ia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question,
+          indicators,
+          conversationConsent: options.conversationConsent === true,
+        }),
+      });
 
-  if (apiKey) {
-    const cloudRes = await callGeminiApi(question, indicators, apiKey);
-    if (cloudRes) return cloudRes;
+      if (response.ok) {
+        const data = (await response.json()) as {
+          answer?: string;
+          mode?: string;
+        };
+
+        if (typeof data.answer === 'string' && data.answer.trim()) {
+          return {
+            answer: data.answer,
+            source: data.mode === 'gemini-live' ? 'gemini-flash' : 'abc-expert-engine',
+            recommendedCalculators: detectRecommendedCalculators(question),
+          };
+        }
+      }
+    } catch {
+      // O motor local abaixo mantém o consultor disponível sem rede.
+    }
   }
 
   return generateLocalExpertResponse(question, indicators);
