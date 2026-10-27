@@ -126,9 +126,14 @@ async function askOpenRouter(question: string): Promise<{ result: ProviderResult
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) return { result: null, status: { configured: false, error: 'missing_key' } };
 
-  const configuredModel = process.env.OPENROUTER_MODEL || 'openrouter/free';
+  const configuredModel = process.env.OPENROUTER_MODEL?.trim() || 'openrouter/free';
   const models = Array.from(
-    new Set([configuredModel, 'meta-llama/llama-3.2-3b-instruct:free', 'deepseek/deepseek-r1:free'])
+    new Set([
+      configuredModel,
+      'openrouter/free',
+      'meta-llama/llama-3.2-3b-instruct:free',
+      'deepseek/deepseek-r1:free',
+    ])
   );
   let lastError = 'no_valid_response';
 
