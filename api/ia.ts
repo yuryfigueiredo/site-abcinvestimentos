@@ -65,39 +65,48 @@ function fallbackAnswer(question: string): string {
   return '**Análise educativa:** comece pela reserva de emergência, organize seu orçamento e invista de forma compatível com seus objetivos e tolerância a risco. Use nossas calculadoras para transformar sua meta em números práticos.';
 }
 
-async function askGemini(question: string): Promise<string | null> {
+async function askGemini(question: string): Promise<{ answer: string; model: string } | null> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
 
-  const result = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: {
-          parts: [
-            {
-              text: 'Você é o consultor educativo do portal ABC Investimentos. Responda em português do Brasil, de forma didática e objetiva. Não peça dados pessoais e não recomende compra ou venda de ativos específicos. Explique conceitos, riscos, liquidez, impostos e cálculos.',
+  const models = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+  for (const model of models) {
+    try {
+      const result = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system_instruction: {
+              parts: [
+                {
+                  text: 'Você é o consultor educativo do portal ABC Investimentos. Responda em português do Brasil, de forma didática e objetiva. Não peça dados pessoais e não recomende compra ou venda de ativos específicos. Explique conceitos, riscos, liquidez, impostos e cálculos.',
+                },
+              ],
             },
-          ],
-        },
-        contents: [{ role: 'user', parts: [{ text: question }] }],
-        generationConfig: { temperature: 0.4, maxOutputTokens: 500 },
-      }),
-    }
-  );
+            contents: [{ role: 'user', parts: [{ text: question }] }],
+            generationConfig: { temperature: 0.4, maxOutputTokens: 500 },
+          }),
+        }
+      );
 
-  if (!result.ok) return null;
-  try {
-    const data = (await result.json()) as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-    };
-    return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
-  } catch (error) {
-    console.error('[ABC IA] Resposta inválida do Gemini:', error);
-    return null;
+      if (!result.ok) {
+        console.error(`[ABC IA] Gemini recusou o modelo ${model}: HTTP ${result.status}`);
+        continue;
+      }
+
+      const data = (await result.json()) as {
+        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+      };
+      const answer = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      if (answer) return { answer, model };
+    } catch (error) {
+      console.error(`[ABC IA] Falha no modelo Gemini ${model}:`, error);
+    }
   }
+
+  return null;
 }
 
 export default async function handler(request: VercelRequest, response: VercelResponse): Promise<void> {
@@ -115,8 +124,9 @@ export default async function handler(request: VercelRequest, response: VercelRe
       return;
     }
 
-    const answer = (await askGemini(question)) || fallbackAnswer(question);
-    const mode = process.env.GEMINI_API_KEY ? 'gemini-live' : 'educational-engine';
+    const gemini = await askGemini(question);
+    const answer = gemini?.answer || fallbackAnswer(question);
+    const mode = gemini ? 'gemini-live' : 'educational-engine';
 
     if (body.conversationConsent === true) {
       try {
@@ -129,6 +139,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
     json(response, 200, {
       answer,
       mode,
+      modelUsed: gemini?.model,
       remainingFree: 3,
       suggestedTool: {
         label: 'Explorar as calculadoras ABC',
