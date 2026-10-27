@@ -65,11 +65,22 @@ function fallbackAnswer(question: string): string {
   return '**Análise educativa:** comece pela reserva de emergência, organize seu orçamento e invista de forma compatível com seus objetivos e tolerância a risco. Use nossas calculadoras para transformar sua meta em números práticos.';
 }
 
-async function askGemini(question: string): Promise<{ answer: string; model: string } | null> {
+interface ProviderResult {
+  answer: string;
+  model: string;
+}
+
+interface ProviderStatus {
+  configured: boolean;
+  error?: string;
+}
+
+async function askGemini(question: string): Promise<{ result: ProviderResult | null; status: ProviderStatus }> {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey) return { result: null, status: { configured: false, error: 'missing_key' } };
 
   const models = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+  let lastError = 'no_valid_response';
   for (const model of models) {
     try {
       const result = await fetch(
@@ -93,6 +104,7 @@ async function askGemini(question: string): Promise<{ answer: string; model: str
 
       if (!result.ok) {
         console.error(`[ABC IA] Gemini recusou o modelo ${model}: HTTP ${result.status}`);
+        lastError = `http_${result.status}`;
         continue;
       }
 
@@ -100,18 +112,19 @@ async function askGemini(question: string): Promise<{ answer: string; model: str
         candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
       };
       const answer = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-      if (answer) return { answer, model };
+      if (answer) return { result: { answer, model }, status: { configured: true } };
     } catch (error) {
       console.error(`[ABC IA] Falha no modelo Gemini ${model}:`, error);
+      lastError = 'network_error';
     }
   }
 
-  return null;
+  return { result: null, status: { configured: true, error: lastError } };
 }
 
-async function askOpenRouter(question: string): Promise<{ answer: string; model: string } | null> {
+async function askOpenRouter(question: string): Promise<{ result: ProviderResult | null; status: ProviderStatus }> {
   const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey) return { result: null, status: { configured: false, error: 'missing_key' } };
 
   const model = process.env.OPENROUTER_MODEL || 'openrouter/free';
   try {
@@ -140,17 +153,20 @@ async function askOpenRouter(question: string): Promise<{ answer: string; model:
 
     if (!result.ok) {
       console.error(`[ABC IA] OpenRouter recusou o modelo ${model}: HTTP ${result.status}`);
-      return null;
+      return { result: null, status: { configured: true, error: `http_${result.status}` } };
     }
 
     const data = (await result.json()) as {
       choices?: Array<{ message?: { content?: string } }>;
     };
     const answer = data.choices?.[0]?.message?.content?.trim();
-    return answer ? { answer, model } : null;
+    return {
+      result: answer ? { answer, model } : null,
+      status: answer ? { configured: true } : { configured: true, error: 'no_valid_response' },
+    };
   } catch (error) {
     console.error('[ABC IA] Falha no OpenRouter:', error);
-    return null;
+    return { result: null, status: { configured: true, error: 'network_error' } };
   }
 }
 
@@ -169,11 +185,17 @@ export default async function handler(request: VercelRequest, response: VercelRe
       return;
     }
 
-    const gemini = await askGemini(question);
-    const openRouter = gemini ? null : await askOpenRouter(question);
-    const generated = gemini || openRouter;
+    const geminiAttempt = await askGemini(question);
+    const openRouterAttempt = geminiAttempt.result
+      ? { result: null, status: { configured: false } }
+      : await askOpenRouter(question);
+    const generated = geminiAttempt.result || openRouterAttempt.result;
     const answer = generated?.answer || fallbackAnswer(question);
-    const mode = gemini ? 'gemini-live' : openRouter ? 'openrouter-live' : 'educational-engine';
+    const mode = geminiAttempt.result
+      ? 'gemini-live'
+      : openRouterAttempt.result
+        ? 'openrouter-live'
+        : 'educational-engine';
 
     if (body.conversationConsent === true) {
       try {
@@ -187,6 +209,10 @@ export default async function handler(request: VercelRequest, response: VercelRe
       answer,
       mode,
       modelUsed: generated?.model,
+      providerStatus: {
+        gemini: geminiAttempt.status,
+        openrouter: openRouterAttempt.status,
+      },
       remainingFree: 3,
       suggestedTool: {
         label: 'Explorar as calculadoras ABC',
