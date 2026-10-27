@@ -137,9 +137,6 @@ export default async function handler(request: VercelRequest, response: VercelRe
     });
   } catch (error) {
     console.error('[ABC IA] Falha ao processar pergunta:', error);
-    json(response, 500, {
-      error: 'Não foi possível processar sua pergunta no momento.',
-      diagnostic: error instanceof Error ? error.message : String(error),
-    });
+    json(response, 500, { error: 'Não foi possível processar sua pergunta no momento.' });
   }
 }
