@@ -61,8 +61,7 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
         </button>
       </form>
       <label class="ia-consent-label">
-        <input type="checkbox" id="ia-conversation-consent" />
-        <span>Autorizo o uso desta conversa para treinar e melhorar a IA do ABC Investimentos.</span>
+        <span>Ao pesquisar, você concorda com o uso desta conversa para treinar e melhorar a IA do ABC Investimentos.</span>
         <a href="/privacidade">Saiba mais</a>
       </label>
 
@@ -421,7 +420,6 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
   const iaForm = document.getElementById('hero-ia-form') as HTMLFormElement | null;
   const iaInput = document.getElementById('hero-ia-input') as HTMLInputElement | null;
   const iaSubmit = document.getElementById('hero-ia-submit') as HTMLButtonElement | null;
-  const iaConversationConsent = document.getElementById('ia-conversation-consent') as HTMLInputElement | null;
   const iaResponse = document.getElementById('hero-ia-response');
   const iaAnswerText = document.getElementById('hero-ia-answer-text');
   const iaActions = document.getElementById('hero-ia-actions');
@@ -521,7 +519,7 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
         const indicators = (window as any).__ABC_INDICATORS__ || undefined;
         const [data] = await Promise.all([
           processConsultantQuery(question, indicators, {
-            conversationConsent: iaConversationConsent?.checked === true,
+            conversationConsent: true,
           }),
           new Promise((resolve) => setTimeout(resolve, 350)),
         ]);
@@ -733,15 +731,11 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
     justify-content: center;
     gap: 0.45rem;
     margin: 0.7rem auto 0;
-    max-width: 760px;
+    max-width: 820px;
     color: var(--text-muted);
     font-size: 0.75rem;
     line-height: 1.4;
-  }
-
-  .ia-consent-label input {
-    accent-color: var(--brand-blue);
-    flex: 0 0 auto;
+    text-align: center;
   }
 
   .ia-consent-label a {
