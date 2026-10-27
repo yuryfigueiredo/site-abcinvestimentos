@@ -158,11 +158,20 @@ async function askOpenRouter(question: string): Promise<{ result: ProviderResult
 
     const data = (await result.json()) as {
       choices?: Array<{ message?: { content?: string } }>;
+      error?: { code?: number | string; message?: string };
     };
     const answer = data.choices?.[0]?.message?.content?.trim();
+    if (!answer) {
+      const providerError = data.error
+        ? `${data.error.code || 'unknown'}:${data.error.message || 'empty_response'}`
+        : 'empty_response';
+      console.error(`[ABC IA] OpenRouter não retornou conteúdo: ${providerError}`);
+      return { result: null, status: { configured: true, error: providerError } };
+    }
+
     return {
-      result: answer ? { answer, model } : null,
-      status: answer ? { configured: true } : { configured: true, error: 'no_valid_response' },
+      result: { answer, model },
+      status: { configured: true },
     };
   } catch (error) {
     console.error('[ABC IA] Falha no OpenRouter:', error);
