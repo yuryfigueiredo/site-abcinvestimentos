@@ -136,7 +136,6 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
         <!-- Gate / Modal de Captura de Lead na Segunda Pergunta -->
         <div class="lead-capture-overlay" id="lead-capture-overlay" hidden style="display: none;">
           <div class="lead-capture-card" role="dialog" aria-modal="true" aria-labelledby="lead-card-title">
-            <button type="button" class="lead-close-btn" id="lead-close-btn" aria-label="Fechar identificação">✕</button>
             <div class="lead-card-header">
               <span class="lead-sparkle-badge">✨ Consultor Exclusivo ABC</span>
               <h3 class="lead-card-title" id="lead-card-title">Continue sua consultoria personalizada</h3>
@@ -153,6 +152,7 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
                   id="lead-name-input"
                   class="lead-form-input"
                   placeholder="Ex: Carlos Eduardo Silva"
+                  minlength="2"
                   required
                 />
               </div>
@@ -164,6 +164,7 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
                   id="lead-contact-input"
                   class="lead-form-input"
                   placeholder="Ex: (21) 99750-6921 ou seu@email.com"
+                  minlength="5"
                   required
                 />
               </div>
@@ -536,9 +537,14 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
     }
   }
 
+  // Limpa flag legada em localStorage para que a regra da 2ª pergunta sempre seja exigida por sessão
+  try {
+    localStorage.removeItem('abc_lead_captured');
+  } catch {}
+
   function isLeadCaptured(): boolean {
     try {
-      return localStorage.getItem('abc_lead_captured') === 'true';
+      return sessionStorage.getItem('abc_lead_captured') === 'true';
     } catch {
       return false;
     }
@@ -588,11 +594,11 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
     const q = questionText.trim();
     if (!q) return;
 
-    // Regra do Captador de Informações na Segunda Pergunta:
+    // Regra Obrigatória do Captador de Informações na Segunda Pergunta:
     // 1ª pergunta: totalmente gratuita e sem cadastro
-    // 2ª pergunta em diante: bloqueia com modal até preencher Nome e WhatsApp/E-mail
-    const count = getQuestionCount();
-    if (count >= 1 && !isLeadCaptured()) {
+    // 2ª pergunta em diante (ou pergunta de continuação): BLOQUEIA OBRIGATORIAMENTE com modal até preencher Nome e WhatsApp/E-mail
+    const isSecondQuestionOrMore = conversationHistory.length >= 2 || isFollowUp || getQuestionCount() >= 1;
+    if (isSecondQuestionOrMore && !isLeadCaptured()) {
       openLeadModal(q);
       return;
     }
@@ -807,7 +813,7 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
       if (!name || !contact) return;
 
       try {
-        localStorage.setItem('abc_lead_captured', 'true');
+        sessionStorage.setItem('abc_lead_captured', 'true');
         localStorage.setItem('abc_lead_data', JSON.stringify({ name, contact, date: new Date().toISOString() }));
       } catch {}
 
@@ -824,7 +830,7 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
         body: JSON.stringify({ name, contact, question: pendingQuestion }),
       }).catch(() => {});
 
-      // Fecha o modal IMEDIATAMENTE
+      // Fecha o modal IMEDIATAMENTE e libera a resposta
       closeLeadModal();
 
       if (submitBtn) {
@@ -841,23 +847,6 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
     });
   }
 
-  // Fechamento pelo botão "✕" do modal de identificação
-  const leadCloseBtn = document.getElementById('lead-close-btn');
-  if (leadCloseBtn) {
-    leadCloseBtn.addEventListener('click', () => {
-      closeLeadModal();
-    });
-  }
-
-  // Fechar ao clicar fora do card (no backdrop)
-  if (leadOverlay) {
-    leadOverlay.addEventListener('click', (e) => {
-      if (e.target === leadOverlay) {
-        closeLeadModal();
-      }
-    });
-  }
-
   // Fechamento e light-dismiss do Modal de Resposta
   if (iaCloseBtn && iaResponse) {
     iaCloseBtn.addEventListener('click', () => {
@@ -869,8 +858,7 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       if (leadOverlay && !leadOverlay.hidden && leadOverlay.style.display !== 'none') {
-        closeLeadModal();
-        pendingQuestion = '';
+        // Modal obrigatório para continuar: não fecha no Escape
         return;
       }
       if (iaResponse && !iaResponse.hidden) {
