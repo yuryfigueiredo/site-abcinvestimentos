@@ -343,13 +343,13 @@ Não busque fundos apenas pelo maior rendimento recente (*Dividend Yield artific
   // Cenário 3: Reserva de Emergência
   if (q.includes('reserva') || q.includes('emergencia') || q.includes('emergência')) {
     const cost = extractAmountFromQuery(question, 4000);
-    const resClt = simulateEmergencyFund({ monthlyEssentialCost: cost, currentReserve: 0, monthlySavingsCapacity: 1000, profile: 'clt' });
-    const resAut = simulateEmergencyFund({ monthlyEssentialCost: cost, currentReserve: 0, monthlySavingsCapacity: 1000, profile: 'autonomo' });
+    const resClt = simulateEmergencyFund({ monthlyEssentialCost: cost, currentReserve: 0, monthlySavingsCapacity: 1000, profile: 'clt', cdiAnnualPct: cdi });
+    const resAut = simulateEmergencyFund({ monthlyEssentialCost: cost, currentReserve: 0, monthlySavingsCapacity: 1000, profile: 'autonomo', cdiAnnualPct: cdi });
 
     const answer = `**Diagnóstico Direto:**
 A Reserva de Emergência **não foi feita para dar lucro, mas sim para dar paz**. Seu valor exato depende do seu regime profissional e custo de vida essencial (moradia, alimentação, saúde, contas básicas):
-- **Se você for CLT:** A recomendação oficial é de **6 meses** do seu custo essencial = **${formatBRL(resClt.targetFund)}**.
-- **Se você for Autônomo, PJ ou Profissional Liberal:** A recomendação é de **12 meses** = **${formatBRL(resAut.targetFund)}**, por causa da volatilidade na receita mensal.
+- **Se você for CLT:** A recomendação oficial é de **6 meses** do seu custo essencial = **${formatBRL(resClt.recommendedTarget)}**.
+- **Se você for Autônomo, PJ ou Profissional Liberal:** A recomendação é de **12 meses** = **${formatBRL(resAut.recommendedTarget)}**, por causa da volatilidade na receita mensal.
 
 **Onde Deixar esse Dinheiro Guardado em 2026:**
 1. **Tesouro Selic (Tesouro Direto):** O investimento mais seguro do Brasil, com rentabilidade atrelada à Selic (${formatPct(selic)} a.a.) e liquidez D+1.
