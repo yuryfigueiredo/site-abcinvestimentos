@@ -134,11 +134,12 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
         </div>
 
         <!-- Gate / Modal de Captura de Lead na Segunda Pergunta -->
-        <div class="lead-capture-overlay" id="lead-capture-overlay" hidden>
-          <div class="lead-capture-card">
+        <div class="lead-capture-overlay" id="lead-capture-overlay" hidden style="display: none;">
+          <div class="lead-capture-card" role="dialog" aria-modal="true" aria-labelledby="lead-card-title">
+            <button type="button" class="lead-close-btn" id="lead-close-btn" aria-label="Fechar identificação">✕</button>
             <div class="lead-card-header">
               <span class="lead-sparkle-badge">✨ Consultor Exclusivo ABC</span>
-              <h3 class="lead-card-title">Continue sua consultoria personalizada</h3>
+              <h3 class="lead-card-title" id="lead-card-title">Continue sua consultoria personalizada</h3>
               <p class="lead-card-desc">
                 Você concluiu sua 1ª consulta gratuita! Para continuar esta conversa com nossa IA Especialista e receber o resumo das simulações, informe seu Nome e WhatsApp (ou E-mail):
               </p>
@@ -543,6 +544,28 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
     }
   }
 
+  function openLeadModal(questionText: string) {
+    pendingQuestion = questionText;
+    if (leadOverlay) {
+      leadOverlay.removeAttribute('hidden');
+      leadOverlay.style.display = 'flex';
+      leadOverlay.hidden = false;
+      leadOverlay.classList.add('is-open');
+      setTimeout(() => {
+        leadNameInput?.focus();
+      }, 50);
+    }
+  }
+
+  function closeLeadModal() {
+    if (leadOverlay) {
+      leadOverlay.setAttribute('hidden', '');
+      leadOverlay.style.display = 'none';
+      leadOverlay.hidden = true;
+      leadOverlay.classList.remove('is-open');
+    }
+  }
+
   function renderCalculatorLinks(calculators: Array<{ title: string; slug: string; params?: string }>): string {
     if (!Array.isArray(calculators) || calculators.length === 0) return '';
     const linksHtml = calculators
@@ -570,12 +593,7 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
     // 2ª pergunta em diante: bloqueia com modal até preencher Nome e WhatsApp/E-mail
     const count = getQuestionCount();
     if (count >= 1 && !isLeadCaptured()) {
-      pendingQuestion = q;
-      if (leadOverlay) {
-        leadOverlay.hidden = false;
-        leadOverlay.classList.add('is-open');
-        leadNameInput?.focus();
-      }
+      openLeadModal(q);
       return;
     }
 
@@ -782,7 +800,7 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
 
   // 3. Submissão do Modal de Captura de Lead
   if (leadForm && leadOverlay && leadNameInput && leadContactInput) {
-    leadForm.addEventListener('submit', async (e) => {
+    leadForm.addEventListener('submit', (e) => {
       e.preventDefault();
       const name = leadNameInput.value.trim();
       const contact = leadContactInput.value.trim();
@@ -793,21 +811,49 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
         localStorage.setItem('abc_lead_data', JSON.stringify({ name, contact, date: new Date().toISOString() }));
       } catch {}
 
-      // Grava no servidor de forma assíncrona
+      const submitBtn = document.getElementById('lead-form-submit') as HTMLButtonElement | null;
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Liberando Consultor...';
+      }
+
+      // Grava no servidor de forma assíncrona sem travar a navegação
       fetch('/api/lead', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, contact, question: pendingQuestion }),
       }).catch(() => {});
 
-      leadOverlay.classList.remove('is-open');
-      leadOverlay.hidden = true;
+      // Fecha o modal IMEDIATAMENTE
+      closeLeadModal();
+
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<span>Liberar Consultor IA & Continuar</span><span class="lead-btn-arrow">→</span>';
+      }
 
       // Desbloqueia e executa a pergunta pendente na mesma hora sem o usuário ter que redigitar
-      if (pendingQuestion) {
-        const q = pendingQuestion;
-        pendingQuestion = '';
-        executeQuestion(q, true);
+      const questionToRun = pendingQuestion || followupInput?.value?.trim() || iaInput?.value?.trim() || '';
+      pendingQuestion = '';
+      if (questionToRun) {
+        executeQuestion(questionToRun, true);
+      }
+    });
+  }
+
+  // Fechamento pelo botão "✕" do modal de identificação
+  const leadCloseBtn = document.getElementById('lead-close-btn');
+  if (leadCloseBtn) {
+    leadCloseBtn.addEventListener('click', () => {
+      closeLeadModal();
+    });
+  }
+
+  // Fechar ao clicar fora do card (no backdrop)
+  if (leadOverlay) {
+    leadOverlay.addEventListener('click', (e) => {
+      if (e.target === leadOverlay) {
+        closeLeadModal();
       }
     });
   }
@@ -821,15 +867,16 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
   }
 
   window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && iaResponse && !iaResponse.hidden) {
-      if (leadOverlay && !leadOverlay.hidden) {
-        leadOverlay.classList.remove('is-open');
-        leadOverlay.hidden = true;
+    if (e.key === 'Escape') {
+      if (leadOverlay && !leadOverlay.hidden && leadOverlay.style.display !== 'none') {
+        closeLeadModal();
         pendingQuestion = '';
         return;
       }
-      iaResponse.classList.remove('is-open');
-      iaResponse.hidden = true;
+      if (iaResponse && !iaResponse.hidden) {
+        iaResponse.classList.remove('is-open');
+        iaResponse.hidden = true;
+      }
     }
   });
 
@@ -2074,6 +2121,10 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
     animation: leadOverlayFade 0.25s ease forwards;
   }
 
+  .lead-capture-overlay[hidden] {
+    display: none !important;
+  }
+
   @keyframes leadOverlayFade {
     from {
       opacity: 0;
@@ -2091,6 +2142,7 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
   }
 
   .lead-capture-card {
+    position: relative;
     background: var(--bg-surface);
     border: 1.5px solid rgba(56, 189, 248, 0.35);
     border-radius: 16px;
@@ -2099,6 +2151,44 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
     width: 100%;
     box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(56, 189, 248, 0.15);
     text-align: left;
+  }
+
+  .lead-close-btn {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    z-index: 2;
+  }
+
+  .lead-close-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(56, 189, 248, 0.4);
+  }
+
+  :root[data-theme="light"] .lead-close-btn,
+  html[data-theme="light"] .lead-close-btn {
+    border-color: rgba(0, 0, 0, 0.12);
+    color: var(--text-muted);
+  }
+
+  :root[data-theme="light"] .lead-close-btn:hover,
+  html[data-theme="light"] .lead-close-btn:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--text-primary);
   }
 
   :root[data-theme="light"] .lead-capture-card,
