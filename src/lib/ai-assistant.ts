@@ -495,45 +495,51 @@ export async function processConsultantQuery(
   };
 
   if (typeof window !== 'undefined') {
-    try {
-      const response = await fetch('/api/ia', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        // Timeout de 30s: se a API travar (cold start/limite da Vercel), o motor local responde na hora
-        signal: AbortSignal.timeout(30000),
-        body: JSON.stringify({
-          question,
-          indicators,
-          conversationConsent: options.conversationConsent === true,
-          history: options.history,
-        }),
-      });
+    const payload = JSON.stringify({
+      question,
+      indicators,
+      conversationConsent: options.conversationConsent === true,
+      history: options.history,
+    });
 
-      if (response.ok) {
-        const data = (await response.json()) as {
-          answer?: string;
-          mode?: string;
-        };
+    // Tenta a rota principal e, se falhar ou for bloqueada (bloqueadores de conteudo do
+    // navegador podem mirar /api/ia), cai na rota alternativa /api/consulta.
+    // Timeout de 30s em cada tentativa: se a API travar, o motor local responde na hora.
+    for (const endpoint of ['/api/ia', '/api/consulta']) {
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout(30000),
+          body: payload,
+        });
 
-        if (typeof data.answer === 'string' && data.answer.trim()) {
-          return {
-            answer: data.answer,
-            source:
-              data.mode === 'gemini-live'
-                ? 'gemini-flash'
-                : data.mode === 'cloudflare-live'
-                  ? 'cloudflare-ai'
-                  : data.mode === 'groq-live'
-                    ? 'groq-llama'
-                    : data.mode === 'openrouter-live'
-                  ? 'openrouter-free'
-                  : 'abc-expert-engine',
-            recommendedCalculators: detectRecommendedCalculators(question),
+        if (response.ok) {
+          const data = (await response.json()) as {
+            answer?: string;
+            mode?: string;
           };
+
+          if (typeof data.answer === 'string' && data.answer.trim()) {
+            return {
+              answer: data.answer,
+              source:
+                data.mode === 'gemini-live'
+                  ? 'gemini-flash'
+                  : data.mode === 'cloudflare-live'
+                    ? 'cloudflare-ai'
+                    : data.mode === 'groq-live'
+                      ? 'groq-llama'
+                      : data.mode === 'openrouter-live'
+                        ? 'openrouter-free'
+                        : 'abc-expert-engine',
+              recommendedCalculators: detectRecommendedCalculators(question),
+            };
+          }
         }
+      } catch {
+        // tenta a próxima rota; se todas falharem, o motor local responde
       }
-    } catch {
-      // O motor local abaixo mantém o consultor disponível sem rede.
     }
   }
 
