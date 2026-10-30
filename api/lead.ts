@@ -16,8 +16,8 @@ function json(response: VercelResponse, status: number, data: unknown): void {
   response.end(JSON.stringify(data));
 }
 
-/** Normaliza request.body (objeto, string JSON ou Buffer) para objeto — evita 500 por parse quebrado. */
-function parseRequestBody(raw: unknown): Record<string, unknown> {
+/** Normaliza qualquer formato de body (objeto, string JSON, Buffer) para objeto. */
+function normalizeBody(raw: unknown): Record<string, unknown> {
   let value: unknown = raw;
   if (typeof value === 'string') {
     const trimmed = value.trim();
@@ -40,6 +40,44 @@ function parseRequestBody(raw: unknown): Record<string, unknown> {
   return {};
 }
 
+/**
+ * Lê o body do request da Vercel sem quebrar: o getter `request.body` pode lançar
+ * "Invalid JSON" em alguns clientes, então cai no fallback lendo o stream cru.
+ */
+async function readJsonBody(request: VercelRequest): Promise<Record<string, unknown>> {
+  let pre: unknown;
+  try {
+    pre = request.body;
+  } catch {
+    pre = undefined;
+  }
+  const parsed = normalizeBody(pre);
+  if (Object.keys(parsed).length > 0) return parsed;
+
+  try {
+    const stream = request as unknown as AsyncIterable<Uint8Array | string>;
+    if (typeof (request as unknown as NodeJS.ReadableStream).on === 'function') {
+      const chunks: Buffer[] = [];
+      for await (const chunk of stream) {
+        chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      const raw = Buffer.concat(chunks).toString('utf8').trim();
+      if (raw) {
+        try {
+          return normalizeBody(JSON.parse(raw));
+        } catch {
+          const params = new URLSearchParams(raw);
+          const entries = [...params.entries()];
+          if (entries.length > 0) return Object.fromEntries(entries) as Record<string, unknown>;
+        }
+      }
+    }
+  } catch {
+    // stream indisponível — segue com body vazio
+  }
+  return {};
+}
+
 export default async function handler(request: VercelRequest, response: VercelResponse): Promise<void> {
   if (request.method !== 'POST') {
     response.setHeader('Allow', 'POST');
@@ -48,7 +86,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
   }
 
   try {
-    const body = parseRequestBody(request.body) as {
+    const body = (await readJsonBody(request)) as {
       name?: string;
       contact?: string;
       question?: string;
