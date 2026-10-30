@@ -16,6 +16,30 @@ function json(response: VercelResponse, status: number, data: unknown): void {
   response.end(JSON.stringify(data));
 }
 
+/** Normaliza request.body (objeto, string JSON ou Buffer) para objeto — evita 500 por parse quebrado. */
+function parseRequestBody(raw: unknown): Record<string, unknown> {
+  let value: unknown = raw;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return {};
+    try {
+      value = JSON.parse(trimmed);
+    } catch {
+      return {};
+    }
+  } else if (typeof Buffer !== 'undefined' && Buffer.isBuffer(value)) {
+    try {
+      value = JSON.parse(value.toString('utf8'));
+    } catch {
+      return {};
+    }
+  }
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
 export default async function handler(request: VercelRequest, response: VercelResponse): Promise<void> {
   if (request.method !== 'POST') {
     response.setHeader('Allow', 'POST');
@@ -24,7 +48,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
   }
 
   try {
-    const body = (request.body || {}) as {
+    const body = parseRequestBody(request.body) as {
       name?: string;
       contact?: string;
       question?: string;

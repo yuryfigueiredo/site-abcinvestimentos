@@ -499,6 +499,8 @@ export async function processConsultantQuery(
       const response = await fetch('/api/ia', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        // Timeout de 30s: se a API travar (cold start/limite da Vercel), o motor local responde na hora
+        signal: AbortSignal.timeout(30000),
         body: JSON.stringify({
           question,
           indicators,

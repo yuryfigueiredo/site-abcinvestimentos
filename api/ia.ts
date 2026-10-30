@@ -16,6 +16,34 @@ function json(response: VercelResponse, status: number, data: unknown): void {
   response.end(JSON.stringify(data));
 }
 
+/**
+ * Na Vercel (Node Serverless), `request.body` pode chegar como objeto já parseado,
+ * como string JSON crua ou como Buffer dependendo do Content-Type/cliente.
+ * Este helper normaliza qualquer formato para objeto, evitando 500 por parse quebrado.
+ */
+function parseRequestBody(raw: unknown): Record<string, unknown> {
+  let value: unknown = raw;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return {};
+    try {
+      value = JSON.parse(trimmed);
+    } catch {
+      return {};
+    }
+  } else if (typeof Buffer !== 'undefined' && Buffer.isBuffer(value)) {
+    try {
+      value = JSON.parse(value.toString('utf8'));
+    } catch {
+      return {};
+    }
+  }
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
 async function saveConversation(question: string, answer: string, mode: string): Promise<void> {
   const databaseUrl = process.env.TURSO_DATABASE_URL;
   const authToken = process.env.TURSO_AUTH_TOKEN;
@@ -353,6 +381,42 @@ async function askOpenRouter(question: string, history: ChatHistoryItem[] = []):
   return { result: null, status: { configured: true, error: lastError } };
 }
 
+/**
+ * Dispara todos os provedores de IA em PARALELO e devolve a PRIMEIRA resposta válida.
+ * Diferente da cascata sequencial antiga (que podia somar 5s+5s+5s+5s e estourar o
+ * limite de 10s da Vercel no plano Hobby, resultando em 500/504 para o visitante),
+ * aqui o tempo total é limitado pelo provedor mais rápido.
+ */
+async function firstValidProvider(
+  tasks: Array<() => Promise<{ result: ProviderResult | null }>>
+): Promise<{ result: ProviderResult | null; index: number }> {
+  return new Promise((resolve) => {
+    let pending = tasks.length;
+    if (pending === 0) {
+      resolve({ result: null, index: -1 });
+      return;
+    }
+    tasks.forEach((task, index) => {
+      task()
+        .then((outcome) => {
+          if (outcome.result) {
+            resolve({ result: outcome.result, index });
+            return;
+          }
+          pending -= 1;
+          if (pending === 0) resolve({ result: null, index: -1 });
+        })
+        .catch(() => {
+          pending -= 1;
+          if (pending === 0) resolve({ result: null, index: -1 });
+        });
+    });
+  });
+}
+
+// Timeout total da IA: 8s garante resposta 200 (com fallback educativo) antes do limite da Vercel
+const IA_TOTAL_TIMEOUT_MS = 8000;
+
 export default async function handler(request: VercelRequest, response: VercelResponse): Promise<void> {
   if (request.method !== 'POST') {
     response.setHeader('Allow', 'POST');
@@ -361,7 +425,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
   }
 
   try {
-    const body = (request.body || {}) as {
+    const body = parseRequestBody(request.body) as {
       question?: string;
       conversationConsent?: boolean;
       history?: ChatHistoryItem[];
@@ -373,42 +437,28 @@ export default async function handler(request: VercelRequest, response: VercelRe
       return;
     }
 
-    // Cascata de Provedores com timeout de 5 segundos em cada chamada:
-    // 1. Cloudflare Workers AI (Titular)
-    const cloudflareAttempt = await askCloudflare(question, history);
+    // Cascata PARALELA de provedores (a ordem define a prioridade; vence a 1ª resposta válida).
+    // 1. Cloudflare Workers AI (Titular)  2. Groq  3. Gemini  4. OpenRouter
+    const providerModes = ['cloudflare-live', 'groq-live', 'gemini-live', 'openrouter-live'];
+    const providerTasks: Array<() => Promise<{ result: ProviderResult | null }>> = [];
+    if (process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN) {
+      providerTasks.push(() => askCloudflare(question, history));
+    }
+    if (process.env.GROQ_API_KEY) providerTasks.push(() => askGroq(question, history));
+    if (process.env.GEMINI_API_KEY) providerTasks.push(() => askGemini(question, history));
+    if (process.env.OPENROUTER_API_KEY) providerTasks.push(() => askOpenRouter(question, history));
 
-    // 2. Groq (se chave configurada)
-    const groqAttempt = cloudflareAttempt.result
-      ? { result: null, status: { configured: false } }
-      : await askGroq(question, history);
+    // Timeout total: mesmo que todos os provedores falhem, respondemos em até 8s com o motor educativo
+    const winner = await Promise.race([
+      firstValidProvider(providerTasks),
+      new Promise<{ result: ProviderResult | null; index: number }>((resolve) =>
+        setTimeout(() => resolve({ result: null, index: -1 }), IA_TOTAL_TIMEOUT_MS)
+      ),
+    ]);
 
-    // 3. Gemini (Google AI Studio)
-    const geminiAttempt = cloudflareAttempt.result || groqAttempt.result
-      ? { result: null, status: { configured: false } }
-      : await askGemini(question, history);
-
-    // 4. OpenRouter (rotas gratuitas)
-    const openRouterAttempt =
-      cloudflareAttempt.result || groqAttempt.result || geminiAttempt.result
-        ? { result: null, status: { configured: false } }
-        : await askOpenRouter(question, history);
-
-    const generated =
-      cloudflareAttempt.result ||
-      groqAttempt.result ||
-      geminiAttempt.result ||
-      openRouterAttempt.result;
-
+    const generated = winner.result;
     const answer = generated?.answer || fallbackAnswer(question);
-    const mode = cloudflareAttempt.result
-      ? 'cloudflare-live'
-      : groqAttempt.result
-        ? 'groq-live'
-        : geminiAttempt.result
-          ? 'gemini-live'
-          : openRouterAttempt.result
-            ? 'openrouter-live'
-            : 'educational-engine';
+    const mode = generated ? providerModes[winner.index] || 'educational-engine' : 'educational-engine';
 
     if (body.conversationConsent === true) {
       try {
