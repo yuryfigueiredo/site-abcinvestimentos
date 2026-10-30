@@ -45,6 +45,7 @@ function normalizeBody(raw: unknown): Record<string, unknown> {
  * "Invalid JSON" em alguns clientes, então cai no fallback lendo o stream cru.
  */
 async function readJsonBody(request: VercelRequest): Promise<Record<string, unknown>> {
+  // 1) Tenta request.body (getter que pode lançar "Invalid JSON" em clientes HTTP/1.1)
   let pre: unknown;
   try {
     pre = request.body;
@@ -54,6 +55,21 @@ async function readJsonBody(request: VercelRequest): Promise<Record<string, unkn
   const parsed = normalizeBody(pre);
   if (Object.keys(parsed).length > 0) return parsed;
 
+  // 2) Tenta request.rawBody (string/Buffer cru fornecido pela Vercel quando o body parser está ativo)
+  try {
+    const rawBody = (request as unknown as { rawBody?: unknown }).rawBody;
+    const fromRaw = normalizeBody(rawBody);
+    if (Object.keys(fromRaw).length > 0) return fromRaw;
+    if (typeof rawBody === 'string' && rawBody.trim()) {
+      const params = new URLSearchParams(rawBody);
+      const entries = [...params.entries()];
+      if (entries.length > 0) return Object.fromEntries(entries) as Record<string, unknown>;
+    }
+  } catch {
+    // segue para o stream
+  }
+
+  // 3) Fallback final: lê o stream cru (IncomingMessage)
   try {
     const stream = request as unknown as AsyncIterable<Uint8Array | string>;
     if (typeof (request as unknown as NodeJS.ReadableStream).on === 'function') {
