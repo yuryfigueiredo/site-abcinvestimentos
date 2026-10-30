@@ -1,4 +1,7 @@
-// Rota alternativa da API da IA (alias de /api/ia).
-// Usada pelo cliente como fallback caso bloqueadores de conteudo/trackers do navegador
-// impeçam a rota /api/ia — assim a consulta continua funcionando mesmo nesse cenario.
-export { default, config } from './ia';
+﻿// Rota alternativa da IA: /api/consulta (alias de /api/ia).
+// Usada pelo cliente como fallback quando bloqueadores do navegador miram /api/ia.
+// export default literal para a Vercel detectar a serverless function.
+import handler, { config } from '../src/lib/ia-vercel';
+
+export { config };
+export default handler;
