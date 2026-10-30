@@ -1,3 +1,6 @@
+// Desativa o body parser da Vercel: o getter `request.body` não lança e o stream fica intacto
+export const config = { api: { bodyParser: false } };
+
 interface VercelRequest {
   method?: string;
   body?: unknown;

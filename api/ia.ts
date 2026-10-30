@@ -1,3 +1,7 @@
+// Desativa o body parser da Vercel: assim o getter `request.body` não lança "Invalid JSON"
+// e o stream cru fica intacto para o nosso readJsonBody ler com segurança.
+export const config = { api: { bodyParser: false } };
+
 interface VercelRequest {
   method?: string;
   body?: unknown;
