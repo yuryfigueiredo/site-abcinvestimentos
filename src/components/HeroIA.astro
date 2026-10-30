@@ -869,12 +869,22 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
   });
 
   document.addEventListener('click', (e) => {
-    if (iaResponse && !iaResponse.hidden) {
-      const target = e.target as HTMLElement;
-      if (!iaResponse.contains(target) && !iaForm?.contains(target) && !target.closest('.search-chip')) {
-        iaResponse.classList.remove('is-open');
-        iaResponse.hidden = true;
-      }
+    if (!iaResponse || iaResponse.hidden) return;
+    const target = e.target as HTMLElement | null;
+    if (!target || typeof target.closest !== 'function') return;
+
+    // Light-dismiss: só fecha o painel quando o clique é no "vazio" da página.
+    // Cliques em qualquer elemento de interface (botões, links, campos, diálogos,
+    // banner LGPD, header/footer) NÃO podem fechar a resposta da IA — caso contrário,
+    // aceitar a política de privacidade fazia a resposta sumir da tela.
+    const isUiElement = target.closest(
+      'a, button, input, textarea, select, label, summary, dialog, [role="dialog"], [role="region"], #lgpd-banner, #lead-capture-overlay, #hero-ia-response, #hero-ia-form, header, footer, nav, .search-chip'
+    );
+    if (isUiElement) return;
+
+    if (!iaResponse.contains(target) && !iaForm?.contains(target)) {
+      iaResponse.classList.remove('is-open');
+      iaResponse.hidden = true;
     }
   });
 
