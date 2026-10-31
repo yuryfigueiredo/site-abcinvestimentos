@@ -18,6 +18,7 @@ export interface AssistantResponse {
   answer: string;
   source: 'gemini-flash' | 'gemini-1.5-flash' | 'gemini-3.5-flash' | 'cloudflare-ai' | 'groq-llama' | 'openrouter-free' | 'abc-expert-engine';
   modelUsed?: string;
+  remainingFree?: number;
   recommendedCalculators: RecommendedCalculator[];
 }
 
@@ -137,6 +138,7 @@ async function callGeminiApi(
 
 /**
  * Extrai valores monetários aproximados de strings (ex.: "10 mil", "R$ 10.000", "50000", "50k")
+ * Ignora percentuais ("105% do CDI" não é dinheiro, é taxa).
  */
 function extractAmountFromQuery(query: string, defaultAmount = 10000): number {
   const clean = query.toLowerCase();
@@ -144,18 +146,93 @@ function extractAmountFromQuery(query: string, defaultAmount = 10000): number {
   const kMatch = clean.match(/(\d+(?:[.,]\d+)?)\s*k\b/);
   if (kMatch) return Number.parseFloat(kMatch[1].replace(',', '.')) * 1000;
 
-  const milMatch = clean.match(/(\d+(?:[.,]\d+)?)\s*(mil|milhoes|milhões)/);
+  const milMatch = clean.match(/(\d+(?:[.,]\d+)?)\s*(milhao|milhão|milhoes|milhões|mil)/);
   if (milMatch) {
     const val = Number.parseFloat(milMatch[1].replace(',', '.'));
     return milMatch[2].startsWith('milh') ? val * 1000000 : val * 1000;
   }
 
-  const numMatch = clean.match(/(?:r\$\s*)?(\d{1,3}(?:\.\d{3})*(?:,\d{2})?|\d+)/);
-  if (numMatch && Number(numMatch[1].replace(/\./g, '').replace(',', '.')) >= 50) {
-    return Number(numMatch[1].replace(/\./g, '').replace(',', '.'));
+  const currencyMatch = clean.match(/(?:r\$\s*)(\d{1,3}(?:\.\d{3})*(?:,\d{2})?|\d+(?:,\d{2}))/);
+  if (currencyMatch) {
+    return Number(currencyMatch[1].replace(/\./g, '').replace(',', '.'));
+  }
+
+  const reaisMatch = clean.match(/(\d+(?:[.,]\d+)?)\s*(reais|reales)/);
+  if (reaisMatch) {
+    return Number(reaisMatch[1].replace(/\./g, '').replace(',', '.'));
+  }
+
+  // Números grandes sem cifrão (ex.: "10000", "10.000", "1.500,00"),
+  // pulando sequências seguidas de % (taxas, ex.: "110%").
+  const plainCandidates = [...clean.matchAll(/(\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d{4,}(?:,\d{2})?)/g)];
+  for (const candidate of plainCandidates) {
+    const match = candidate[0];
+    const index = candidate.index ?? 0;
+    const nextChar = clean.slice(index + match.length).trimStart()[0];
+    if (nextChar === '%') continue;
+    const value = Number(match.replace(/\./g, '').replace(',', '.'));
+    if (value >= 50) return value;
   }
 
   return defaultAmount;
+}
+
+/**
+ * Extrai o percentual do CDI citado na pergunta (ex.: "CDB 110% do CDI" → 110).
+ * Valida a faixa 50–200% para não confundir com taxas anuais (ex.: "12,5% a.a.").
+ */
+function extractCdbPctCdiFromQuery(query: string): number | null {
+  const clean = query.toLowerCase();
+  const nearCdb = clean.match(/cdb[^%]{0,30}?(\d{2,3}(?:[.,]\d+)?)\s*%/);
+  const generic = nearCdb ?? clean.match(/(\d{2,3}(?:[.,]\d+)?)\s*%/);
+  if (!generic) return null;
+  const value = Number(generic[1].replace(',', '.'));
+  return value >= 50 && value <= 200 ? value : null;
+}
+
+function extractLciPctCdiFromQuery(query: string): number | null {
+  const clean = query.toLowerCase();
+  const nearLci = clean.match(/l[ci][ca][^%]{0,30}?(\d{2,3}(?:[.,]\d+)?)\s*%/);
+  if (!nearLci) return null;
+  const value = Number(nearLci[1].replace(',', '.'));
+  return value >= 50 && value <= 150 ? value : null;
+}
+
+function extractMonthsFromQuery(query: string, defaultMonths = 12): number {
+  const clean = query.toLowerCase();
+  const years = clean.match(/(\d+(?:[.,]\d+)?)\s*(anos?|years?)/);
+  if (years) {
+    return Math.min(360, Math.max(1, Math.round(Number(years[1].replace(',', '.')) * 12)));
+  }
+  const months = clean.match(/(\d+)\s*(meses?|months?)/);
+  if (months) {
+    return Math.min(360, Math.max(1, Number(months[1])));
+  }
+  return defaultMonths;
+}
+
+/**
+ * Detecta perguntas de simulação numérica que o motor local responde com
+ * matemática determinística — sem consultar o LLM (evita taxas inventadas
+ * por modelos pequenos em perguntas com números).
+ */
+export function isDeterministicScenario(question: string): boolean {
+  const q = question.trim().toLowerCase();
+  if (!q) return false;
+  // Perguntas puramente conceituais ("o que é CDI?") seguem para o LLM.
+  if (/^(o que [ée]\b|o que significa|qual o significado|o que s[ãa]o\b|defini[cç][ãa]o|me explique o que [ée]\b|explique o que [ée]\b)/.test(q)) {
+    return false;
+  }
+
+  return (
+    /cdb|lci|lca|% do cdi|% cdi|renda fixa/.test(q) ||
+    /poupan[aç]ca|tesouro selic|prefixado|p[óo]s[- ]fixado/.test(q) ||
+    /dividendo|fii|fundo imobili[áa]rio|viver de renda|renda passiva/.test(q) ||
+    /reserva|emerg[êe]ncia/.test(q) ||
+    /milh[ãa]o|juros compostos|aportar/.test(q) ||
+    /alugar|aluguel|financiar|financiamento|im[óo]vel|comprar casa|comprar apartamento/.test(q) ||
+    /quanto rende|rendimento de|renderia/.test(q)
+  );
 }
 
 /**
@@ -258,34 +335,43 @@ export function generateLocalExpertResponse(
   const { selic, cdi, ipca12m } = indicators;
   const amount = extractAmountFromQuery(question, 10000);
 
-  // Cenário 1: CDB vs LCI / LCA
-  if ((q.includes('cdb') && (q.includes('lci') || q.includes('lca'))) || q.includes('105%') || q.includes('92%')) {
+  const isRendaFixaQuestion =
+    /cdb|lci|lca|renda fixa|poupança|tesouro selic|prefixado|p[óo]s[- ]fixado|% do cdi|% cdi/.test(q);
+  const isYieldQuestion =
+    /quanto rende|rendimento de|renderia/.test(q) && !/dividendo|fii|fundo imobili|a[cç][ãa]o|reserva|emerg[êe]ncia/.test(q);
+
+  // Cenário 1: Renda Fixa (CDB/LCI/LCA/Poupança/Tesouro Selic/"quanto rende")
+  if (isRendaFixaQuestion || isYieldQuestion) {
+    const cdbPctCdi = extractCdbPctCdiFromQuery(question) ?? 105;
+    const lciPctCdi = extractLciPctCdiFromQuery(question) ?? 92;
+    const months = extractMonthsFromQuery(question, 12);
     const rf = simulateFixedIncomeComparison({
       amount,
-      months: 12,
+      months,
       cdiAnnualPct: cdi,
       selicAnnualPct: selic,
       ipcaAnnualPct: ipca12m,
-      cdbPctCdi: 105,
-      lciLcaPctCdi: 92,
+      cdbPctCdi,
+      lciLcaPctCdi: lciPctCdi,
     });
 
     const cdbOpt = rf.options.find((o) => o.id === 'cdb')!;
     const lciOpt = rf.options.find((o) => o.id === 'lci_lca')!;
-    const winnerName = lciOpt.netFinalAmount >= cdbOpt.netFinalAmount ? 'LCI a 92%' : 'CDB a 105%';
-    const diff = Math.abs(lciOpt.netFinalAmount - cdbOpt.netFinalAmount);
+    const poupancaOpt = rf.options.find((o) => o.id === 'poupanca')!;
+    const tesouroOpt = rf.options.find((o) => o.id === 'tesouro_selic')!;
 
-    const answer = `**Diagnóstico Direto:**
-No prazo de 1 ano com o CDI atual a **${formatPct(cdi)} a.a.**, a **${winnerName} é mais vantajosa**.
-Isso ocorre porque a LCI/LCA conta com **isenção total de Imposto de Renda** para pessoa física, enquanto o CDB sofre desconto de **17,5% de IR** sobre o rendimento no prazo de 12 meses.
+    const answer = `DIAGNÓSTICO DIRETO:
+Com o CDI atual em **${formatPct(cdi)} a.a.** e prazo de **${months} ${months === 1 ? 'mês' : 'meses'}** (alíquota de IR de ${formatPct(rf.irBracketPct, 1)}), a opção com maior retorno líquido é **${rf.winner.name}**, entregando **${formatBRL(rf.winner.netFinalAmount)}** no resgate.
 
-**Simulação Real com ${formatBRL(amount)} em 12 meses:**
-- **LCI 92% do CDI (Isenta de IR):** Rende líquido **${formatPct(lciOpt.netAnnualRatePct)} a.a.**, totalizando **${formatBRL(lciOpt.netFinalAmount)}** (+${formatBRL(lciOpt.netProfit)} limpos no bolso).
-- **CDB 105% do CDI (Bruto ${formatPct(cdbOpt.grossAnnualRatePct)} a.a.):** Após descontar **${formatBRL(cdbOpt.irAmount)} de IR (17,5%)**, rende líquido **${formatPct(cdbOpt.netAnnualRatePct)} a.a.**, totalizando **${formatBRL(cdbOpt.netFinalAmount)}** (+${formatBRL(cdbOpt.netProfit)} líquidos).
-- **Diferença:** A LCI entrega **${formatBRL(diff)} a mais** líquidos para você no mesmo período.
+SIMULAÇÃO REAL com ${formatBRL(amount)}:
+- **CDB ${cdbPctCdi}% do CDI:** rende bruto ${formatPct(cdbOpt.grossAnnualRatePct)} a.a.; após IR de ${formatBRL(cdbOpt.irAmount)} sobra líquido **${formatPct(cdbOpt.netAnnualRatePct)} a.a.** → **${formatBRL(cdbOpt.netFinalAmount)}** (+${formatBRL(cdbOpt.netProfit)} de lucro).
+- **LCI/LCA ${lciPctCdi}% do CDI (isenta de IR):** rende líquido **${formatPct(lciOpt.netAnnualRatePct)} a.a.** → **${formatBRL(lciOpt.netFinalAmount)}** (+${formatBRL(lciOpt.netProfit)} de lucro).
+- **Poupança:** apenas ${formatPct(poupancaOpt.netAnnualRatePct)} a.a. → ${formatBRL(poupancaOpt.netFinalAmount)} (${formatBRL(rf.differenceWinnerVsPoupanca)} a menos que a melhor opção).
+- **Tesouro Selic:** após IR e taxa B3 → ${formatBRL(tesouroOpt.netFinalAmount)}.
+- **Equivalência:** uma LCI de ${lciPctCdi}% equivale a um CDB de ${formatPct(rf.equivalentCdbPctForLci, 1)} do CDI neste prazo.
 
-**Ponto de Atenção Prático:**
-Atente-se à **liquidez**. A maioria das LCIs exige carência mínima (pelas regras do Banco Central / CMN 5.118, carência de 9 a 12 meses). Se você precisar do dinheiro para emergências antes desse prazo, opte por um **CDB de Liquidez Diária a 100% do CDI** ou **Tesouro Selic**. Ambos têm garantia do FGC até R$ 250 mil por instituição/CPF.`;
+ATENÇÃO PRÁTICA:
+LCI/LCA exige carência de 9 a 12 meses (Resolução CMN 5.118); se houver chance de resgate antes, prefira **Tesouro Selic** ou **CDB com liquidez diária**. CDBs têm garantia do FGC até **R$ 250 mil por CPF/instituição**; o Tesouro é garantido pelo próprio governo.`;
 
     return {
       answer,
@@ -294,7 +380,7 @@ Atente-se à **liquidez**. A maioria das LCIs exige carência mínima (pelas reg
         {
           title: 'Simulador Renda Fixa (CDB vs LCI)',
           slug: 'renda-fixa',
-          params: `?valor=${amount}&cdb=105&lci=92&meses=12`,
+          params: `?valor=${amount}&prazo=${months}&cdb=${cdbPctCdi}&lci=${lciPctCdi}`,
         },
       ],
     };
@@ -413,7 +499,7 @@ No início (primeiros 3 a 5 anos), a maior parte do crescimento vem do seu esfor
   }
 
   // Cenário 5: Alugar vs Financiar Imóvel
-  if (q.includes('alug') || q.includes('financ') || q.includes('imovel') || q.includes('imóvel') || q.includes('comprar casa')) {
+  if (q.includes('alug') || q.includes('financiar') || q.includes('financiamento') || q.includes('imovel') || q.includes('imóvel') || q.includes('comprar casa')) {
     const homeValue = extractAmountFromQuery(question, 450000);
 
     const answer = `**Diagnóstico Direto:**
@@ -494,6 +580,13 @@ export async function processConsultantQuery(
     dolar: indicatorsOverride?.dolar ?? SITE_CONFIG.defaultIndicators.dolar,
   };
 
+  // Perguntas de simulação numérica nunca vão ao LLM: o motor local responde
+  // com matemática auditada usando as taxas oficiais (sem risco de o modelo
+  // inventar CDI/Selic diferentes dos dados injetados pelo Banco Central).
+  if (isDeterministicScenario(question)) {
+    return generateLocalExpertResponse(question, indicators);
+  }
+
   if (typeof window !== 'undefined') {
     const payload = JSON.stringify({
       question,
@@ -518,6 +611,7 @@ export async function processConsultantQuery(
           const data = (await response.json()) as {
             answer?: string;
             mode?: string;
+            remainingFree?: number;
           };
 
           if (typeof data.answer === 'string' && data.answer.trim()) {
@@ -533,6 +627,7 @@ export async function processConsultantQuery(
                       : data.mode === 'openrouter-live'
                         ? 'openrouter-free'
                         : 'abc-expert-engine',
+              remainingFree: typeof data.remainingFree === 'number' ? data.remainingFree : undefined,
               recommendedCalculators: detectRecommendedCalculators(question),
             };
           }

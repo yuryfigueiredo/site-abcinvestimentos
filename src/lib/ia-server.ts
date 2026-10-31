@@ -81,7 +81,7 @@ async function saveConversation(
   }
 }
 
-function buildEducationalFallbackAnswer(question: string, selic = 14.25, cdi = 14.15, ipca = 4.56) {
+function buildEducationalFallbackAnswer(question: string, selic = 13.75, cdi = 13.65, ipca = 4.58) {
   const q = question.toLowerCase();
 
   if (q.includes('lci') || q.includes('lca') || q.includes('cdb') || q.includes('cdi')) {
@@ -390,9 +390,9 @@ export const onRequestPost = async (context: { request: Request; env: Env }): Pr
       });
     }
 
-    const selic = body.indicators?.selic ?? 14.25;
-    const cdi = body.indicators?.cdi ?? 14.15;
-    const ipca = body.indicators?.ipca12m ?? 4.56;
+    const selic = body.indicators?.selic ?? 13.75;
+    const cdi = body.indicators?.cdi ?? 13.65;
+    const ipca = body.indicators?.ipca12m ?? 4.58;
 
     const newCount = currentUsage && currentUsage.date === today ? currentUsage.count + 1 : 1;
     dailyIpUsage.set(ip, { date: today, count: newCount });

@@ -9,14 +9,14 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
   <!-- Canvas de Constelação Orbital (Estilo Mais Retorno) -->
   <canvas id="hero-constellation-canvas" class="hero-canvas" aria-hidden="true"></canvas>
 
-  <!-- Tags Flutuantes de Mercado no Espaço Cósmico -->
+  <!-- Tags Flutuantes de Mercado no Espaço Cósmico (taxas injetadas ao vivo pelo BCB) -->
   <div class="ambient-tags-layer" aria-hidden="true">
-    <span class="ambient-tag tag-pos-1"><span class="tag-dot"></span>Selic 14,25%</span>
-    <span class="ambient-tag tag-pos-2"><span class="tag-dot"></span>MXRF11 FII</span>
-    <span class="ambient-tag tag-pos-3"><span class="tag-dot"></span>CDI 14,15%</span>
-    <span class="ambient-tag tag-pos-4"><span class="tag-dot"></span>Tesouro Selic</span>
-    <span class="ambient-tag tag-pos-5"><span class="tag-dot"></span>IPCA 4,56%</span>
-    <span class="ambient-tag tag-pos-6"><span class="tag-dot"></span>VALE3 Ação</span>
+    <span class="ambient-tag tag-pos-1"><span class="tag-dot"></span><span id="ambient-selic">Selic —%</span></span>
+    <span class="ambient-tag tag-pos-2"><span class="tag-dot"></span>Isenção IR • LCI/LCA</span>
+    <span class="ambient-tag tag-pos-3"><span class="tag-dot"></span><span id="ambient-cdi">CDI —%</span></span>
+    <span class="ambient-tag tag-pos-4"><span class="tag-dot"></span>Liquidez Diária</span>
+    <span class="ambient-tag tag-pos-5"><span class="tag-dot"></span><span id="ambient-ipca">IPCA —%</span></span>
+    <span class="ambient-tag tag-pos-6"><span class="tag-dot"></span>Renda Passiva</span>
   </div>
 
   <div class="container hero-container">
@@ -64,6 +64,9 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
         <span>Ao pesquisar, você concorda com o uso desta conversa para treinar e melhorar a IA do ABC Investimentos.</span>
         <a href="/privacidade">Saiba mais</a>
       </label>
+      <p class="ia-daily-limit-hint" id="ia-daily-limit-hint">
+        3 consultas gratuitas de IA por dia — os 6 simuladores continuam 100% ilimitados
+      </p>
 
       <!-- Chips de Teste em 1 Clique (Cápsulas de Vidro Escuro) -->
       <div class="search-chips-row">
@@ -98,6 +101,7 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
             <FinanceIcon name="bot" size={18} />
             <strong>Consultor IA • ABC Investimentos</strong>
             <span class="ia-badge-live" id="ia-badge-source">IA Especialista ABC • Análise em Tempo Real</span>
+            <span class="ia-free-counter" id="ia-free-counter" hidden></span>
           </div>
           <button type="button" id="ia-close-btn" class="ia-close-btn" aria-label="Fechar resposta">×</button>
         </div>
@@ -334,6 +338,29 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
   initConstellation();
 
   import { processConsultantQuery } from '../lib/ai-assistant';
+
+  // Taxas ambientais do hero: lê o JSON injetado pelo Ticker (BCB SGS) e,
+  // quando o evento de carregamento chegar, atualiza os números em tela.
+  // Enquanto não houver dado ao vivo, os placeholders "—%" ficam visíveis.
+  function formatPtPct(value: number): string {
+    return `${value.toFixed(2).replace('.', ',')}%`;
+  }
+
+  function updateAmbientTags() {
+    const ind = (window as any).__ABC_INDICATORS__;
+    const setText = (id: string, text: string) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = text;
+    };
+    if (ind && typeof ind.selic === 'number' && typeof ind.cdi === 'number' && typeof ind.ipca12m === 'number') {
+      setText('ambient-selic', `Selic ${formatPtPct(ind.selic)}`);
+      setText('ambient-cdi', `CDI ${formatPtPct(ind.cdi)}`);
+      setText('ambient-ipca', `IPCA ${formatPtPct(ind.ipca12m)}`);
+    }
+  }
+
+  updateAmbientTags();
+  window.addEventListener('abc:indicators-loaded', updateAmbientTags);
 
   function renderBlockLines(lines: string[]): string {
     const htmlParts: string[] = [];
@@ -616,7 +643,7 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
 
     // Registra incremento no contador de perguntas
     try {
-      localStorage.setItem('abc_ia_question_count', String(count + 1));
+      localStorage.setItem('abc_ia_question_count', String(getQuestionCount() + 1));
     } catch {}
 
     let followupLoadingElem: HTMLElement | null = null;
@@ -713,6 +740,21 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
         } else {
           iaBadgeSource.className = 'ia-badge-live ia-badge-local';
           iaBadgeSource.textContent = 'Motor Heurístico ABC • Auditoria Local';
+        }
+      }
+
+      // Comunica o limite diário gratuito de consultas (vindo do servidor)
+      const freeCounter = document.getElementById('ia-free-counter');
+      if (freeCounter) {
+        const remaining = typeof data.remainingFree === 'number' ? data.remainingFree : null;
+        if (remaining !== null) {
+          freeCounter.hidden = false;
+          freeCounter.textContent =
+            remaining > 0
+              ? `Restam ${remaining} ${remaining === 1 ? 'consulta gratuita' : 'consultas gratuitas'} hoje`
+              : 'Limite diário de consultas gratuitas atingido — volte amanhã';
+        } else {
+          freeCounter.hidden = true;
         }
       }
 
@@ -1064,6 +1106,15 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
     white-space: nowrap;
   }
 
+  .ia-daily-limit-hint {
+    margin: 0.4rem auto 0;
+    font-size: 0.74rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+    text-align: center;
+    opacity: 0.9;
+  }
+
   /* IA Authority Marketing Tag */
   .ia-authority-tag {
     display: inline-flex;
@@ -1412,6 +1463,28 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
     box-shadow: 0 0 8px rgba(16, 185, 129, 0.75);
     flex-shrink: 0;
     animation: livePulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .ia-free-counter {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #fbbf24;
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    padding: 0.22rem 0.65rem;
+    border-radius: 9999px;
+    letter-spacing: 0.02em;
+  }
+
+  .ia-free-counter[hidden] {
+    display: none;
+  }
+
+  :root[data-theme="light"] .ia-free-counter,
+  :root:has(> head > meta[name="color-scheme"][content="light"]) .ia-free-counter {
+    color: #b45309;
+    background: #fef3c7;
+    border-color: #fcd34d;
   }
 
   @keyframes livePulse {

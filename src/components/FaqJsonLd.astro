@@ -1,0 +1,24 @@
+---
+import type { CalculatorMeta } from '../data/calculators';
+
+interface Props {
+  calc: CalculatorMeta;
+}
+
+const { calc } = Astro.props;
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: calc.faqs.map((faq) => ({
+    '@type': 'Question',
+    name: faq.question,
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: faq.answer,
+    },
+  })),
+};
+---
+
+<script type="application/ld+json" set:html={JSON.stringify(faqSchema)} />

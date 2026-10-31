@@ -4,12 +4,14 @@ import NextStepCard from '../../components/NextStepCard.astro';
 import AdSlot from '../../components/AdSlot.astro';
 import { CALCULATORS } from '../../data/calculators';
 import { SITE_CONFIG } from '../../config/site';
+import FaqJsonLd from '../../components/FaqJsonLd.astro';
 
 const calc = CALCULATORS.find((c) => c.slug === 'renda-fixa')!;
 const d = SITE_CONFIG.defaultIndicators;
 ---
 
 <BaseLayout title={`${calc.title} | ABC Investimentos`} description={calc.seoDescription}>
+  <FaqJsonLd calc={calc} />
   <section class="calc-page-section">
     <div class="container">
       <nav class="breadcrumb" aria-label="Navegação estrutural">
@@ -248,9 +250,9 @@ const d = SITE_CONFIG.defaultIndicators;
     const months = Number(monthsInput.value) || 1;
     const cdbPctCdi = Number(cdbInput.value) || 100;
     const lciLcaPctCdi = Number(lciInput.value) || 90;
-    const cdiAnnualPct = Number(cdiInput.value) || 14.15;
-    const selicAnnualPct = Number(selicInput.value) || 14.25;
-    const ipcaAnnualPct = Number(ipcaInput.value) || 4.56;
+    const cdiAnnualPct = Number(cdiInput.value) || 13.65;
+    const selicAnnualPct = Number(selicInput.value) || 13.75;
+    const ipcaAnnualPct = Number(ipcaInput.value) || 4.58;
 
     const res = simulateFixedIncomeComparison({
       amount,

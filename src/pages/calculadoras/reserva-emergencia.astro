@@ -3,11 +3,13 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import NextStepCard from '../../components/NextStepCard.astro';
 import AdSlot from '../../components/AdSlot.astro';
 import { CALCULATORS } from '../../data/calculators';
+import FaqJsonLd from '../../components/FaqJsonLd.astro';
 
 const calc = CALCULATORS.find((c) => c.slug === 'reserva-emergencia')!;
 ---
 
 <BaseLayout title={`${calc.title} | ABC Investimentos`} description={calc.seoDescription}>
+  <FaqJsonLd calc={calc} />
   <section class="calc-page-section">
     <div class="container">
       <nav class="breadcrumb" aria-label="Navegação estrutural">
@@ -180,7 +182,7 @@ const calc = CALCULATORS.find((c) => c.slug === 'reserva-emergencia')!;
     const currentReserve = Number(currentInput.value) || 0;
     const monthlySavingsCapacity = Number(saveInput.value) || 500;
     const profile = (profileSelect.value as EmploymentProfile) || 'clt';
-    const cdiAnnualPct = (window as any).__ABC_INDICATORS__?.cdi ?? 14.15;
+    const cdiAnnualPct = (window as any).__ABC_INDICATORS__?.cdi ?? 13.65;
 
     document.getElementById('re-cost-out')!.textContent = formatBRL(monthlyEssentialCost);
     document.getElementById('re-current-out')!.textContent = formatBRL(currentReserve);

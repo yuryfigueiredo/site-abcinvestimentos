@@ -21,9 +21,35 @@ const {
 } = Astro.props;
 
 const canonicalUrl = new URL(canonicalPath, SITE_CONFIG.url).toString();
+const ogImageUrl = new URL('/og-image.png', SITE_CONFIG.url).toString();
 const adsenseEnabled = SITE_CONFIG.adsense.enabled && Boolean(SITE_CONFIG.adsense.clientId);
 const gaMeasurementId = SITE_CONFIG.analytics.measurementId;
 const gaEnabled = SITE_CONFIG.analytics.enabled && Boolean(gaMeasurementId);
+
+const siteJsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      '@id': `${SITE_CONFIG.url}/#organization`,
+      name: SITE_CONFIG.name,
+      url: SITE_CONFIG.url,
+      slogan: SITE_CONFIG.tagline,
+      email: SITE_CONFIG.contact.email,
+      logo: new URL('/favicon.svg', SITE_CONFIG.url).toString(),
+      sameAs: [],
+    },
+    {
+      '@type': 'WebSite',
+      '@id': `${SITE_CONFIG.url}/#website`,
+      name: SITE_CONFIG.name,
+      url: SITE_CONFIG.url,
+      description: SITE_CONFIG.description,
+      inLanguage: 'pt-BR',
+      publisher: { '@id': `${SITE_CONFIG.url}/#organization` },
+    },
+  ],
+};
 ---
 
 <!doctype html>
@@ -131,13 +157,26 @@ const gaEnabled = SITE_CONFIG.analytics.enabled && Boolean(gaMeasurementId);
     <!-- Resource hints (performance guide) -->
     <link rel="preconnect" href="https://api.bcb.gov.br" crossorigin />
 
-    <!-- Open Graph -->
+    <!-- Open Graph (compartilhamento WhatsApp/Facebook/LinkedIn) -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content={SITE_CONFIG.name} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonicalUrl} />
     <meta property="og:locale" content="pt_BR" />
+    <meta property="og:image" content={ogImageUrl} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={`${SITE_CONFIG.name} — Calculadoras financeiras gratuitas com dados oficiais do Banco Central`} />
+
+    <!-- Twitter Card (X/Twitter e Telegram) -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImageUrl} />
+
+    <!-- Dados Estruturados: Organização & WebSite -->
+    <script type="application/ld+json" set:html={JSON.stringify(siteJsonLd)} />
 
     <!-- Google Fonts: Inter & JetBrains Mono -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />

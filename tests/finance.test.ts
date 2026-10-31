@@ -62,7 +62,7 @@ describe('Motor Financeiro ABC Investimentos (Regras 2026)', () => {
     const res = simulateFixedIncomeComparison({
       amount: 20_000,
       monthlyContribution: 0,
-      months: 24, // 720 dias -> alíquota de 17,5%
+      months: 24, // ≈ 731 dias corridos -> alíquota de 15%
       cdiAnnualPct: 14.15,
       selicAnnualPct: 14.25,
       ipcaAnnualPct: 4.5,
@@ -71,9 +71,9 @@ describe('Motor Financeiro ABC Investimentos (Regras 2026)', () => {
       trAnnualPct: 0.9,
     });
 
-    expect(res.irBracketPct).toBe(17.5);
-    // Para 17,5% de IR, uma LCI de 92% do CDI equivale a 92 / (1 - 0.175) = 111.5% do CDI
-    expect(res.equivalentCdbPctForLci).toBeCloseTo(111.5, 1);
+    expect(res.irBracketPct).toBe(15.0);
+    // Para 15% de IR, uma LCI de 92% do CDI equivale a 92 / (1 - 0.15) = 108.2% do CDI
+    expect(res.equivalentCdbPctForLci).toBeCloseTo(108.2, 1);
     expect(res.winner.id).toBe('lci_lca');
     expect(res.differenceWinnerVsPoupanca).toBeGreaterThan(2_000);
   });

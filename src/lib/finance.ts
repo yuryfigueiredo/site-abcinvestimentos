@@ -308,7 +308,9 @@ export function simulateFixedIncomeComparison(input: FixedIncomeInput): FixedInc
   const initial = Math.max(0, input.amount);
   const monthly = Math.max(0, input.monthlyContribution ?? 0);
   const months = Math.max(1, Math.min(360, Math.round(input.months)));
-  const days = months * 30;
+  // Dias corridos reais (365,25/12 por mês) para a tabela regressiva de IR:
+  // 6 meses ≈ 183d → 20%; 12 meses ≈ 365d → 17,5%; 24 meses ≈ 731d → 15%.
+  const days = Math.round(months * (365.25 / 12));
   const irBracketPct = getRegressiveIrRatePct(days);
   const irDecimal = irBracketPct / 100;
   const totalInvested = Number((initial + monthly * months).toFixed(2));

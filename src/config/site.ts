@@ -8,6 +8,8 @@ export interface BookRecommendation {
   amazonUrl: string;
 }
 
+const AMAZON_ASSOCIATE_TAG = 'abcinvestimen-20';
+
 export const SITE_CONFIG = {
   name: 'ABC Investimentos',
   domain: 'abcinvestimentos.com.br',
@@ -18,11 +20,11 @@ export const SITE_CONFIG = {
 
   // Fallback seguro das séries oficiais do Banco Central e B3 (usado caso a API esteja indisponível)
   defaultIndicators: {
-    selic: 14.25,
-    cdi: 14.15,
-    poupanca: 8.42,
-    ipca12m: 4.56,
-    dolar: 5.72,
+    selic: 13.75,
+    cdi: 13.65,
+    poupanca: 7.12,
+    ipca12m: 4.58,
+    dolar: 5.42,
     ibovespa: 131850,
     ifix: 3385,
     trAnual: 0.95,
@@ -81,7 +83,7 @@ export const SITE_CONFIG = {
   },
 
   // Configuração Oficial de Afiliados Amazon Brasil (ID aprovado do criador)
-  amazonAssociateTag: 'abcinvestimen-20',
+  amazonAssociateTag: AMAZON_ASSOCIATE_TAG,
   books: [
     {
       id: 'psicologia-financeira',
@@ -90,7 +92,7 @@ export const SITE_CONFIG = {
       badge: 'Mais Vendido • Mentalidade',
       summary: 'Lições atemporais sobre fortuna, ganância e felicidade. Mostra por que o sucesso financeiro depende mais do seu comportamento do que de planilhas complexas.',
       whyRead: 'Ideal para não cair em armadilhas emocionais e manter a constância nos aportes mensais.',
-      amazonUrl: 'https://www.amazon.com.br/s?k=A+Psicologia+Financeira+Morgan+Housel&tag=abcinvestimen-20',
+      amazonUrl: `https://www.amazon.com.br/s?k=A+Psicologia+Financeira+Morgan+Housel&tag=${AMAZON_ASSOCIATE_TAG}`,
     },
     {
       id: 'investidor-bom-senso',
@@ -99,7 +101,7 @@ export const SITE_CONFIG = {
       badge: 'Essencial • Longo Prazo',
       summary: 'Escrito pelo fundador da Vanguard, demonstra matematicamente como custos baixos, diversificação e juros compostos superam 90% dos especuladores.',
       whyRead: 'Leitura obrigatória depois de simular seus aportes na Calculadora do 1º Milhão.',
-      amazonUrl: 'https://www.amazon.com.br/s?k=O+Investidor+de+Bom+Senso+John+Bogle&tag=abcinvestimen-20',
+      amazonUrl: `https://www.amazon.com.br/s?k=O+Investidor+de+Bom+Senso+John+Bogle&tag=${AMAZON_ASSOCIATE_TAG}`,
     },
     {
       id: 'rei-dos-dividendos',
@@ -108,7 +110,7 @@ export const SITE_CONFIG = {
       badge: 'Renda Passiva Brasil',
       summary: 'A trajetória do maior investidor pessoa física da Bolsa brasileira saindo do zero até viver exclusivamente de dividendos de grandes empresas.',
       whyRead: 'Complemento perfeito para a Calculadora de Dividendos e Preço-Teto de Bazin.',
-      amazonUrl: 'https://www.amazon.com.br/s?k=O+Rei+dos+Dividendos+Luiz+Barsi&tag=abcinvestimen-20',
+      amazonUrl: `https://www.amazon.com.br/s?k=O+Rei+dos+Dividendos+Luiz+Barsi&tag=${AMAZON_ASSOCIATE_TAG}`,
     },
     {
       id: 'faca-fortuna-acoes',
@@ -117,7 +119,7 @@ export const SITE_CONFIG = {
       badge: 'Clássico Brasileiro',
       summary: 'O livro que originou o famoso método do Preço-Teto baseado em Dividend Yield mínimo de 6% ao ano sem dívidas excessivas.',
       whyRead: 'Explica na fonte a fórmula exata usada na nossa Calculadora de Preço-Teto.',
-      amazonUrl: 'https://www.amazon.com.br/s?k=Faca+Fortuna+com+Acoes+Decio+Bazin&tag=abcinvestimen-20',
+      amazonUrl: `https://www.amazon.com.br/s?k=Faca+Fortuna+com+Acoes+Decio+Bazin&tag=${AMAZON_ASSOCIATE_TAG}`,
     },
     {
       id: 'homem-mais-rico-babilonia',
@@ -126,7 +128,7 @@ export const SITE_CONFIG = {
       badge: 'Iniciantes • Hábito de Poupar',
       summary: 'O princípio clássico de "pagar-se primeiro" (guardar ao menos 10% a 20% de tudo o que ganha) explicado em parábolas diretas e fáceis de aplicar.',
       whyRead: 'O melhor primeiro livro para quem está começando a montar a Reserva de Emergência.',
-      amazonUrl: 'https://www.amazon.com.br/s?k=O+Homem+Mais+Rico+da+Babilonia&tag=abcinvestimen-20',
+      amazonUrl: `https://www.amazon.com.br/s?k=O+Homem+Mais+Rico+da+Babilonia&tag=${AMAZON_ASSOCIATE_TAG}`,
     },
     {
       id: 'investidor-inteligente',
@@ -135,7 +137,7 @@ export const SITE_CONFIG = {
       badge: 'Valuation & Margem de Segurança',
       summary: 'A bíblia do Value Investing escrita pelo mentor de Warren Buffett, apresentando os conceitos de Sr. Mercado, Valor Intrínseco e Margem de Segurança.',
       whyRead: 'Base teórica da nossa Calculadora de Valor Intrínseco de Graham.',
-      amazonUrl: 'https://www.amazon.com.br/s?k=O+Investidor+Inteligente+Benjamin+Graham&tag=abcinvestimen-20',
+      amazonUrl: `https://www.amazon.com.br/s?k=O+Investidor+Inteligente+Benjamin+Graham&tag=${AMAZON_ASSOCIATE_TAG}`,
     },
   ] satisfies BookRecommendation[],
 

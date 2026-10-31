@@ -10,7 +10,7 @@ function splitNumberChars(val: number): string[] {
 
 const selicChars = splitNumberChars(d.selic);
 const cdiChars = splitNumberChars(d.cdi);
-const poupancaChars = splitNumberChars(d.poupanca || 8.42);
+const poupancaChars = splitNumberChars(d.poupanca || 7.12);
 const ipcaChars = splitNumberChars(d.ipca12m);
 const dolarChars = splitNumberChars(d.dolar);
 ---
@@ -105,9 +105,9 @@ const dolarChars = splitNumberChars(d.dolar);
         <strong
           class="ticker-val"
           id="bcb-poupanca"
-          data-value={(d.poupanca || 8.42).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          data-value={(d.poupanca || 7.12).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           data-suffix="% a.a."
-          aria-label={`Poupança: ${(d.poupanca || 8.42).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}% a.a.`}
+          aria-label={`Poupança: ${(d.poupanca || 7.12).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}% a.a.`}
         >
           <span class="flap-board" aria-hidden="true">
             {poupancaChars.map((ch, idx) =>

@@ -5,6 +5,83 @@ import FinanceIcon from '../components/icons/FinanceIcon.astro';
 import { CALCULATORS } from '../data/calculators';
 import { GUIDES, GLOSSARY_TERMS } from '../data/guides';
 import { SITE_CONFIG } from '../config/site';
+
+const COVER_GRADIENTS: Record<string, string> = {
+  'psicologia-financeira': 'linear-gradient(135deg, #0f766e, #134e4a)',
+  'investidor-bom-senso': 'linear-gradient(135deg, #1d4ed8, #1e3a8a)',
+  'rei-dos-dividendos': 'linear-gradient(135deg, #b45309, #78350f)',
+  'faca-fortuna-acoes': 'linear-gradient(135deg, #7c3aed, #4c1d95)',
+  'homem-mais-rico-babilonia': 'linear-gradient(135deg, #c2410c, #7c2d12)',
+  'investidor-inteligente': 'linear-gradient(135deg, #0e7490, #155e75)',
+};
+
+const STOP_WORDS = ['com', 'para', 'que', 'por', 'dos', 'das', 'de', 'do', 'da', 'e', 'o', 'a', 'um', 'uma', 'os', 'as'];
+
+// Capas em pt-BR sem imagem no Open Library: usa a edição original do mesmo livro
+const OPEN_LIBRARY_QUERY_OVERRIDES: Record<string, string> = {
+  'investidor-bom-senso': 'The Little Book of Common Sense Investing John Bogle',
+};
+
+function bookInitials(title: string): string {
+  return title
+    .split(' ')
+    .filter((word) => word.length > 2 && !STOP_WORDS.includes(word.toLowerCase()))
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join('')
+    .toUpperCase();
+}
+
+async function fetchJsonWithTimeout(url: string, timeoutMs = 4500): Promise<unknown | null> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+async function fetchBookCovers(): Promise<Record<string, string>> {
+  const covers: Record<string, string> = {};
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  async function jsonOrRetry(url: string): Promise<unknown | null> {
+    const first = await fetchJsonWithTimeout(url, 5000);
+    if (first !== null) return first;
+    await sleep(400);
+    return fetchJsonWithTimeout(url, 5000);
+  }
+
+  // Sequencial de propósito: as APIs públicas (Google Books/Open Library) limitam rajadas paralelas
+  for (const book of SITE_CONFIG.books) {
+    const query = encodeURIComponent(`${book.title} ${book.author}`);
+
+    const gbooks = (await jsonOrRetry(
+      `https://www.googleapis.com/books/v1/volumes?q=${query}&langRestrict=pt&printType=books&maxResults=3`
+    )) as { items?: { volumeInfo?: { imageLinks?: { thumbnail?: string } } }[] } | null;
+    const thumb = gbooks?.items
+      ?.map((item) => item.volumeInfo?.imageLinks?.thumbnail)
+      .find(Boolean);
+    if (thumb) {
+      covers[book.id] = thumb.replace('http://', 'https://').replace('&zoom=1', '&zoom=2');
+      continue;
+    }
+
+    const openLibQuery = OPEN_LIBRARY_QUERY_OVERRIDES[book.id] ?? query;
+    const openLib = (await jsonOrRetry(
+      `https://openlibrary.org/search.json?q=${openLibQuery}&fields=cover_i&limit=5`
+    )) as { docs?: { cover_i?: number }[] } | null;
+    const coverId = openLib?.docs?.find((doc) => doc.cover_i)?.cover_i;
+    if (coverId) covers[book.id] = `https://covers.openlibrary.org/b/id/${coverId}-M.jpg`;
+  }
+  return covers;
+}
+
+const bookCovers = await fetchBookCovers();
 ---
 
 <BaseLayout>
@@ -51,6 +128,16 @@ import { SITE_CONFIG } from '../config/site';
   <section class="section" id="planilha">
     <div class="container">
       <div class="flagship-card">
+        <a href="/planilha-abc" class="flagship-cover" aria-label="Conhecer a Planilha Oficial ABC">
+          <img
+            src="/capa-kiwify-planilha-abc.jpg"
+            alt="Capa da Planilha ABC — Controle Financeiro 50/30/20 & Rumo ao 1º Milhão"
+            width="1200"
+            height="896"
+            loading="lazy"
+            decoding="async"
+          />
+        </a>
         <div class="flagship-content">
           <div class="flagship-pill">Kit Oficial de Organização Financeira</div>
           <h2 class="flagship-title">Planilha ABC — Controle 50/30/20 & Rumo ao 1º Milhão</h2>
@@ -144,18 +231,36 @@ import { SITE_CONFIG } from '../config/site';
       <div class="books-grid">
         {SITE_CONFIG.books.map((book) => (
           <div class="book-card">
-            <span class="book-badge">{book.badge}</span>
-            <h3 class="book-title">{book.title}</h3>
-            <span class="book-author">por {book.author}</span>
-            <p class="book-summary">{book.summary}</p>
-            <a
-              href={book.amazonUrl}
-              target="_blank"
-              rel="noopener noreferrer sponsored"
-              class="btn btn-outline book-btn"
+            <div
+              class:list={['book-cover', !bookCovers[book.id] && 'book-cover--fallback']}
+              style={`background: ${COVER_GRADIENTS[book.id] ?? 'linear-gradient(135deg, #334155, #0f172a)'};`}
+              aria-hidden="true"
             >
-              Ver na Amazon Brasil ↗
-            </a>
+              <span class="book-cover-initials">{bookInitials(book.title)}</span>
+              {bookCovers[book.id] && (
+                <img
+                  src={bookCovers[book.id]}
+                  alt={`Capa do livro ${book.title}`}
+                  loading="lazy"
+                  decoding="async"
+                  onerror="this.remove()"
+                />
+              )}
+            </div>
+            <div class="book-info">
+              <span class="book-badge">{book.badge}</span>
+              <h3 class="book-title">{book.title}</h3>
+              <span class="book-author">por {book.author}</span>
+              <p class="book-summary">{book.summary}</p>
+              <a
+                href={book.amazonUrl}
+                target="_blank"
+                rel="noopener noreferrer sponsored"
+                class="btn btn-outline book-btn"
+              >
+                Ver na Amazon Brasil ↗
+              </a>
+            </div>
           </div>
         ))}
       </div>
@@ -299,6 +404,44 @@ import { SITE_CONFIG } from '../config/site';
     border-radius: 16px;
     padding: clamp(1.75rem, 3.5vw, 2.75rem);
     box-shadow: var(--card-shadow);
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.75rem;
+    align-items: center;
+  }
+
+  .flagship-cover {
+    display: block;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border-card);
+    box-shadow: 0 14px 34px -12px rgba(0, 0, 0, 0.55);
+    line-height: 0;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    max-width: 420px;
+    margin-inline: auto;
+  }
+
+  .flagship-cover:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 42px -12px rgba(56, 189, 248, 0.35);
+  }
+
+  .flagship-cover img {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  @media (min-width: 900px) {
+    .flagship-card {
+      grid-template-columns: 320px 1fr;
+      gap: 2.5rem;
+    }
+    .flagship-cover {
+      margin-inline: 0;
+      max-width: none;
+    }
   }
 
   .flagship-pill {
@@ -456,8 +599,20 @@ import { SITE_CONFIG } from '../config/site';
   /* Books Grid */
   .books-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    grid-template-columns: 1fr;
     gap: 1.25rem;
+  }
+
+  @media (min-width: 720px) {
+    .books-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 1080px) {
+    .books-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
   }
 
   .book-card {
@@ -466,13 +621,80 @@ import { SITE_CONFIG } from '../config/site';
     border-radius: 12px;
     padding: 1.5rem;
     display: flex;
-    flex-direction: column;
-    justify-content: space-between;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 1.15rem;
     box-shadow: var(--card-shadow);
+    transition: transform 0.22s ease, border-color 0.22s ease, background 0.22s ease, box-shadow 0.22s ease;
+  }
+
+  .book-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--border-hover);
+    background: var(--glass-elevated);
+  }
+
+  .book-cover {
+    flex: 0 0 100px;
+    width: 100px;
+    aspect-ratio: 2 / 3;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid var(--border-card);
+    box-shadow: 0 10px 22px -10px rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    isolation: isolate;
+  }
+
+  .book-cover--fallback::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(115deg, rgba(255, 255, 255, 0.18), transparent 42%),
+      repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 14px);
+    z-index: -1;
+  }
+
+  .book-cover--fallback::after {
+    content: '';
+    position: absolute;
+    inset: 7px;
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    border-radius: 4px;
+    pointer-events: none;
+  }
+
+  .book-cover img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .book-cover-initials {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 1.3rem;
+    color: rgba(255, 255, 255, 0.94);
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
+    letter-spacing: 0.03em;
+  }
+
+  .book-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
   }
 
   .book-badge {
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     font-weight: 500;
     color: var(--pill-text);
     background: var(--pill-bg);
@@ -480,20 +702,21 @@ import { SITE_CONFIG } from '../config/site';
     padding: 0.18rem 0.55rem;
     border-radius: 9999px;
     width: fit-content;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.6rem;
   }
 
   .book-title {
-    font-size: 1.04rem;
+    font-size: 1.02rem;
     font-weight: 600;
     color: var(--text-primary);
     margin-bottom: 0.2rem;
+    letter-spacing: -0.01em;
   }
 
   .book-author {
     font-size: 0.8rem;
     color: var(--text-muted);
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.65rem;
     display: block;
   }
 
@@ -501,12 +724,13 @@ import { SITE_CONFIG } from '../config/site';
     font-size: 0.84rem;
     color: var(--text-secondary);
     line-height: 1.5;
-    margin-bottom: 1.25rem;
+    margin-bottom: 1rem;
   }
 
   .book-btn {
     width: 100%;
     font-size: 0.84rem;
+    margin-top: auto;
   }
 
   /* Disclaimer Panel */
@@ -530,6 +754,13 @@ import { SITE_CONFIG } from '../config/site';
     .level-card,
     .book-card {
       padding: 1.15rem 1rem;
+    }
+    .book-card {
+      gap: 0.9rem;
+    }
+    .book-cover {
+      flex: 0 0 88px;
+      width: 88px;
     }
     .flagship-card {
       padding: 1.25rem 1rem;

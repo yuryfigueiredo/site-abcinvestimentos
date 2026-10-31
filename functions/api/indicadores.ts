@@ -5,10 +5,10 @@
  */
 
 const FALLBACK_INDICATORS = {
-  selic: 14.25,
-  cdi: 14.15,
-  ipca12m: 4.56,
-  dolar: 5.72,
+  selic: 13.75,
+  cdi: 13.65,
+  ipca12m: 4.58,
+  dolar: 5.42,
   updatedAt: 'Referência Oficial BCB',
   source: 'fallback',
 };

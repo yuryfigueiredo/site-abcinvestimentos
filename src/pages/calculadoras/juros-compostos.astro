@@ -3,11 +3,13 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import NextStepCard from '../../components/NextStepCard.astro';
 import AdSlot from '../../components/AdSlot.astro';
 import { CALCULATORS } from '../../data/calculators';
+import FaqJsonLd from '../../components/FaqJsonLd.astro';
 
 const calc = CALCULATORS.find((c) => c.slug === 'juros-compostos')!;
 ---
 
 <BaseLayout title={`${calc.title} | ABC Investimentos`} description={calc.seoDescription}>
+  <FaqJsonLd calc={calc} />
   <section class="calc-page-section">
     <div class="container">
       <nav class="breadcrumb" aria-label="Navegação estrutural">
@@ -104,9 +106,9 @@ const calc = CALCULATORS.find((c) => c.slug === 'juros-compostos')!;
           <div class="control-group">
             <div class="control-label-row">
               <label for="jc-inflation">Inflação Anual Estimada — IPCA (% a.a.)</label>
-              <output id="jc-inflation-out" for="jc-inflation">4,56% a.a.</output>
+              <output id="jc-inflation-out" for="jc-inflation">4,58% a.a.</output>
             </div>
-            <input type="number" id="jc-inflation" class="abc-input" min="0" max="30" step="0.1" value="4.56" />
+            <input type="number" id="jc-inflation" class="abc-input" min="0" max="30" step="0.1" value="4.58" />
           </div>
         </div>
 

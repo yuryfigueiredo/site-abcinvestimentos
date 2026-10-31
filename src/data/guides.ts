@@ -242,7 +242,7 @@ export const GLOSSARY_TERMS: GlossaryItem[] = [
     term: 'Selic (Taxa Básica de Juros)',
     category: 'Indicadores',
     definition: 'É a taxa mãe da economia brasileira, definida a cada 45 dias pelo Copom (Banco Central). Serve de referência para todos os demais juros do país.',
-    practicalExample: 'Quando a Selic está em 14,25% a.a., o Tesouro Selic rende praticamente essa taxa bruta ao ano.',
+    practicalExample: 'Quando a Selic está em 13,75% a.a., o Tesouro Selic rende praticamente essa taxa bruta ao ano.',
   },
   {
     term: 'CDI (Certificado de Depósito Interbancário)',

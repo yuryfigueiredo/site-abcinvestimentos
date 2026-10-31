@@ -1,4 +1,5 @@
 import { defineConfig } from 'astro/config';
+import sitemap from '@astrojs/sitemap';
 
 export default defineConfig({
   site: 'https://abcinvestimentos.com.br',
@@ -6,4 +7,5 @@ export default defineConfig({
   build: {
     inlineStylesheets: 'auto',
   },
+  integrations: [sitemap()],
 });
