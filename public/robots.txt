@@ -3,4 +3,4 @@ Allow: /
 Disallow: /api/
 Disallow: /ignorar-analytics
 
-Sitemap: https://abcinvestimentos.com.br/sitemap-index.xml
+Sitemap: https://www.abcinvestimentos.com.br/sitemap-index.xml
