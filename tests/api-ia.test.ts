@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it } from 'vitest';
-import handler from '../api/ia';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import handler, { polishModelAnswer } from '../api/ia';
 import { formatBRL, simulateFixedIncomeComparison } from '../src/lib/finance';
 
 interface MockResponsePayload {
@@ -38,6 +38,7 @@ describe('api/ia — motor determinístico no servidor', () => {
   const savedEnv = providerKeys.map((key) => [key, process.env[key]] as const);
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     for (const [key, value] of savedEnv) {
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;
@@ -96,5 +97,94 @@ describe('api/ia — motor determinístico no servidor', () => {
 
     expect(statusCode).toBe(405);
     expect(payload.error).toBeTruthy();
+  });
+
+  it('envia limite de tokens explícito ao Cloudflare e limpa resposta cortada', async () => {
+    for (const key of providerKeys) delete process.env[key];
+    process.env.CLOUDFLARE_ACCOUNT_ID = 'acc-test';
+    process.env.CLOUDFLARE_API_TOKEN = 'token-test';
+
+    const truncated =
+      'A Selic é a taxa básica de juros da economia brasileira e influencia todas as demais taxas de crédito e investimento. Para o investidor, **exposição ao euro';
+    let requestBody: Record<string, unknown> | null = null;
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        requestBody = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
+        return new Response(JSON.stringify({ result: { response: truncated } }), { status: 200 });
+      })
+    );
+
+    const { payload } = await callHandler({ question: 'O que é euro?' });
+
+    expect(requestBody).not.toBeNull();
+    expect(requestBody!.max_tokens).toBe(650);
+    expect(payload.answer).toContain('A Selic é a taxa básica de juros');
+    expect(payload.answer).not.toContain('**');
+    expect(payload.answer).not.toContain('exposição ao euro');
+    expect(payload.answer?.endsWith('.')).toBe(true);
+  });
+});
+
+describe('polishModelAnswer', () => {
+  it('mantém intacta uma resposta completa com valores em reais', () => {
+    const complete =
+      'Um CDB de 110% do CDI rende mais que a poupança: em R$ 10.000,00 por 24 meses o líquido supera a caderneta.';
+
+    expect(polishModelAnswer(complete)).toBe(complete);
+  });
+
+  it('remove marcação aberta e corta a frase incompleta final', () => {
+    const truncated =
+      'A Selic é a taxa básica de juros da economia brasileira e influencia todas as demais taxas de crédito e investimento. Para o investidor, **exposição ao euro';
+
+    expect(polishModelAnswer(truncated)).toBe(
+      'A Selic é a taxa básica de juros da economia brasileira e influencia todas as demais taxas de crédito e investimento.'
+    );
+  });
+
+  it('não confunde o ponto de milhar com fim de frase', () => {
+    const truncated =
+      'O rendimento líquido depende do prazo e da alíquota regressiva de IR aplicada no resgate do título. O saldo seria R$ 10.000';
+
+    expect(polishModelAnswer(truncated)).toBe(
+      'O rendimento líquido depende do prazo e da alíquota regressiva de IR aplicada no resgate do título.'
+    );
+  });
+
+  it('preserva respostas curtas sem pontuação final', () => {
+    expect(polishModelAnswer('O euro é a moeda de 20 países')).toBe('O euro é a moeda de 20 países');
+  });
+
+  it('sem frase fechada, corta na última palavra inteira e sinaliza o corte', () => {
+    const truncated =
+      'A renda fixa protege o investidor da volatilidade da bolsa e organiza o fluxo de caixa pessoal ao longo dos anos sem sustos';
+
+    const result = polishModelAnswer(truncated);
+    expect(result.endsWith('…')).toBe(true);
+    expect(result).not.toContain('sustos');
+    expect(result.endsWith('anos sem…')).toBe(true);
+  });
+
+  it('não devolve introdução pendurada terminando em dois-pontos', () => {
+    const truncated =
+      'O CDB e a LCI têm garantias e impostos diferentes. Antes de escolher, considere prazo, liquidez e liquidez diária:';
+
+    expect(polishModelAnswer(truncated)).toBe(
+      'O CDB e a LCI têm garantias e impostos diferentes.'
+    );
+  });
+
+  it('mantém respostas que já terminam em reticências', () => {
+    const ended = 'O CDI acompanha a Selic, mas com pequeno atraso…';
+    expect(polishModelAnswer(ended)).toBe(ended);
+  });
+
+  it('não confunde numeração de lista com fim de frase', () => {
+    const list =
+      '1. O CDI acompanha a Selic.\n2. A poupança rende menos que o CDI na maioria dos cenários de juros altos';
+
+    expect(polishModelAnswer(list)).toBe('1. O CDI acompanha a Selic.');
   });
 });

@@ -153,6 +153,50 @@ function fallbackAnswer(question: string): string {
   return '**Análise educativa:** comece pela reserva de emergência, organize seu orçamento e invista de forma compatível com seus objetivos e tolerância a risco. Use nossas calculadoras para transformar sua meta em números práticos.';
 }
 
+/**
+ * Limpa respostas de LLM que estouraram o limite de tokens: remove marcação
+ * pendente (ex.: um "**" solto no fim) e corta a frase incompleta final.
+ */
+export function polishModelAnswer(raw: string): string {
+  let text = (raw || '').trim();
+  if (!text) return text;
+
+  text = text.replace(/(?:\s*(?:\*\*|__|`+|#{1,6}|[-*•>])\s*)+$/g, '').trim();
+
+  const removeUnpaired = (marker: string) => {
+    const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const hits = text.match(new RegExp(escaped, 'g')) || [];
+    if (hits.length % 2 === 0) return;
+    const last = text.lastIndexOf(marker);
+    if (last !== -1) text = (text.slice(0, last) + text.slice(last + marker.length)).trim();
+  };
+  removeUnpaired('**');
+  removeUnpaired('__');
+  removeUnpaired('`');
+
+  if (/[.!?…)\]"”]$/.test(text)) return text;
+
+  // Só corta no último ponto final de verdade (seguido de espaço/fim),
+  // para não quebrar números como R$ 10.000,00 nem marcadores de lista "1.".
+  const sentenceEnd = /[.!?…](?=\s|$)/g;
+  let match: RegExpExecArray | null;
+  let cut = -1;
+  while ((match = sentenceEnd.exec(text)) !== null) {
+    const lineStart = text.lastIndexOf('\n', match.index) + 1;
+    if (/^\d{1,2}$/.test(text.slice(lineStart, match.index).trim())) continue;
+    cut = match.index;
+  }
+  if (cut >= 0) return text.slice(0, cut + 1).trim();
+
+  // Sem nenhuma frase fechada: corta na última palavra inteira e sinaliza.
+  if (text.length > 120) {
+    const lastSpace = text.lastIndexOf(' ');
+    if (lastSpace > 0) return `${text.slice(0, lastSpace).trim()}…`;
+  }
+
+  return text;
+}
+
 /* ---------------------------------------------------------------------------
  * Motor determinístico local (espelho de src/lib/ai-assistant.ts + finance.ts).
  * Chamadas diretas a /api/ia (fora do site, ex.: bots) não passam pelo
@@ -703,7 +747,15 @@ export interface ChatHistoryItem {
 }
 
 const SYSTEM_PROMPT =
-  'Você é o consultor educativo do portal ABC Investimentos (abcinvestimentos.com.br). Responda em português do Brasil, de forma didática e objetiva (máximo 3 parágrafos ou tópicos claros). Se o investidor fizer uma pergunta de continuação, mantenha o contexto do assunto anterior com coerência. Não peça dados pessoais e não recomende compra ou venda de ativos específicos. Explique conceitos, riscos, liquidez, impostos e cálculos.';
+  'Você é o consultor educativo do portal ABC Investimentos (abcinvestimentos.com.br). ' +
+  'Responda em português do Brasil, didático e objetivo, com no máximo 150 palavras. ' +
+  'Formato obrigatório: no máximo 3 blocos curtos (parágrafos ou até 5 tópicos com marcador). ' +
+  'Entregue a resposta COMPLETA dentro desse limite: não abra listas, seções ou negrito que não vá fechar ' +
+  'e termine sempre com uma frase final completa. Se o tema render mais detalhes, resuma o essencial ' +
+  'e convide o investidor a usar uma calculadora do site. ' +
+  'Se o investidor fizer uma pergunta de continuação, mantenha o contexto do assunto anterior com coerência. ' +
+  'Não peça dados pessoais e não recomende compra ou venda de ativos específicos. ' +
+  'Explique conceitos, riscos, liquidez, impostos e cálculos.';
 
 async function askGemini(question: string, history: ChatHistoryItem[] = []): Promise<{ result: ProviderResult | null; status: ProviderStatus }> {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -805,7 +857,7 @@ async function askCloudflare(question: string, history: ChatHistoryItem[] = []):
           'Content-Type': 'application/json',
         },
         signal: AbortSignal.timeout(5000),
-        body: JSON.stringify({ messages }),
+        body: JSON.stringify({ messages, max_tokens: 650 }),
       });
 
       if (!result.ok) {
@@ -1081,7 +1133,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
     ]);
 
     const generated = winner.result;
-    const answer = generated?.answer || fallbackAnswer(question);
+    const answer = polishModelAnswer(generated?.answer || fallbackAnswer(question));
     const mode = generated ? providerModes[winner.index] || 'educational-engine' : 'educational-engine';
 
     if (body.conversationConsent === true) {

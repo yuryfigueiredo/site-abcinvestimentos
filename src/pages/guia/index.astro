@@ -203,6 +203,18 @@ import { GUIDES, GLOSSARY_TERMS } from '../../data/guides';
     gap: 1.15rem;
   }
 
+  @media (max-width: 700px) {
+    .guides-full-grid,
+    .glossary-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .guides-full-grid > *,
+    .glossary-grid > * {
+      min-width: 0;
+    }
+  }
+
   .glossary-card-top {
     display: flex;
     justify-content: space-between;

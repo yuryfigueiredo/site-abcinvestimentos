@@ -36,6 +36,47 @@ interface IaRequestBody {
 const dailyIpUsage = new Map<string, { date: string; count: number }>();
 const MAX_DAILY_FREE_QUESTIONS = 3;
 
+/**
+ * Limpa respostas de LLM que estouraram o limite de tokens: remove marcação
+ * pendente (ex.: um "**" solto no fim) e corta a frase incompleta final.
+ */
+function polishModelAnswer(raw: string): string {
+  let text = (raw || '').trim();
+  if (!text) return text;
+
+  text = text.replace(/(?:\s*(?:\*\*|__|`+|#{1,6}|[-*•>])\s*)+$/g, '').trim();
+
+  const removeUnpaired = (marker: string) => {
+    const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const hits = text.match(new RegExp(escaped, 'g')) || [];
+    if (hits.length % 2 === 0) return;
+    const last = text.lastIndexOf(marker);
+    if (last !== -1) text = (text.slice(0, last) + text.slice(last + marker.length)).trim();
+  };
+  removeUnpaired('**');
+  removeUnpaired('__');
+  removeUnpaired('`');
+
+  if (/[.!?…)\]"”]$/.test(text)) return text;
+
+  const sentenceEnd = /[.!?…](?=\s|$)/g;
+  let match: RegExpExecArray | null;
+  let cut = -1;
+  while ((match = sentenceEnd.exec(text)) !== null) {
+    const lineStart = text.lastIndexOf('\n', match.index) + 1;
+    if (/^\d{1,2}$/.test(text.slice(lineStart, match.index).trim())) continue;
+    cut = match.index;
+  }
+  if (cut >= 0) return text.slice(0, cut + 1).trim();
+
+  if (text.length > 120) {
+    const lastSpace = text.lastIndexOf(' ');
+    if (lastSpace > 0) return `${text.slice(0, lastSpace).trim()}…`;
+  }
+
+  return text;
+}
+
 async function saveConversation(
   databaseUrl: string | undefined,
   authToken: string | undefined,
@@ -213,7 +254,7 @@ async function requestCloudflare(
           'Content-Type': 'application/json',
         },
         signal: AbortSignal.timeout(5000),
-        body: JSON.stringify({ messages }),
+        body: JSON.stringify({ messages, max_tokens: 650 }),
       });
 
       if (!res.ok) continue;
@@ -401,12 +442,13 @@ export const onRequestPost = async (context: { request: Request; env: Env }): Pr
 
     const systemInstruction = `Você é o Consultor Educativo do portal ABC Investimentos (abcinvestimentos.com.br).
 Regras obrigatórias:
-1. Seja didático, elegante, objetivo (máximo 3 parágrafos curtos ou tópicos claros) e use exemplos em Reais (R$).
-2. Se o investidor fizer uma pergunta de continuação, mantenha o contexto do assunto anterior com coerência.
-3. Contexto econômico atual do Brasil (2026): Taxa Selic = ${selic}% a.a., CDI = ${cdi}% a.a., IPCA 12m = ${ipca}% a.a.
-4. Regras fiscais vigentes em 2026: Tabela regressiva de IR da Renda Fixa (22,5% até 180d, 20% até 360d, 17,5% até 720d, 15% acima de 720d). LCI, LCA, CRI, CRA e FIIs continuam isentos de IR para pessoa física. Dividendos de uma mesma empresa acima de R$ 50 mil/mês têm retenção de 10% (Lei 15.270/2025).
-5. COMPLIANCE CVM: Nunca recomende a compra ou venda de ações ou FIIs específicos (ex: não mande comprar PETR4 ou HGLG11). Explique sempre os conceitos matemáticos e classes de ativos de forma educativa.
-6. Nunca peça dados pessoais (CPF, conta bancária ou senhas).`;
+1. Seja didático, elegante e objetivo, com no máximo 150 palavras, em no máximo 3 blocos curtos (parágrafos ou até 5 tópicos com marcador), e use exemplos em Reais (R$).
+2. Entregue a resposta COMPLETA dentro desse limite: não abra listas, seções ou negrito que não vá fechar e termine sempre com uma frase final completa. Se o tema render mais detalhes, resuma o essencial e convide o investidor a usar uma calculadora do site.
+3. Se o investidor fizer uma pergunta de continuação, mantenha o contexto do assunto anterior com coerência.
+4. Contexto econômico atual do Brasil (2026): Taxa Selic = ${selic}% a.a., CDI = ${cdi}% a.a., IPCA 12m = ${ipca}% a.a.
+5. Regras fiscais vigentes em 2026: Tabela regressiva de IR da Renda Fixa (22,5% até 180d, 20% até 360d, 17,5% até 720d, 15% acima de 720d). LCI, LCA, CRI, CRA e FIIs continuam isentos de IR para pessoa física. Dividendos de uma mesma empresa acima de R$ 50 mil/mês têm retenção de 10% (Lei 15.270/2025).
+6. COMPLIANCE CVM: Nunca recomende a compra ou venda de ações ou FIIs específicos (ex: não mande comprar PETR4 ou HGLG11). Explique sempre os conceitos matemáticos e classes de ativos de forma educativa.
+7. Nunca peça dados pessoais (CPF, conta bancária ou senhas).`;
 
     let aiText: string | null = null;
     let mode = 'educational-engine';
@@ -441,7 +483,7 @@ Regras obrigatórias:
     }
 
     const fallbackData = buildEducationalFallbackAnswer(rawQuestion, selic, cdi, ipca);
-    const finalAnswer = aiText || fallbackData.answer;
+    const finalAnswer = polishModelAnswer(aiText || fallbackData.answer);
 
     await saveConversation(
       context.env?.TURSO_DATABASE_URL,

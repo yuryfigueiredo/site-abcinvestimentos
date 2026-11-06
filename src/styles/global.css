@@ -781,3 +781,49 @@ button, input, select, textarea {
   white-space: nowrap;
   border: 0;
 }
+
+/* Mobile: CTAs longos quebram linha em vez de forçar a página a ficar mais
+   larga que a tela (a regra base usa nowrap para os botões de uma linha). */
+@media (max-width: 640px) {
+  .btn,
+  .btn-primary,
+  .btn-secondary,
+  .btn-outline {
+    white-space: normal;
+    max-width: 100%;
+    text-align: center;
+    line-height: 1.25;
+    height: auto;
+    padding-block: 0.7rem;
+  }
+
+  .calc-workspace > *,
+  .next-step-grid > * {
+    min-width: 0;
+  }
+
+  /* Tabelas largas rolam dentro da moldura; o aviso evita que o usuário pense
+     que as colunas que faltam simplesmente não existem. */
+  .table-wrapper .abc-table caption::after {
+    content: "Deslize para o lado para ver todas as colunas →";
+    display: block;
+    margin-block-start: 0.3rem;
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: normal;
+    text-transform: none;
+    color: var(--text-muted);
+  }
+
+  .data-table th,
+  .abc-table th,
+  .data-table td,
+  .abc-table td {
+    padding-inline: 0.85rem;
+  }
+
+  .data-table td,
+  .abc-table td {
+    font-size: 0.85rem;
+  }
+}

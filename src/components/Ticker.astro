@@ -41,6 +41,7 @@ const dolarChars = splitNumberChars(d.dolar);
           id="bcb-selic"
           data-value={d.selic.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           data-suffix="% a.a."
+          data-suffix-mobile="%"
           aria-label={`Selic: ${d.selic.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}% a.a.`}
         >
           <span class="flap-board" aria-hidden="true">
@@ -74,6 +75,7 @@ const dolarChars = splitNumberChars(d.dolar);
           id="bcb-cdi"
           data-value={d.cdi.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           data-suffix="% a.a."
+          data-suffix-mobile="%"
           aria-label={`CDI: ${d.cdi.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}% a.a.`}
         >
           <span class="flap-board" aria-hidden="true">
@@ -107,6 +109,7 @@ const dolarChars = splitNumberChars(d.dolar);
           id="bcb-poupanca"
           data-value={(d.poupanca || 7.12).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           data-suffix="% a.a."
+          data-suffix-mobile="%"
           aria-label={`Poupança: ${(d.poupanca || 7.12).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}% a.a.`}
         >
           <span class="flap-board" aria-hidden="true">
@@ -140,6 +143,7 @@ const dolarChars = splitNumberChars(d.dolar);
           id="bcb-ipca"
           data-value={d.ipca12m.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           data-suffix="%"
+          data-suffix-mobile="%"
           aria-label={`IPCA 12 meses: ${d.ipca12m.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}%`}
         >
           <span class="flap-board" aria-hidden="true">
@@ -379,6 +383,9 @@ const dolarChars = splitNumberChars(d.dolar);
     const labelText = labelEl ? `${labelEl.textContent}: ` : '';
     el.setAttribute('aria-label', `${labelText}${prefix}${formattedNumber}${suffix}`);
     el.dataset.value = formattedNumber;
+
+    // Mobile lê o valor em texto (CSS); não gasta frames girando cartões ocultos.
+    if (getComputedStyle(board).display === 'none') return;
 
     const chars = formattedNumber.split('');
     const existingCells = [...board.children] as HTMLElement[];
@@ -768,8 +775,76 @@ const dolarChars = splitNumberChars(d.dolar);
       font-size: 0.7rem;
     }
 
+    /* Variação mobile: leitura limpa em vez dos cartões split-flap, que em
+       390px ficavam apertados e congelados no meio da animação. */
     .flap-board {
-      font-size: 11px;
+      display: none;
+    }
+
+    .ticker-val {
+      gap: 0.2rem;
+    }
+
+    .ticker-val .flap-unit {
+      display: none;
+    }
+
+    .ticker-val::after {
+      content: attr(data-prefix) attr(data-value) attr(data-suffix);
+      color: #f8fafc;
+      font-family: var(--font-mono, 'JetBrains Mono', monospace);
+      font-size: 0.82rem;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.01em;
+    }
+
+    :root[data-theme="light"] .ticker-val::after,
+    :root:has(> head > meta[name="color-scheme"][content="light"]) .ticker-val::after {
+      color: #0f172a;
+    }
+  }
+
+  /* Telas estreitas: duas linhas centralizadas com o valor compacto, em vez de
+     uma faixa que corta o último indicador na borda direita. */
+  @media (max-width: 520px) {
+    .ticker-bar {
+      padding-block: 0.42rem;
+      mask-image: none;
+      -webkit-mask-image: none;
+    }
+
+    .ticker-inner {
+      flex-wrap: wrap;
+      justify-content: center;
+      row-gap: 0.3rem;
+      column-gap: 0.55rem;
+      overflow-x: visible;
+    }
+
+    .ticker-info-badge,
+    .ticker-divider {
+      display: none;
+    }
+
+    .ticker-items {
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.3rem 0.55rem;
+      white-space: normal;
+    }
+
+    .ticker-pill {
+      white-space: nowrap;
+    }
+
+    .ticker-label {
+      font-size: 0.66rem;
+    }
+
+    .ticker-val::after {
+      content: attr(data-prefix) attr(data-value) attr(data-suffix-mobile);
+      font-size: 0.78rem;
     }
   }
 

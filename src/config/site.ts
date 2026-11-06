@@ -12,6 +12,7 @@ const AMAZON_ASSOCIATE_TAG = 'abcinvestimen-20';
 
 export const SITE_CONFIG = {
   name: 'ABC Investimentos',
+  author: 'Yury Figueiredo',
   domain: 'abcinvestimentos.com.br',
   url: 'https://www.abcinvestimentos.com.br',
   tagline: 'Simuladores Financeiros, Guia do A ao Z e Inteligência para o seu Patrimônio',

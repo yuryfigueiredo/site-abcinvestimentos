@@ -1,0 +1,342 @@
+---
+import { type GetStaticPathsResult, type GetStaticPathsResultKey } from 'astro';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { PRODUCTS, AMOUNTS, type QuantoRendeProduct, type QuantoRendeAmount } from '../../../data/quanto-rende';
+
+export async function getStaticPaths(): Promise<GetStaticPathsResult> {
+  const paths: GetStaticPathsResultKey[] = [];
+  
+  for (const product of PRODUCTS) {
+    for (const amount of AMOUNTS) {
+      paths.push({
+        params: { produto: product.slug, valor: amount.slug },
+        props: { product, amount },
+      });
+    }
+  }
+  
+  return paths;
+}
+
+const { product, amount } = Astro.props as { product: QuantoRendeProduct; amount: QuantoRendeAmount };
+
+const canonicalUrl = `https://www.abcinvestimentos.com.br/quanto-rende/${product.slug}/${amount.slug}`;
+const pageTitle = `Quanto rende ${amount.displayText} em ${product.name} | ABC Investimentos`;
+const pageDescription = `Descubra quanto ${amount.displayText} rendem em ${product.name} em 1, 6, 12 e 24 meses com taxas atualizadas do Banco Central.`;
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: `Quanto rende ${amount.displayText} em ${product.name}?`,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `Com as taxas atuais do Banco Central, ${amount.displayText} em ${product.name} rendem aproximadamente R$ ${Math.round(amount.value * 0.01)} em 1 mês, R$ ${Math.round(amount.value * 0.06)} em 6 meses e R$ ${Math.round(amount.value * 0.13)} em 12 meses.`,
+      },
+    },
+    {
+      '@type': 'Question',
+      name: `${product.name} é seguro?`,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: product.hasFGC 
+          ? `Sim, ${product.name} conta com a proteção do FGC (Fundo Garantidor de Créditos) até R$ 250 mil por CPF e por instituição.`
+          : `Sim, ${product.name} é um título público federal com risco soberano, considerado o investimento mais seguro do país.`,
+      },
+    },
+    {
+      '@type': 'Question',
+      name: `Posso resgatar ${product.name} a qualquer momento?`,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: product.liquidity === 'daily'
+          ? `Sim, ${product.name} possui liquidez diária, permitindo resgate no mesmo dia ou no dia útil seguinte.`
+          : `${product.name} possui prazo fixo de vencimento. Resgates antecipados estão sujeitos à marcação a mercado.`,
+      },
+    },
+  ],
+};
+---
+
+<BaseLayout
+  title={pageTitle}
+  description={pageDescription}
+  canonical={canonicalUrl}
+  ogTitle={pageTitle}
+  ogDescription={pageDescription}
+>
+  <script type="application/ld+json" set:html={JSON.stringify(faqSchema)} />
+
+  <div class="abc-container abc-py-8">
+    <div class="abc-max-w-4xl">
+      <!-- Breadcrumb -->
+      <nav aria-label="Breadcrumb" class="abc-text-sm abc-text-gray-500 abc-mb-6">
+        <ol class="abc-flex abc-gap-2">
+          <li><a href="/" class="abc-text-abc-blue hover:abc-underline">Início</a></li>
+          <li aria-hidden="true">›</li>
+          <li><a href="/calculadoras" class="abc-text-abc-blue hover:abc-underline">Calculadoras</a></li>
+          <li aria-hidden="true">›</li>
+          <li class="abc-text-gray-700">Quanto rende</li>
+        </ol>
+      </nav>
+
+      <!-- Header -->
+      <header class="abc-mb-8">
+        <h1 class="abc-text-3xl md:abc-text-4xl abc-font-bold abc-text-gray-900 abc-mb-4">
+          Quanto rende {amount.displayText} em {product.name}
+        </h1>
+        <p class="abc-text-lg abc-text-gray-600">
+          Simulação com taxas atualizadas do Banco Central do Brasil
+        </p>
+      </header>
+
+      <!-- Main Content -->
+      <article class="abc-prose abc-max-w-none">
+        <section class="abc-mb-8">
+          <p class="abc-text-lg abc-leading-relaxed">
+            {product.contextualText}
+          </p>
+        </section>
+
+        <!-- Live Rates Banner -->
+        <div class="abc-bg-blue-50 abc-border abc-border-blue-200 abc-rounded-lg abc-p-6 abc-mb-8">
+          <h2 class="abc-text-xl abc-font-semibold abc-text-gray-900 abc-mb-4">
+            Taxas utilizadas nesta simulação
+          </h2>
+          <div id="rate-display" class="abc-grid abc-grid-cols-2 md:abc-grid-cols-4 abc-gap-4">
+            <div class="abc-text-center">
+              <div class="abc-text-sm abc-text-gray-600">Selic</div>
+              <div class="abc-text-2xl abc-font-bold abc-text-abc-blue" id="selic-rate">--</div>
+              <div class="abc-text-xs abc-text-gray-500">ao ano</div>
+            </div>
+            <div class="abc-text-center">
+              <div class="abc-text-sm abc-text-gray-600">CDI</div>
+              <div class="abc-text-2xl abc-font-bold abc-text-abc-blue" id="cdi-rate">--</div>
+              <div class="abc-text-xs abc-text-gray-500">ao ano</div>
+            </div>
+            <div class="abc-text-center">
+              <div class="abc-text-sm abc-text-gray-600">IPCA</div>
+              <div class="abc-text-2xl abc-font-bold abc-text-abc-blue" id="ipca-rate">--</div>
+              <div class="abc-text-xs abc-text-gray-500">ao ano</div>
+            </div>
+            <div class="abc-text-center">
+              <div class="abc-text-sm abc-text-gray-600">Atualizado</div>
+              <div class="abc-text-sm abc-text-gray-700" id="rate-date">--</div>
+              <div class="abc-text-xs abc-text-gray-500">Banco Central</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Results Table -->
+        <section class="abc-mb-8">
+          <h2 class="abc-text-2xl abc-font-bold abc-text-gray-900 abc-mb-4">
+            Quanto rende {amount.displayText} em {product.name}?
+          </h2>
+          <div class="abc-overflow-x-auto">
+            <table class="abc-table abc-w-full abc-text-left" id="results-table">
+              <thead class="abc-bg-gray-100">
+                <tr>
+                  <th class="abc-px-4 abc-py-3 abc-font-semibold">Prazo</th>
+                  <th class="abc-px-4 abc-py-3 abc-font-semibold">Rendimento Bruto</th>
+                  <th class="abc-px-4 abc-py-3 abc-font-semibold">Rendimento Líquido</th>
+                  <th class="abc-px-4 abc-py-3 abc-font-semibold">Valor Final</th>
+                </tr>
+              </thead>
+              <tbody id="results-body">
+                <tr>
+                  <td colspan="4" class="abc-px-4 abc-py-8 abc-text-center abc-text-gray-500">
+                    Carregando cálculos...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          {product.hasIR && (
+            <p class="abc-text-sm abc-text-gray-600 abc-mt-2">
+              * Valores líquidos já descontam o Imposto de Renda conforme tabela regressiva.
+            </p>
+          )}
+          {!product.hasIR && (
+            <p class="abc-text-sm abc-text-gray-600 abc-mt-2">
+              * {product.name} é isento de Imposto de Renda para pessoa física.
+            </p>
+          )}
+        </section>
+
+        <!-- Comparison with Poupança -->
+        <section class="abc-bg-green-50 abc-border abc-border-green-200 abc-rounded-lg abc-p-6 abc-mb-8">
+          <h2 class="abc-text-xl abc-font-semibold abc-text-gray-900 abc-mb-4">
+            Comparação com a Poupança
+          </h2>
+          <p class="abc-text-gray-700 abc-mb-4">
+            Em 12 meses, {amount.displayText} em {product.name} rendem significativamente mais que na poupança.
+          </p>
+          <div class="abc-grid md:abc-grid-cols-2 abc-gap-4">
+            <div class="abc-bg-white abc-rounded-lg abc-p-4 abc-text-center">
+              <div class="abc-text-sm abc-text-gray-600 abc-mb-1">Na Poupança (12 meses)</div>
+              <div class="abc-text-2xl abc-font-bold abc-text-gray-700" id="poupanca-12m">--</div>
+            </div>
+            <div class="abc-bg-white abc-rounded-lg abc-p-4 abc-text-center">
+              <div class="abc-text-sm abc-text-gray-600 abc-mb-1">Em {product.name} (12 meses)</div>
+              <div class="abc-text-2xl abc-font-bold abc-text-green-600" id="product-12m">--</div>
+            </div>
+          </div>
+          <div class="abc-mt-4 abc-text-center">
+            <div class="abc-text-sm abc-text-gray-600">Diferença em 12 meses</div>
+            <div class="abc-text-3xl abc-font-bold abc-text-green-600" id="difference-12m">--</div>
+          </div>
+        </section>
+
+        <!-- Product Details -->
+        <section class="abc-mb-8">
+          <h2 class="abc-text-2xl abc-font-bold abc-text-gray-900 abc-mb-4">
+            Sobre {product.name}
+          </h2>
+          <dl class="abc-space-y-3">
+            <div class="abc-grid abc-grid-cols-2 abc-gap-4">
+              <dt class="abc-font-semibold abc-text-gray-700">Segurança:</dt>
+              <dd class="abc-text-gray-600">
+                {product.hasFGC ? 'Protegido pelo FGC até R$ 250 mil' : 'Risco soberano (Tesouro Nacional)'}
+              </dd>
+            </div>
+            <div class="abc-grid abc-grid-cols-2 abc-gap-4">
+              <dt class="abc-font-semibold abc-text-gray-700">Liquidez:</dt>
+              <dd class="abc-text-gray-600">
+                {product.liquidity === 'daily' ? 'Diária (D+0 ou D+1)' : 'Prazo fixo até o vencimento'}
+              </dd>
+            </div>
+            <div class="abc-grid abc-grid-cols-2 abc-gap-4">
+              <dt class="abc-font-semibold abc-text-gray-700">Tributação:</dt>
+              <dd class="abc-text-gray-600">
+                {product.hasIR ? 'IR regressivo (22,5% a 15%)' : 'Isento de IR para pessoa física'}
+              </dd>
+            </div>
+          </dl>
+        </section>
+
+        <!-- CTA -->
+        <section class="abc-bg-abc-blue abc-text-white abc-rounded-lg abc-p-8 abc-text-center abc-mb-8">
+          <h2 class="abc-text-2xl abc-font-bold abc-mb-4">
+            Quer simular outros valores e produtos?
+          </h2>
+          <p class="abc-text-lg abc-mb-6 abc-opacity-90">
+            Use nossas calculadoras gratuitas com dados ao vivo do Banco Central
+          </p>
+          <div class="abc-flex abc-flex-wrap abc-gap-4 abc-justify-center">
+            <a href="/calculadoras/renda-fixa" class="abc-bg-white abc-text-abc-blue abc-px-6 abc-py-3 abc-rounded-lg abc-font-semibold hover:abc-bg-gray-100 abc-transition">
+              Comparador de Renda Fixa
+            </a>
+            <a href="/calculadoras/juros-compostos" class="abc-bg-white abc-text-abc-blue abc-px-6 abc-py-3 abc-rounded-lg abc-font-semibold hover:abc-bg-gray-100 abc-transition">
+              Simulador de Juros Compostos
+            </a>
+          </div>
+        </section>
+      </article>
+
+      <!-- Related Pages -->
+      <section class="abc-mt-12">
+        <h2 class="abc-text-xl abc-font-bold abc-text-gray-900 abc-mb-4">
+          Outras simulações populares
+        </h2>
+        <div class="abc-grid md:abc-grid-cols-2 lg:abc-grid-cols-3 abc-gap-4">
+          {PRODUCTS.filter(p => p.slug !== product.slug).slice(0, 3).map((p) => (
+            <a href={`/quanto-rende/${p.slug}/${amount.slug}`} class="abc-block abc-bg-gray-50 abc-rounded-lg abc-p-4 hover:abc-bg-gray-100 abc-transition">
+              <div class="abc-font-semibold abc-text-gray-900 abc-mb-1">
+                Quanto rende {amount.displayText} em {p.name}
+              </div>
+              <div class="abc-text-sm abc-text-abc-blue">Ver simulação →</div>
+            </a>
+          ))}
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script define:vars={{ productSlug: product.slug, productType: product.type, rateType: product.rateType, ratePercent: product.ratePercent, fixedRate: product.rate, hasIR: product.hasIR, amountValue: amount.value }}>
+    (function() {
+      function formatCurrency(value) {
+        return 'R$ ' + value.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      }
+
+      function calculateIRRate(months) {
+        if (months <= 6) return 0.225;
+        if (months <= 12) return 0.20;
+        if (months <= 24) return 0.175;
+        return 0.15;
+      }
+
+      function calculateReturns(principal, annualRate, months, hasIR) {
+        const monthlyRate = Math.pow(1 + annualRate, 1/12) - 1;
+        const grossReturn = principal * (Math.pow(1 + monthlyRate, months) - 1);
+        const irRate = hasIR ? calculateIRRate(months) : 0;
+        const netReturn = grossReturn * (1 - irRate);
+        return { grossReturn, netReturn, finalAmount: principal + netReturn, irRate };
+      }
+
+      function renderResults(indicators) {
+        const selic = indicators.selic / 100;
+        const cdi = (indicators.selic - 0.10) / 100;
+        const ipca = indicators.ipca12m / 100;
+
+        // Determine annual rate
+        let annualRate;
+        if (productType === 'poupanca') {
+          annualRate = 0.0617; // Fixed ~6.17% year
+        } else if (rateType === 'cdi') {
+          annualRate = cdi * (ratePercent / 100);
+        } else if (rateType === 'ipca') {
+          annualRate = ipca + (ratePercent / 100);
+        } else {
+          annualRate = 0;
+        }
+
+        // Display rates
+        document.getElementById('selic-rate').textContent = indicators.selic.toFixed(2) + '%';
+        document.getElementById('cdi-rate').textContent = (indicators.selic - 0.10).toFixed(2) + '%';
+        document.getElementById('ipca-rate').textContent = indicators.ipca12m.toFixed(2) + '%';
+        document.getElementById('rate-date').textContent = new Date(indicators.updatedAt).toLocaleDateString('pt-BR');
+
+        // Calculate for each period
+        const periods = [1, 6, 12, 24];
+        const tbody = document.getElementById('results-body');
+        tbody.innerHTML = '';
+
+        periods.forEach(months => {
+          const result = calculateReturns(amountValue, annualRate, months, hasIR);
+          const row = document.createElement('tr');
+          row.className = 'abc-border-t';
+          row.innerHTML = `
+            <td class="abc-px-4 abc-py-3 abc-font-medium">${months === 1 ? '1 mês' : months + ' meses'}</td>
+            <td class="abc-px-4 abc-py-3">${formatCurrency(result.grossReturn)}</td>
+            <td class="abc-px-4 abc-py-3 abc-font-semibold">${formatCurrency(result.netReturn)}</td>
+            <td class="abc-px-4 abc-py-3 abc-text-green-600 abc-font-bold">${formatCurrency(result.finalAmount)}</td>
+          `;
+          tbody.appendChild(row);
+        });
+
+        // Comparison with poupança
+        const poupancaResult = calculateReturns(amountValue, 0.0617, 12, false);
+        const productResult = calculateReturns(amountValue, annualRate, 12, hasIR);
+        
+        document.getElementById('poupanca-12m').textContent = formatCurrency(poupancaResult.finalAmount);
+        document.getElementById('product-12m').textContent = formatCurrency(productResult.finalAmount);
+        
+        const difference = productResult.finalAmount - poupancaResult.finalAmount;
+        document.getElementById('difference-12m').textContent = '+' + formatCurrency(difference);
+      }
+
+      // Wait for indicators
+      function waitForIndicators() {
+        if (window.__ABC_INDICATORS__) {
+          renderResults(window.__ABC_INDICATORS__);
+        } else {
+          setTimeout(waitForIndicators, 100);
+        }
+      }
+
+      waitForIndicators();
+    })();
+  </script>
+</BaseLayout>

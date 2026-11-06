@@ -5,6 +5,8 @@ export interface GuideArticle {
   title: string;
   subtitle: string;
   readTime: string;
+  /** ISO date the article first went live. Defaults to SITE_PUBLISHED_AT when omitted. */
+  datePublished?: string;
   summary: string;
   relatedCalculatorSlug: string;
   relatedCalculatorLabel: string;
@@ -22,6 +24,8 @@ export interface GlossaryItem {
   definition: string;
   practicalExample: string;
 }
+
+export const SITE_PUBLISHED_AT = '2026-10-25';
 
 export const GUIDES: GuideArticle[] = [
   {
@@ -232,6 +236,441 @@ export const GUIDES: GuideArticle[] = [
         ],
         highlightBox:
           'Importante: Fórmulas matemáticas são filtros iniciais de estudo, não recomendações automáticas de compra. Sempre avalie a qualidade da gestão, dívida e setor da empresa.',
+      },
+    ],
+  },
+  {
+    slug: 'como-investir-do-zero-guia-completo',
+    datePublished: '2026-11-06',
+    level: 'A',
+    levelTitle: 'Nível A — Alicerce & Reserva de Emergência',
+    title: 'Como Investir do Zero: Guia Completo para Iniciantes em 2026',
+    subtitle: 'O passo a passo exato para sair da poupança e fazer sua primeira aplicação, mesmo que você tenha apenas R$ 100.',
+    readTime: '8 min de leitura',
+    summary:
+      'Aprenda os 5 passos fundamentais para começar a investir: organizar dívidas, montar reserva, abrir corretora, escolher o primeiro ativo e criar o hábito de aportar todo mês.',
+    relatedCalculatorSlug: 'reserva-emergencia',
+    relatedCalculatorLabel: 'Descobrir Quanto Preciso Guardar',
+    sections: [
+      {
+        heading: '1. Antes de Investir: Quite Dívidas Caras',
+        paragraphs: [
+          'Nenhum investimento de Renda Fixa no Brasil rende de forma consistente acima de 15% ao ano. Já o cartão de crédito rotativo e o cheque especial cobram entre 8% e 16% AO MÊS (mais de 150% ao ano).',
+          'Matematicamente, quitar uma dívida cara é o investimento com melhor retorno garantido que existe. Só comece a investir em ativos financeiros depois de eliminar dívidas com juros acima de 2% ao mês.',
+        ],
+        highlightBox:
+          'Regra ABC: Se o juro da sua dívida é maior que 24% ao ano, pague-a antes de investir qualquer real.',
+      },
+      {
+        heading: '2. Monte sua Reserva de Emergência',
+        paragraphs: [
+          'A Reserva de Emergência é o colchão de segurança que evita que você venda investimentos na baixa quando um imprevisto aparece. O valor ideal é de 3 a 12 meses do seu custo de vida essencial, dependendo da estabilidade da sua renda.',
+          'Onde guardar: Tesouro Selic (risco soberano, liquidez diária) ou CDB de liquidez diária de 100% do CDI em banco sólido. Nunca em ativos de risco como ações ou FIIs.',
+        ],
+      },
+      {
+        heading: '3. Abra Conta em uma Corretora',
+        paragraphs: [
+          'Corretoras de valores são plataformas que dão acesso a todos os investimentos do mercado com taxas menores que os grandes bancos. As principais opções gratuitas no Brasil incluem plataformas consolidadas e reguladas pela CVM.',
+          'O processo de abertura leva menos de 15 minutos pelo celular: envie foto do documento, comprove endereço e aguarde a aprovação (geralmente no mesmo dia). Não é necessário depósito mínimo para abrir a conta.',
+        ],
+      },
+      {
+        heading: '4. Escolha seu Primeiro Investimento',
+        paragraphs: [
+          'Para quem está começando, os ativos mais adequados são:',
+        ],
+        bullets: [
+          'Tesouro Selic: o investimento mais seguro do país, com rendimento colado na taxa Selic.',
+          'CDB de liquidez diária 100% do CDI: rende o mesmo que o Tesouro Selic, com proteção do FGC.',
+          'LCI/LCA isenta de IR: para prazos maiores que 6 meses, a isenção fiscal compensa.',
+          'Fundos de Renda Fixa simples: boa opção para quem quer diversificação automática.',
+        ],
+      },
+      {
+        heading: '5. Crie o Hábito de Aportar Todo Mês',
+        paragraphs: [
+          'O segredo dos investidores de sucesso não é acertar o timing do mercado — é a consistência. Aportes mensais de R$ 100, R$ 300 ou R$ 500, feitos toda semana de pagamento durante 10 ou 20 anos, constroem patrimônio real.',
+          'Use a Calculadora de Juros Compostos para simular quanto seu aporte mensal pode render em 5, 10, 20 e 30 anos. Ver o número crescer na tela é o combustível para manter o hábito.',
+        ],
+        highlightBox:
+          'Comece pequeno, mas comece AGORA. R$ 100 investidos hoje valem mais que R$ 1.000 que você promete investir "quando sobrar".',
+      },
+    ],
+  },
+  {
+    slug: 'melhor-investimento-para-iniciante',
+    datePublished: '2026-11-06',
+    level: 'A',
+    levelTitle: 'Nível A — Alicerce & Reserva de Emergência',
+    title: 'Qual o Melhor Investimento para Iniciante em 2026?',
+    subtitle: 'Comparamos os 5 ativos mais seguros para quem está começando, com números reais do Banco Central.',
+    readTime: '7 min de leitura',
+    summary:
+      'Descubra qual é o melhor primeiro investimento para iniciantes: Tesouro Selic, CDB 100% CDI, LCI isenta, fundo de renda fixa ou ações? Comparativo direto com taxas atuais.',
+    relatedCalculatorSlug: 'renda-fixa',
+    relatedCalculatorLabel: 'Comparar Rendimento Líquido',
+    sections: [
+      {
+        heading: 'A Resposta Direta (Para Quem Tem Pressa)',
+        paragraphs: [
+          'O melhor investimento para iniciantes é o Tesouro Selic ou um CDB de liquidez diária a 100% do CDI. Ambos oferecem segurança máxima, liquidez imediata e rendimento superior à poupança, sem exigir conhecimento técnico.',
+          'Com Selic em 13,75% ao ano, R$ 1.000 no Tesouro Selic rendem aproximadamente R$ 114 líquidos em 12 meses, contra apenas R$ 71 na poupança.',
+        ],
+      },
+      {
+        heading: 'Ranking dos 5 Primeiros Investimentos',
+        paragraphs: [
+          'Ordenamos do mais seguro ao mais arriscado para quem está começando:',
+        ],
+        bullets: [
+          '1º — Tesouro Selic: risco soberano, liquidez D+1, ideal para reserva de emergência.',
+          '2º — CDB 100% CDI liquidez diária: proteção FGC, rende igual ao Tesouro.',
+          '3º — LCI/LCA isenta de IR: para quem pode deixar o dinheiro preso por 90 dias a 2 anos.',
+          '4º — Tesouro IPCA+: para objetivos de médio/longo prazo que precisam bater a inflação.',
+          '5º — ETF de índice (BOVA11 ou WINET11): para quem já tem reserva e quer expor uma pequena fatia à bolsa.',
+        ],
+      },
+      {
+        heading: 'O Erro que Todo Iniciante Comete',
+        paragraphs: [
+          'O maior erro não é escolher o ativo errado — é começar pela renda variável sem reserva de emergência. Quando o mercado cai 30% e surge um imprevisto pessoal, o iniciante é forçado a vender na baixa, realizando prejuízo real.',
+          'A sequência correta é sempre: quitar dívidas caras → montar reserva de emergência → investir em renda fixa com prazo maior → só então alocar em ações, FIIs ou cripto.',
+        ],
+        highlightBox:
+          'Regra dos 10%: Nos primeiros 2 anos de investimentos, nunca aloc mais que 10% do patrimônio em renda variável.',
+      },
+    ],
+  },
+  {
+    slug: 'poupanca-vs-cdb-qual-melhor',
+    datePublished: '2026-11-06',
+    level: 'A',
+    levelTitle: 'Nível A — Alicerce & Reserva de Emergência',
+    title: 'Poupança vs. CDB: Qual Rende Mais em 2026? (Números Reais)',
+    subtitle: 'Comparação lado a lado com taxas do Banco Central: veja quanto seu dinheiro rende em cada um, mês a mês.',
+    readTime: '6 min de leitura',
+    summary:
+      'A poupança rende 0,5% ao mês + TR. Um CDB 100% do CDI rende mais de 1% ao mês bruto. Veja o comparativo exato para R$ 1.000, R$ 5.000, R$ 10.000 e R$ 50.000.',
+    relatedCalculatorSlug: 'renda-fixa',
+    relatedCalculatorLabel: 'Simular Poupança vs. CDB',
+    sections: [
+      {
+        heading: 'Resposta Rápida: CDB Sempre Ganha',
+        paragraphs: [
+          'Com a Selic acima de 8,5% ao ano (como está em 2026), a poupança rende 0,5% ao mês + TR, o que dá aproximadamente 7,12% ao ano. Um CDB de liquidez diária a 100% do CDI rende cerca de 13,65% ao ano bruto — quase o dobro.',
+          'Mesmo descontando o Imposto de Renda de 22,5% (para prazos curtos) ou 15% (para prazos longos), o CDB ainda supera a poupança com folga.',
+        ],
+      },
+      {
+        heading: 'Comparativo Numérico Direto',
+        paragraphs: [
+          'Simulação com R$ 10.000 investidos por 12 meses:',
+        ],
+        bullets: [
+          'Poupança: rendimento de ~R$ 712 (isento de IR) → Total: R$ 10.712',
+          'CDB 100% CDI: rendimento bruto de ~R$ 1.365 − IR de 20% (R$ 273) = R$ 1.092 líquido → Total: R$ 11.092',
+          'Diferença: o CDB coloca R$ 380 a mais no seu bolso em apenas 1 ano.',
+        ],
+        highlightBox:
+          'Para R$ 50.000, essa diferença passa de R$ 1.900 em 12 meses. A escolha do produto importa mais que o valor investido.',
+      },
+      {
+        heading: 'Quando a Poupança Ainda Faz Sentido',
+        paragraphs: [
+          'A poupança só vence o CDB em um cenário: saques antes de 30 dias da aplicação, quando o IOF regressivo consome todo o rendimento do CDB. Fora isso, a poupança perde em todos os prazos.',
+          'Além da rentabilidade inferior, a poupança tem outro problema grave: se você sacar antes do "dia de aniversário" (último dia do mês de depósito), perde todo o rendimento do mês corrente.',
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'tesouro-selic-vs-cdb-comparativo',
+    datePublished: '2026-11-06',
+    level: 'B',
+    levelTitle: 'Nível B — Dominando a Renda Fixa Inteligente',
+    title: 'Tesouro Selic ou CDB: Qual Rende Mais em 2026?',
+    subtitle: 'Os dois campeões da reserva de emergência lado a lado: rentabilidade, segurança, liquidez e custo.',
+    readTime: '7 min de leitura',
+    summary:
+      'Tesouro Selic e CDB 100% do CDI têm rendimento quase idêntico. A diferença está na segurança (risco soberano vs. FGC) e na praticidade. Veja qual escolher.',
+    relatedCalculatorSlug: 'renda-fixa',
+    relatedCalculatorLabel: 'Comparar Tesouro vs. CDB',
+    sections: [
+      {
+        heading: 'Rendimento: Empate Técnico',
+        paragraphs: [
+          'Com Selic em 13,75% a.a., o Tesouro Selic rende aproximadamente 13,60% ao ano bruto. Um CDB de liquidez diária a 100% do CDI rende 13,65% ao ano bruto. A diferença de 0,05 ponto percentual é irrelevante para o bolso.',
+          'Ambos sofrem a mesma tabela regressiva de IR (22,5% a 15%). O rendimento líquido é praticamente idêntico.',
+        ],
+      },
+      {
+        heading: 'Segurança: Cada Um Tem um Escudo Diferente',
+        paragraphs: [
+          'O Tesouro Selic é lastreado pelo Governo Federal (risco soberano). É o investimento de menor risco de crédito do país — o risco é o próprio Brasil quebrar.',
+          'O CDB é protegido pelo FGC até R$ 250 mil por CPF e por instituição. Para valores acima disso, há risco real de perda em caso de intervenção do banco.',
+        ],
+        bullets: [
+          'Até R$ 250 mil no mesmo banco: CDB e Tesouro são igualmente seguros.',
+          'Acima de R$ 250 mil: diversifique entre bancos ou use Tesouro Selic.',
+          'Em crise bancária: o Tesouro não depende de instituição privada.',
+        ],
+      },
+      {
+        heading: 'Praticidade e Custos',
+        paragraphs: [
+          'O Tesouro Selic exige cadastro no Tesouro Direto e tem taxa de custódia da B3 de 0,20% ao ano (isenção até R$ 10 mil investidos). O resgate leva D+1.',
+          'CDBs de liquidez diária não têm taxa de custódia e o resgate costuma cair no mesmo dia ou D+0. Basta ter conta na corretora.',
+        ],
+        highlightBox:
+          'Regra prática: Reserva de emergência até R$ 10 mil → Tesouro Selic (isenção de custódia + segurança máxima). Reserva maior ou necessidade de resgate no mesmo dia → CDB de liquidez diária.',
+      },
+    ],
+  },
+  {
+    slug: 'cdb-110-por-cento-cdi-vale-a-pena',
+    datePublished: '2026-11-06',
+    level: 'B',
+    levelTitle: 'Nível B — Dominando a Renda Fixa Inteligente',
+    title: 'CDB 110% do CDI Vale a Pena? Análise Completa 2026',
+    subtitle: 'Quando um CDB acima de 100% do CDI compensa, qual o risco embutido e como comparar com alternativas isentas.',
+    readTime: '6 min de leitura',
+    summary:
+      'CDBs a 110% ou 120% do CDI são ofertas de bancos médios. Veja a fórmula para comparar com LCI isenta e quando a taxa extra realmente compensa o risco.',
+    relatedCalculatorSlug: 'renda-fixa',
+    relatedCalculatorLabel: 'Comparar CDB vs. LCI',
+    sections: [
+      {
+        heading: 'O Que Significa 110% do CDI',
+        paragraphs: [
+          'Um CDB a 110% do CDI paga 10% a mais que a taxa CDI no período. Com CDI em 13,65% ao ano, isso equivale a aproximadamente 15% ao ano bruto.',
+          'Essas taxas acima de 100% são ofertas promocionais de bancos médios e digitais buscando captar recursos para crescer. Grandes bancos raramente pagam acima de 102% do CDI.',
+        ],
+      },
+      {
+        heading: 'A Fórmula de Equivalência com LCI Isenta',
+        paragraphs: [
+          'Para saber se um CDB 110% vale mais que uma LCI isenta de IR, use a fórmula: CDB Equivalente = LCI ÷ (1 − Alíquota de IR).',
+        ],
+        bullets: [
+          'Para prazos até 6 meses (IR 22,5%): LCI de 85% do CDI equivale a CDB de 110% do CDI.',
+          'Para 1 ano (IR 20%): LCI de 88% do CDI equivale a CDB de 110% do CDI.',
+          'Para 2 anos (IR 17,5%): LCI de 91% do CDI equivale a CDB de 110% do CDI.',
+          'Acima de 2 anos (IR 15%): LCI de 93,5% do CDI equivale a CDB de 110% do CDI.',
+        ],
+        highlightBox:
+          'Se a LCI oferecer percentual do CDI acima dos valores da tabela, ela rende MAIS que o CDB 110%, mesmo com a taxa bruta menor.',
+      },
+      {
+        heading: 'O Risco que Ninguém Te Conta',
+        paragraphs: [
+          'CDBs que pagam muito acima de 100% do CDI (120%+) geralmente vêm de bancos menores e mais arriscados. A proteção do FGC cobre até R$ 250 mil, mas o processo de intervenção pode levar meses até você receber de volta.',
+          'Para reserva de emergência, prefira CDBs de bancos sólidos a 100-105% do CDI. Para dinheiro que pode ficar preso, a taxa extra de 110-120% pode compensar — dentro do limite do FGC.',
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'ipca-mais-ou-prefixado-2026',
+    datePublished: '2026-11-06',
+    level: 'B',
+    levelTitle: 'Nível B — Dominando a Renda Fixa Inteligente',
+    title: 'IPCA+ ou Prefixado: Qual Escolher em 2026?',
+    subtitle: 'A decisão que define seu ganho real nos próximos 5 anos. Compare com números atuais e entenda o risco de cada um.',
+    readTime: '7 min de leitura',
+    summary:
+      'Tesouro IPCA+ paga inflação + taxa fixa. Prefixado paga taxa fixa só. Qual ganha depende da inflação futura. Veja a análise completa com números de 2026.',
+    relatedCalculatorSlug: 'juros-compostos',
+    relatedCalculatorLabel: 'Simular Ganho Real',
+    sections: [
+      {
+        heading: 'A Diferença Fundamental',
+        paragraphs: [
+          'Prefixado: você sabe exatamente quanto vai receber no vencimento. Se comprou a 13,5% ao ano, R$ 10.000 viram R$ 13.500 em um ano (bruto), não importa o que aconteça na economia.',
+          'IPCA+: você recebe a inflação do período MAIS uma taxa real. Se o IPCA foi 4,58% e você comprou IPCA+ 6%, seu rendimento bruto foi de aproximadamente 10,9% no ano.',
+        ],
+      },
+      {
+        heading: 'Quando Cada Um Vence',
+        paragraphs: [
+          'O prefixado ganha se a inflação SURPREENDER para baixo. Exemplo: você travou 13,5% e a inflação veio 3% — seu ganho real foi de 10,2%.',
+          'O IPCA+ ganha se a inflação SURPREENDER para cima. Exemplo: você travou IPCA+6% e a inflação veio 8% — seu rendimento foi 14,5% e você ainda garantiu 6% de ganho real.',
+        ],
+        highlightBox:
+          'Regra ABC: Para objetivos de LONGO prazo (aposentadoria, patrimônio), IPCA+ é mais seguro porque garante ganho real independentemente da inflação. Para prazos curtos e previsíveis, o prefixado pode render mais.',
+      },
+      {
+        heading: 'O Risco da Marcação a Mercado',
+        paragraphs: [
+          'Ambos sofrem marcação a mercado se você precisar vender antes do vencimento. Se os juros de mercado subirem depois da sua compra, o preço do seu título CAI e você pode vender no prejuízo.',
+          'O IPCA+ longo (vencimento 2029+) é o mais volátil. Em 2021, títulos IPCA+ caíram mais de 20% no meio do caminho. Só invista o que pode segurar até o vencimento.',
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'como-viver-de-renda-com-500-mil',
+    datePublished: '2026-11-06',
+    level: 'C',
+    levelTitle: 'Nível C — Renda Passiva, FIIs e Ações',
+    title: 'Como Viver de Renda com R$ 500 Mil: Simulação Realista',
+    subtitle: 'Quanto de renda mensal R$ 500 mil geram em FIIs, dividendos e renda fixa? Veja os números e o que falta no caminho.',
+    readTime: '8 min de leitura',
+    summary:
+      'Com R$ 500 mil investidos, é possível gerar de R$ 3.500 a R$ 5.000 de renda mensal. Simulamos 3 carteiras completas com números reais de 2026.',
+    relatedCalculatorSlug: 'dividendos',
+    relatedCalculatorLabel: 'Simular Minha Renda Mensal',
+    sections: [
+      {
+        heading: 'A Matemática da Renda de R$ 500 Mil',
+        paragraphs: [
+          'O quanto R$ 500 mil geram depende do yield (renda percentual) da carteira montada:',
+        ],
+        bullets: [
+          'Carteira conservadora (100% renda fixa): ~R$ 4.800/mês bruto (CDI 13,65% ao ano), ~R$ 4.100 líquido de IR.',
+          'Carteira mista (50% FIIs + 50% Tesouro IPCA+): ~R$ 4.200/mês, sendo a maior parte isenta de IR.',
+          'Carteira de dividendos (100% ações DY 8%): ~R$ 3.300/mês isentos (até R$ 50 mil/mês por empresa).',
+        ],
+      },
+      {
+        heading: 'O Problema da Renda Fixa Pura',
+        paragraphs: [
+          'A renda fixa paga mais hoje, mas o rendimento é nominal: se a inflação for 5% ao ano, parte da sua renda mensal serve apenas para repor a perda do poder de compra. Além disso, quando a Selic cair para 8% ou 6%, sua renda mensal cai junto.',
+          'FIIs e ações de dividendos têm renda inicial menor, mas tendem a crescer com a inflação ao longo dos anos (aluguéis e lucros sobem).',
+        ],
+      },
+      {
+        heading: 'A Regra dos 4% Funciona no Brasil?',
+        paragraphs: [
+          'A famosa regra de retirar 4% do patrimônio ao ano vem do mercado americano e considera inflação de 3% e retorno real de 7%. No Brasil, com nossa volatilidade de juros, o percentual seguro é mais baixo: 3% a 3,5% ao ano.',
+          'Para R$ 500 mil, isso significa uma retirada segura de R$ 1.250 a R$ 1.450 mensais, ajustados pela inflação a cada ano — sem nunca comprometer o principal.',
+        ],
+        highlightBox:
+          'R$ 500 mil é um marco, não a linha final. Para viver de renda com custos de R$ 5.000/mês no Brasil, o patrimônio-alvo realista é entre R$ 1,5 e R$ 2 milhões.',
+      },
+    ],
+  },
+  {
+    slug: 'reserva-de-emergencia-3-6-ou-12-meses',
+    datePublished: '2026-11-06',
+    level: 'A',
+    levelTitle: 'Nível A — Alicerce & Reserva de Emergência',
+    title: 'Reserva de Emergência: 3, 6 ou 12 Meses? Qual o Seu Número',
+    subtitle: 'O guia para calcular quantos meses de custo de vida você realmente precisa guardar, segundo sua profissão.',
+    readTime: '6 min de leitura',
+    summary:
+      'Servidor público precisa de menos reserva que autônomo. Veja a tabela completa por perfil, onde guardar e o que nunca fazer com a reserva.',
+    relatedCalculatorSlug: 'reserva-emergencia',
+    relatedCalculatorLabel: 'Calcular Minha Reserva Ideal',
+    sections: [
+      {
+        heading: 'A Regra por Perfil de Renda',
+        paragraphs: [
+          'O tamanho da reserva depende de duas variáveis: estabilidade da sua renda e velocidade de recolocação profissional.',
+        ],
+        bullets: [
+          'Servidor público concursado: 3 a 4 meses (renda garantida por lei).',
+          'CLT em empresa sólida: 6 meses (conta com FGTS e seguro-desemprego).',
+          'CLT em setor volátil (tecnologia, varejo): 9 meses.',
+          'Autônomo, MEI ou profissional liberal: 12 meses (renda variável, sem rede de proteção).',
+          'Empresário com folha de pagamento: 12 a 18 meses (custos fixos da empresa correm mesmo sem receita).',
+        ],
+      },
+      {
+        heading: 'Custo de Vida ≠ Salário',
+        paragraphs: [
+          'A reserva é calculada sobre o que você GASTA para sobreviver, não sobre o que ganha. Se você ganha R$ 5.000 mas gasta R$ 3.500 com o essencial (moradia, comida, saúde, transporte, contas), sua reserva de 6 meses é R$ 21.000 — não R$ 30.000.',
+          'Some apenas os gastos que não podem ser cortados em uma emergência. Lazer, assinaturas e compras entram no orçamento, mas não na conta da reserva.',
+        ],
+      },
+      {
+        heading: 'Onde Guardar (e Onde Nunca Guardar)',
+        paragraphs: [
+          'A reserva precisa de três atributos simultâneos: liquidez diária, segurança máxima e rendimento acima da poupança. Só dois produtos atendem: Tesouro Selic e CDB de liquidez diária a 100% do CDI.',
+        ],
+        highlightBox:
+          'Nunca coloque reserva de emergência em: ações, FIIs, criptomoedas, títulos prefixados ou IPCA+ com vencimento longo. Qualquer um desses pode estar desvalorizado no dia exato em que você precisar do dinheiro.',
+      },
+    ],
+  },
+  {
+    slug: 'lci-lca-isencao-imposto-renda',
+    datePublished: '2026-11-06',
+    level: 'B',
+    levelTitle: 'Nível B — Dominando a Renda Fixa Inteligente',
+    title: 'LCI e LCA São Isentas de IR? Regras e Pegadinhas de 2026',
+    subtitle: 'Tudo sobre a isenção de imposto das letras imobiliárias e do agronegócio: quem tem direito, limites e quando ela acaba.',
+    readTime: '6 min de leitura',
+    summary:
+      'LCI e LCA continuam isentas de IR para pessoa física em 2026? Sim. Mas há regras de prazo mínimo, carência e um projeto de tributação no Congresso. Veja o quadro completo.',
+    relatedCalculatorSlug: 'renda-fixa',
+    relatedCalculatorLabel: 'Comparar LCI vs. CDB',
+    sections: [
+      {
+        heading: 'A Isenção Continua Valendo em 2026',
+        paragraphs: [
+          'LCI e LCA continuam 100% isentas de Imposto de Renda para pessoas físicas em 2026. A isenção está na lei desde 2007 (LCI) e 2006 (LCA) e não foi alterada pela Lei 15.270/2025.',
+          'Atenção: a isenção é apenas sobre o IR. O IOF regressivo continua valendo para resgates antes de 30 dias.',
+        ],
+      },
+      {
+        heading: 'A Pegadinha do Prazo Mínimo',
+        paragraphs: [
+          'Desde as regras do CMN de 2020, LCI e LCA têm carência mínima de 9 a 12 meses conforme o indexador. Isso significa que seu dinheiro fica PRESO nesse período — não há liquidez diária como nos CDBs.',
+          'Além da carência, muitos títulos só podem ser resgatados no vencimento (2 a 4 anos). Antes disso, só com venda no mercado secundário, se houver comprador.',
+        ],
+      },
+      {
+        heading: 'Quando LCI/LCA Vale Mais que CDB',
+        paragraphs: [
+          'Use a fórmula da taxa equivalente: CDB Equivalente = LCI ÷ (1 − IR). Uma LCI a 95% do CDI equivale a um CDB de 118% do CDI para prazos de 1 ano.',
+        ],
+        bullets: [
+          'Se o banco oferece LCI acima de 90% do CDI para 1 ano: provavelmente vale mais que CDB.',
+          'Se a LCI paga menos de 88% do CDI: um CDB 110% do CDI pode render mais líquido.',
+          'Sempre compare o valor LÍQUIDO final, não a taxa bruta.',
+        ],
+        highlightBox:
+          'Risco: LCI/LCA são emitidas por bancos menores com frequência. Dentro do limite de R$ 250 mil por CPF/instituição, o FGC cobre. Acima disso, o risco é real.',
+      },
+    ],
+  },
+  {
+    slug: 'juros-compostos-explicados-simples',
+    datePublished: '2026-11-06',
+    level: 'A',
+    levelTitle: 'Nível A — Alicerce & Reserva de Emergência',
+    title: 'Juros Compostos Explicados de Forma Simples (Com Exemplos)',
+    subtitle: 'A fórmula que Einstein chamou de oitava maravilha do mundo, traduzida em números que você vê no dia a dia.',
+    readTime: '6 min de leitura',
+    summary:
+      'Entenda por que R$ 300/mês viram R$ 1 milhão em 25 anos, qual a diferença entre juros simples e compostos, e a Regra dos 72 para saber quando seu dinheiro dobra.',
+    relatedCalculatorSlug: 'juros-compostos',
+    relatedCalculatorLabel: 'Ver Meus Juros Compostos',
+    sections: [
+      {
+        heading: 'Juros Simples vs. Compostos',
+        paragraphs: [
+          'Juros simples: o rendimento é calculado sempre sobre o valor inicial. R$ 1.000 a 1% ao mês rende R$ 10 todo mês. Em 12 meses: R$ 1.120.',
+          'Juros compostos: o rendimento de cada mês é somado ao principal e passa a render junto. R$ 1.000 a 1% ao mês rende R$ 10 no primeiro mês, R$ 10,10 no segundo, R$ 10,20 no terceiro. Em 12 meses: R$ 1.127.',
+          'Parece pouco? A 10% ao ano, R$ 10.000 em juros simples viram R$ 20.000 em 10 anos. Em juros compostos, viram R$ 25.937. A diferença de R$ 5.937 vem de um único conceito: juros sobre juros.',
+        ],
+      },
+      {
+        heading: 'A Regra dos 72',
+        paragraphs: [
+          'Para saber em quantos anos seu dinheiro DOBRA, divida 72 pela taxa anual de juros. Com CDI a 13,65% ao ano: 72 ÷ 13,65 = 5,3 anos para dobrar.',
+          'Na poupança (7,12% a.a.): 72 ÷ 7,12 = 10,1 anos para dobrar. A escolha do produto corta o tempo de crescimento pela metade.',
+        ],
+        highlightBox:
+          'Na prática: R$ 100 mil rendendo 13,65% ao ano viram R$ 200 mil em ~5 anos, R$ 400 mil em ~11 anos e R$ 800 mil em ~16 anos. É por isso que começar cedo importa mais que começar grande.',
+      },
+      {
+        heading: 'O Fator Tempo: A Parte que Ninguém Vê',
+        paragraphs: [
+          'Os juros compostos são exponenciais: crescem devagar no começo e explodem no final. Em uma simulação de R$ 300/mês a 12% ao ano, os primeiros 10 anos rendem R$ 62 mil de juros. Os segundos 10 anos rendem R$ 187 mil. Os TERCEIROS 10 anos rendem R$ 560 mil.',
+          'Por isso desistir no meio é o maior erro: é exatamente nos últimos anos que a mágica acontece. Quem investe por 20 anos tem um patrimônio 5x maior que quem investe por 10 anos com o mesmo aporte mensal.',
+        ],
       },
     ],
   },

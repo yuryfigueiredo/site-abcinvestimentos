@@ -6,6 +6,7 @@ const pathname = Astro.url.pathname;
 const isCalcActive = pathname.startsWith('/calculadoras');
 const isGuiaActive = pathname.startsWith('/guia');
 const isPlanilhaActive = pathname.startsWith('/planilha-abc');
+const isQuantoRendeActive = pathname.startsWith('/quanto-rende');
 ---
 
 <div class="sticky-container">
@@ -54,6 +55,10 @@ const isPlanilhaActive = pathname.startsWith('/planilha-abc');
         <a href="/guia" class:list={['nav-link', { 'is-active': isGuiaActive }]} aria-current={isGuiaActive ? 'page' : undefined}>
           Guia ABC
         </a>
+        <a href="/quanto-rende" class:list={['nav-link', { 'is-active': isQuantoRendeActive }]} aria-current={isQuantoRendeActive ? 'page' : undefined}>
+          Quanto Rende
+        </a>
+        <a href="/sobre" class="nav-link">Sobre</a>
         <a href="/#consultor-ia" class="nav-link">Consultor IA</a>
         <a href="/planilha-abc" class:list={['nav-link', { 'is-active': isPlanilhaActive }]} aria-current={isPlanilhaActive ? 'page' : undefined}>
           Planilha 50/30/20
@@ -138,6 +143,14 @@ const isPlanilhaActive = pathname.startsWith('/planilha-abc');
           <div class="mobile-nav-links">
             <a href="/guia" class="mobile-nav-row">
               <span>📖 Guia ABC & Dicionário A–Z</span>
+              <span class="mobile-arrow">→</span>
+            </a>
+            <a href="/quanto-rende" class="mobile-nav-row">
+              <span>💰 Simulações Quanto Rende</span>
+              <span class="mobile-arrow">→</span>
+            </a>
+            <a href="/sobre" class="mobile-nav-row">
+              <span>👤 Sobre & Metodologia</span>
               <span class="mobile-arrow">→</span>
             </a>
             <a href="/#consultor-ia" class="mobile-nav-row" id="mobile-drawer-ia-link">
@@ -280,7 +293,9 @@ const isPlanilhaActive = pathname.startsWith('/planilha-abc');
   .sticky-container {
     position: sticky;
     top: 0;
-    z-index: 100;
+    /* Acima da barra de indicadores (z-index 101): sem isso o header cria um
+       stacking context em 100 e o ticker cobre o topo da gaveta do menu. */
+    z-index: 1100;
     /* MANDATORY: Always specify a container name to avoid collisions if CQs are nested (state-aware-sticky-headers guide) */
     container-type: scroll-state;
     container-name: abc-header;
@@ -651,8 +666,12 @@ const isPlanilhaActive = pathname.startsWith('/planilha-abc');
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1.15rem 1.25rem;
+    padding: 0.9rem 1.1rem;
+    padding-top: max(0.9rem, env(safe-area-inset-top));
     border-bottom: 1px solid var(--border-subtle);
+    background:
+      linear-gradient(180deg, rgba(14, 165, 233, 0.10) 0%, transparent 100%),
+      var(--bg-surface);
   }
 
   .mobile-drawer-brand {
@@ -662,27 +681,30 @@ const isPlanilhaActive = pathname.startsWith('/planilha-abc');
   }
 
   .mobile-drawer-close {
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
     background: var(--pill-bg);
     border: 1px solid var(--border-card);
     color: var(--text-secondary);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.1rem;
+    font-size: 1.15rem;
     cursor: pointer;
+    flex-shrink: 0;
   }
 
   .mobile-drawer-scroll {
     flex: 1;
     overflow-y: auto;
-    padding: 1.25rem;
+    padding: 1.15rem;
+    padding-bottom: max(1.15rem, env(safe-area-inset-bottom));
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 1.35rem;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
   }
 
   .mobile-section-heading {

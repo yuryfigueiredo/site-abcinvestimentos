@@ -542,6 +542,13 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
   const leadNameInput = document.getElementById('lead-name-input') as HTMLInputElement | null;
   const leadContactInput = document.getElementById('lead-contact-input') as HTMLInputElement | null;
 
+  // O modal de lead precisa cobrir a viewport, não o painel de resposta (que pode
+  // ter milhares de pixels de conversa). Preso ao body, o overlay fixed não herda
+  // o backdrop-filter/containment do painel e centraliza de verdade.
+  if (leadOverlay && leadOverlay.parentElement !== document.body) {
+    document.body.appendChild(leadOverlay);
+  }
+
   // Histórico de conversa mantido em memória para continuidade contextual (estilo Google AI)
   let conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [];
   let pendingQuestion = '';
@@ -614,6 +621,8 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
       leadOverlay.style.display = 'flex';
       leadOverlay.hidden = false;
       leadOverlay.classList.add('is-open');
+      leadOverlay.scrollTop = 0;
+      document.body.classList.add('lead-modal-open');
       setTimeout(() => {
         leadNameInput?.focus();
       }, 50);
@@ -621,6 +630,7 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
   }
 
   function closeLeadModal() {
+    document.body.classList.remove('lead-modal-open');
     if (leadOverlay) {
       leadOverlay.setAttribute('hidden', '');
       leadOverlay.style.display = 'none';
@@ -2203,20 +2213,28 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
     font-weight: 700;
   }
 
-  /* Overlay de Captura de Lead na Segunda Pergunta */
+  /* Overlay de Captura de Lead — modal de viewport inteira.
+     Fica preso ao body (movido via script): dentro do painel de resposta ele
+     esticava por todos os milhares de pixels da conversa e deixava um vazio enorme. */
   .lead-capture-overlay {
-    position: absolute;
+    position: fixed;
     inset: 0;
     background: rgba(10, 15, 29, 0.88);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
-    border-radius: 18px;
-    z-index: 50;
+    border-radius: 0;
+    z-index: 2500;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1.25rem;
+    padding: clamp(0.9rem, 4vw, 1.5rem);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     animation: leadOverlayFade 0.25s ease forwards;
+  }
+
+  body.lead-modal-open {
+    overflow: hidden;
   }
 
   .lead-capture-overlay[hidden] {
@@ -2247,6 +2265,9 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
     padding: clamp(1.25rem, 3.5vw, 2rem);
     max-width: 480px;
     width: 100%;
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    margin: auto;
     box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(56, 189, 248, 0.15);
     text-align: left;
   }
@@ -2538,6 +2559,91 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
   @media (max-width: 768px) {
     .metric-divider {
       display: none;
+    }
+  }
+
+  /* Mobile: hero compacto (o topo tinha espaço demais antes dos cards) */
+  @media (max-width: 640px) {
+    .hero-section {
+      padding-top: 2.25rem;
+      padding-bottom: 2.5rem;
+    }
+    .hero-headline {
+      margin-bottom: 1.4rem;
+    }
+    .hero-title {
+      font-size: 1.8rem;
+      margin-bottom: 0.65rem;
+    }
+    .hero-subtitle {
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+    .ia-authority-tag {
+      margin-bottom: 0.7rem;
+      padding: 0.3rem 0.8rem;
+      font-size: 0.74rem;
+    }
+    .search-capsule-wrapper {
+      margin-bottom: 2rem;
+    }
+    .ia-consent-label {
+      font-size: 0.72rem;
+      margin-top: 0.55rem;
+    }
+    .ia-daily-limit-hint {
+      font-size: 0.7rem;
+    }
+    .search-chips-row {
+      margin-top: 0.75rem;
+      gap: 0.4rem;
+    }
+    .start-section {
+      margin-bottom: 2.5rem;
+    }
+    .start-label {
+      margin-bottom: 0.9rem;
+    }
+    .metrics-bar {
+      padding-block: 1.35rem;
+      gap: 1rem 0.75rem;
+    }
+    .metric-item {
+      min-width: 45%;
+    }
+    .ia-response-modal {
+      padding: 1rem;
+      border-radius: 16px;
+    }
+    .lead-capture-card {
+      padding: 1.1rem;
+    }
+  }
+
+  /* Cápsula do consultor: no celular o botão vira uma linha própria (antes o
+     campo ficava com ~90px e escondia o placeholder atrás do botão). */
+  @media (max-width: 520px) {
+    .search-capsule {
+      height: auto;
+      min-height: 54px;
+      border-radius: 20px;
+      flex-wrap: wrap;
+      padding: 0.45rem;
+      row-gap: 0.45rem;
+    }
+    .search-icon-wrap,
+    .search-divider {
+      display: none;
+    }
+    .search-input {
+      flex: 1 1 100%;
+      padding: 0.45rem 0.7rem;
+    }
+    .search-submit-btn {
+      width: 100%;
+      height: 46px;
+      justify-content: center;
+      border-radius: 15px;
     }
   }
 </style>

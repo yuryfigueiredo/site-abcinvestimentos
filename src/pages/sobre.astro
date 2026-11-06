@@ -1,0 +1,297 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { SITE_CONFIG } from '../config/site';
+
+const canonicalUrl = 'https://www.abcinvestimentos.com.br/sobre';
+const pageTitle = 'Sobre o ABC Investimentos | Quem Somos e Nossa Metodologia';
+const pageDescription = 'Conheça o ABC Investimentos: plataforma independente de educação financeira com simuladores calibrados por dados oficiais do Banco Central.';
+---
+
+<BaseLayout
+  title={pageTitle}
+  description={pageDescription}
+  canonical={canonicalUrl}
+  ogTitle={pageTitle}
+  ogDescription={pageDescription}
+>
+  <div class="container">
+    <div class="about-page">
+      <nav class="breadcrumb" aria-label="Navegação estrutural">
+        <a href="/">Início</a> › <span>Sobre</span>
+      </nav>
+
+      <header class="about-header">
+        <h1>Sobre o ABC Investimentos</h1>
+        <p class="about-subtitle">Educação financeira transparente, baseada em dados oficiais e matemática auditável.</p>
+      </header>
+
+      <section class="about-section">
+        <h2>Nossa Missão</h2>
+        <p>
+          O ABC Investimentos nasceu de uma percepção simples: a maioria dos brasileiros não tem acesso a ferramentas
+          financeiras claras, gratuitas e honestas. Ou o conteúdo é excessivamente técnico, ou esconde interesses comerciais,
+          ou usa números desatualizados que levam a decisões ruins.
+        </p>
+        <p>
+          Nossa missão é democratizar o acesso à matemática financeira no Brasil. Cada simulador, artigo e cálculo publicado
+          aqui segue três princípios:
+        </p>
+        <ul class="principles-list">
+          <li>
+            <strong>Transparência total:</strong> todas as fórmulas são documentadas e auditáveis. Você pode verificar cada
+            número manualmente.
+          </li>
+          <li>
+            <strong>Dados oficiais:</strong> Selic, CDI, IPCA, Poupança e demais taxas vêm diretamente do Banco Central do Brasil
+            via API SGS, atualizadas diariamente.
+          </li>
+          <li>
+            <strong>Sem recomendação:</strong> não vendemos produtos financeiros, não recebemos comissões de corretoras e não
+            indicamos compra ou venda de ativos. Somos uma plataforma educacional.
+          </li>
+        </ul>
+      </section>
+
+      <section class="about-section">
+        <h2>Quem Está Por Trás</h2>
+        <p>
+          O ABC Investimentos é desenvolvido e mantido por <strong>Yury Figueiredo</strong>, engenheiro e desenvolvedor com
+          experiência em sistemas financeiros e análise de dados. A plataforma reflete uma combinação de rigor técnico
+          (código auditável, dados estruturados, testes automatizados) e paixão por educação financeira.
+        </p>
+        <p>
+          A motivação pessoal por trás do projeto é simples: vi amigos e familiares tomarem decisões financeiras ruins
+          porque as ferramentas disponíveis na internet eram confusas, incompletas ou tendenciosas. O ABC Investimentos é
+          a resposta que eu gostaria de ter encontrado quando comecei a investir.
+        </p>
+      </section>
+
+      <section class="about-section">
+        <h2>Metodologia e Fontes</h2>
+        <p>Todos os dados exibidos no site vêm de fontes primárias oficiais:</p>
+        <table class="sources-table">
+          <thead>
+            <tr>
+              <th>Dado</th>
+              <th>Fonte</th>
+              <th>Frequência</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Taxa Selic Meta</td>
+              <td>Banco Central do Brasil — SGS 432</td>
+              <td>Diária</td>
+            </tr>
+            <tr>
+              <td>CDI</td>
+              <td>Banco Central do Brasil — SGS 12</td>
+              <td>Diária</td>
+            </tr>
+            <tr>
+              <td>Poupança</td>
+              <td>Banco Central do Brasil — SGS 196</td>
+              <td>Diária</td>
+            </tr>
+            <tr>
+              <td>IPCA (12 meses)</td>
+              <td>IBGE / Banco Central do Brasil — SGS 13521</td>
+              <td>Mensal</td>
+            </tr>
+            <tr>
+              <td>Dólar PTAX</td>
+              <td>Banco Central do Brasil — SGS 1)</td>
+              <td>Diária</td>
+            </tr>
+            <tr>
+              <td>Ibovespa</td>
+              <td>Banco Central do Brasil — SGS 1204</td>
+              <td>Diária</td>
+            </tr>
+            <tr>
+              <td>IFIX</td>
+              <td>B3 / Banco Central do Brasil</td>
+              <td>Diária</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="methodology-note">
+          Os cálculos de juros compostos, tributação regressiva e equivalência entre produtos seguem as fórmulas
+          matemáticas padrão do mercado financeiro brasileiro, documentadas em cada artigo do Guia ABC.
+        </p>
+      </section>
+
+      <section class="about-section">
+        <h2>O Que Não Fazemos</h2>
+        <p>Para manter nossa independência e conformidade com a CVM:</p>
+        <ul class="not-doing-list">
+          <li><strong>Não recomendamos</strong> ativos específicos (compra ou venda de ações, FIIs, títulos).</li>
+          <li><strong>Não somos</strong> consultores de valores mobiliários registrados na CVM.</li>
+          <li><strong>Não vendemos</strong> dados de usuários para instituições financeiras.</li>
+          <li><strong>Não recebemos</strong> comissões de corretoras, bancos ou gestoras por indicações.</li>
+        </ul>
+      </section>
+
+      <section class="about-section">
+        <h2>Contato e Colaboração</h2>
+        <p>
+          Encontrou um erro? Tem uma sugestão de calculadora ou artigo? Quer colaborar com conteúdo?
+        </p>
+        <p>
+          Escreva para <a href="mailto:contato@abcinvestimentos.com.br" class="contact-link">contato@abcinvestimentos.com.br</a>.
+          Respondemos em até 48 horas úteis.
+        </p>
+      </section>
+
+      <section class="about-cta">
+        <h2>Comece a usar nossas ferramentas</h2>
+        <div class="cta-buttons">
+          <a href="/calculadoras" class="btn btn-primary">Ver Calculadoras</a>
+          <a href="/guia" class="btn btn-outline">Ler o Guia ABC</a>
+          <a href="/quanto-rende" class="btn btn-outline">Simular Quanto Rende</a>
+        </div>
+      </section>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .about-page {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem 1rem 4rem;
+  }
+
+  .breadcrumb {
+    font-size: 0.85rem;
+    color: var(--text-muted, #64748b);
+    margin-bottom: 2rem;
+  }
+
+  .breadcrumb a {
+    color: var(--primary, #0284c7);
+    text-decoration: none;
+  }
+
+  .about-header {
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+
+  .about-header h1 {
+    font-size: 2.25rem;
+    font-weight: 800;
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.02em;
+  }
+
+  .about-subtitle {
+    font-size: 1.1rem;
+    color: var(--text-muted, #64748b);
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .about-section {
+    margin-bottom: 2.5rem;
+  }
+
+  .about-section h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: var(--text-primary, #0f172a);
+    letter-spacing: -0.01em;
+  }
+
+  .about-section p {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--text-secondary, #334155);
+    margin-bottom: 1rem;
+  }
+
+  .principles-list,
+  .not-doing-list {
+    list-style: none;
+    padding: 0;
+    margin: 1rem 0;
+  }
+
+  .principles-list li,
+  .not-doing-list li {
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.5rem;
+    background: var(--bg-secondary, #f1f5f9);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    line-height: 1.6;
+  }
+
+  .sources-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+  }
+
+  .sources-table th {
+    background: var(--bg-secondary, #f1f5f9);
+    padding: 0.75rem;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid var(--border, #e2e8f0);
+  }
+
+  .sources-table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border, #e2e8f0);
+  }
+
+  .methodology-note {
+    font-size: 0.9rem;
+    color: var(--text-muted, #64748b);
+    font-style: italic;
+    margin-top: 1rem;
+  }
+
+  .contact-link {
+    color: var(--primary, #0284c7);
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .about-cta {
+    text-align: center;
+    padding: 2rem;
+    background: var(--bg-secondary, #f1f5f9);
+    border-radius: 12px;
+    margin-top: 3rem;
+  }
+
+  .about-cta h2 {
+    margin-bottom: 1.5rem;
+  }
+
+  .cta-buttons {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  @media (max-width: 640px) {
+    .about-header h1 {
+      font-size: 1.75rem;
+    }
+
+    .about-section h2 {
+      font-size: 1.25rem;
+    }
+
+    .cta-buttons {
+      flex-direction: column;
+      align-items: stretch;
+    }
+  }
+</style>

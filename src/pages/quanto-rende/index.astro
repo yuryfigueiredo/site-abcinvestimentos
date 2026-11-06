@@ -1,0 +1,160 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { PRODUCTS, AMOUNTS } from '../../data/quanto-rende';
+
+const canonicalUrl = 'https://www.abcinvestimentos.com.br/quanto-rende';
+const pageTitle = 'Quanto Rende: Simulações de Investimento com Taxas Ao Vivo | ABC Investimentos';
+const pageDescription = 'Descubra quanto rendem seus investimentos com taxas atualizadas do Banco Central. Simulações para poupança, CDB, LCI, LCA e Tesouro Direto.';
+---
+
+<BaseLayout
+  title={pageTitle}
+  description={pageDescription}
+  canonical={canonicalUrl}
+  ogTitle={pageTitle}
+  ogDescription={pageDescription}
+>
+  <div class="abc-container abc-py-8">
+    <div class="abc-max-w-6xl">
+      <!-- Breadcrumb -->
+      <nav aria-label="Breadcrumb" class="abc-text-sm abc-text-gray-500 abc-mb-6">
+        <ol class="abc-flex abc-gap-2">
+          <li><a href="/" class="abc-text-abc-blue hover:abc-underline">Início</a></li>
+          <li aria-hidden="true">›</li>
+          <li class="abc-text-gray-700">Quanto Rende</li>
+        </ol>
+      </nav>
+
+      <!-- Header -->
+      <header class="abc-text-center abc-mb-12">
+        <h1 class="abc-text-4xl md:abc-text-5xl abc-font-bold abc-text-gray-900 abc-mb-4">
+          Quanto Rende Seu Investimento?
+        </h1>
+        <p class="abc-text-xl abc-text-gray-600 abc-max-w-3xl abc-mx-auto">
+          Simulações com taxas atualizadas do Banco Central do Brasil para os principais produtos de renda fixa
+        </p>
+      </header>
+
+      <!-- Live Rates Banner -->
+      <div class="abc-bg-blue-50 abc-border abc-border-blue-200 abc-rounded-lg abc-p-6 abc-mb-12">
+        <h2 class="abc-text-xl abc-font-semibold abc-text-gray-900 abc-mb-4 abc-text-center">
+          Taxas Atuais do Mercado
+        </h2>
+        <div class="abc-grid abc-grid-cols-2 md:abc-grid-cols-4 abc-gap-4">
+          <div class="abc-text-center">
+            <div class="abc-text-sm abc-text-gray-600">Selic</div>
+            <div class="abc-text-2xl abc-font-bold abc-text-abc-blue" id="selic-rate">--</div>
+            <div class="abc-text-xs abc-text-gray-500">ao ano</div>
+          </div>
+          <div class="abc-text-center">
+            <div class="abc-text-sm abc-text-gray-600">CDI</div>
+            <div class="abc-text-2xl abc-font-bold abc-text-abc-blue" id="cdi-rate">--</div>
+            <div class="abc-text-xs abc-text-gray-500">ao ano</div>
+          </div>
+          <div class="abc-text-center">
+            <div class="abc-text-sm abc-text-gray-600">IPCA</div>
+            <div class="abc-text-2xl abc-font-bold abc-text-abc-blue" id="ipca-rate">--</div>
+            <div class="abc-text-xs abc-text-gray-500">ao ano</div>
+          </div>
+          <div class="abc-text-center">
+            <div class="abc-text-sm abc-text-gray-600">Atualizado</div>
+            <div class="abc-text-sm abc-text-gray-700" id="rate-date">--</div>
+            <div class="abc-text-xs abc-text-gray-500">Banco Central</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Product Sections -->
+      {PRODUCTS.map((product) => (
+        <section class="abc-mb-12">
+          <h2 class="abc-text-2xl abc-font-bold abc-text-gray-900 abc-mb-2">
+            Quanto rende em {product.name}?
+          </h2>
+          <p class="abc-text-gray-600 abc-mb-6">
+            {product.description}
+          </p>
+          <div class="abc-grid sm:abc-grid-cols-2 lg:abc-grid-cols-4 abc-gap-4">
+            {AMOUNTS.map((amount) => (
+              <a
+                href={`/quanto-rende/${product.slug}/${amount.slug}`}
+                class="abc-block abc-bg-white abc-border abc-border-gray-200 abc-rounded-lg abc-p-4 hover:abc-border-abc-blue hover:abc-shadow-md abc-transition"
+              >
+                <div class="abc-text-lg abc-font-semibold abc-text-gray-900 abc-mb-1">
+                  {amount.displayText}
+                </div>
+                <div class="abc-text-sm abc-text-gray-600">
+                  em {product.name}
+                </div>
+                <div class="abc-text-xs abc-text-abc-blue abc-mt-2">
+                  Ver simulação completa →
+                </div>
+              </a>
+            ))}
+          </div>
+        </section>
+      ))}
+
+      <!-- Educational Content -->
+      <section class="abc-bg-gray-50 abc-rounded-lg abc-p-8 abc-mt-12">
+        <h2 class="abc-text-2xl abc-font-bold abc-text-gray-900 abc-mb-4">
+          Como calcular o rendimento dos seus investimentos?
+        </h2>
+        <div class="abc-prose abc-max-w-none abc-text-gray-700">
+          <p>
+            O rendimento de um investimento depende de três fatores principais: a <strong>taxa de juros</strong> oferecida pelo produto, 
+            o <strong>prazo</strong> que você mantém o dinheiro aplicado e a <strong>tributação</strong> incidente sobre os ganhos.
+          </p>
+          <p>
+            Para produtos atrelados ao <strong>CDI</strong> (como CDBs e LCIs), a rentabilidade acompanha a taxa básica de juros (Selic), 
+            que é definida pelo Banco Central a cada 45 dias. Já os títulos <strong>IPCA+</strong> garantem um ganho real acima da inflação, 
+            protegendo seu poder de compra.
+          </p>
+          <p>
+            Nossas simulações utilizam as <strong>taxas ao vivo do Banco Central</strong>, atualizadas diariamente, para que você tenha 
+            os números mais precisos possíveis. Os cálculos consideram juros compostos e, quando aplicável, a tabela regressiva do 
+            Imposto de Renda.
+          </p>
+        </div>
+      </section>
+
+      <!-- CTA -->
+      <section class="abc-bg-abc-blue abc-text-white abc-rounded-lg abc-p-8 abc-text-center abc-mt-12">
+        <h2 class="abc-text-2xl abc-font-bold abc-mb-4">
+          Quer simulações mais detalhadas?
+        </h2>
+        <p class="abc-text-lg abc-mb-6 abc-opacity-90">
+          Use nossas calculadoras gratuitas com dados ao vivo do Banco Central
+        </p>
+        <div class="abc-flex abc-flex-wrap abc-gap-4 abc-justify-center">
+          <a href="/calculadoras/renda-fixa" class="abc-bg-white abc-text-abc-blue abc-px-6 abc-py-3 abc-rounded-lg abc-font-semibold hover:abc-bg-gray-100 abc-transition">
+            Comparador de Renda Fixa
+          </a>
+          <a href="/calculadoras/juros-compostos" class="abc-bg-white abc-text-abc-blue abc-px-6 abc-py-3 abc-rounded-lg abc-font-semibold hover:abc-bg-gray-100 abc-transition">
+            Simulador de Juros Compostos
+          </a>
+          <a href="/calculadoras/reserva-emergencia" class="abc-bg-white abc-text-abc-blue abc-px-6 abc-py-3 abc-rounded-lg abc-font-semibold hover:abc-bg-gray-100 abc-transition">
+            Reserva de Emergência
+          </a>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      function waitForIndicators() {
+        if (window.__ABC_INDICATORS__) {
+          const indicators = window.__ABC_INDICATORS__;
+          document.getElementById('selic-rate').textContent = indicators.selic.toFixed(2) + '%';
+          document.getElementById('cdi-rate').textContent = (indicators.selic - 0.10).toFixed(2) + '%';
+          document.getElementById('ipca-rate').textContent = indicators.ipca12m.toFixed(2) + '%';
+          document.getElementById('rate-date').textContent = new Date(indicators.updatedAt).toLocaleDateString('pt-BR');
+        } else {
+          setTimeout(waitForIndicators, 100);
+        }
+      }
+
+      waitForIndicators();
+    })();
+  </script>
+</BaseLayout>

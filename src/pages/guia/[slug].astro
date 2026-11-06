@@ -1,7 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import AdSlot from '../../components/AdSlot.astro';
-import { GUIDES, type GuideArticle } from '../../data/guides';
+import { GUIDES, SITE_PUBLISHED_AT, type GuideArticle } from '../../data/guides';
 import { SITE_CONFIG } from '../../config/site';
 
 export function getStaticPaths() {
@@ -16,13 +16,53 @@ interface Props {
 }
 
 const { guide } = Astro.props;
+
+const publishedAt = guide.datePublished ?? SITE_PUBLISHED_AT;
+const publishedLabel = new Date(`${publishedAt}T12:00:00`).toLocaleDateString('pt-BR', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+});
+const articleUrl = new URL(Astro.url.pathname, SITE_CONFIG.url).toString();
+
+const guideJsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Article',
+      headline: guide.title,
+      description: guide.summary,
+      image: [new URL('/og-image.png', SITE_CONFIG.url).toString()],
+      datePublished: publishedAt,
+      dateModified: publishedAt,
+      inLanguage: 'pt-BR',
+      author: {
+        '@type': 'Person',
+        name: SITE_CONFIG.author,
+        url: `${SITE_CONFIG.url}/sobre`,
+      },
+      publisher: { '@id': `${SITE_CONFIG.url}/#organization` },
+      isPartOf: { '@type': 'WebSite', '@id': `${SITE_CONFIG.url}/#website` },
+      mainEntityOfPage: { '@type': 'WebPage', '@id': articleUrl },
+    },
+    {
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Início', item: SITE_CONFIG.url },
+        { '@type': 'ListItem', position: 2, name: 'Guia ABC', item: `${SITE_CONFIG.url}/guia` },
+        { '@type': 'ListItem', position: 3, name: guide.title },
+      ],
+    },
+  ],
+};
 ---
 
 <BaseLayout title={`${guide.title} | Guia ABC Investimentos`} description={guide.summary}>
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(guideJsonLd)} />
   <article class="guide-post-section">
     <div class="container guide-container">
       <nav class="breadcrumb" aria-label="Navegação estrutural">
-        <a href="/">Início</a> <span>/</span> <a href="/guia">Guia ABC</a> <span>/</span> <strong>Passo {guide.level}</strong>
+        <a href="/">Início</a> <span>/</span> <a href="/guia">Guia ABC</a> <span>/</span> <strong>{guide.title}</strong>
       </nav>
 
       <header class="post-header">
@@ -32,6 +72,10 @@ const { guide } = Astro.props;
         </div>
         <h1>{guide.title}</h1>
         <p class="post-lead">{guide.subtitle}</p>
+        <p class="post-byline">
+          Por <a href="/sobre">{SITE_CONFIG.author}</a>
+          <time datetime={publishedAt}>Atualizado em {publishedLabel}</time>
+        </p>
       </header>
 
       <div class="post-body abc-card">
@@ -100,6 +144,10 @@ const { guide } = Astro.props;
     gap: 0.45rem;
   }
 
+  .breadcrumb a {
+    white-space: nowrap;
+  }
+
   .post-header {
     margin-block-end: 1.75rem;
   }
@@ -126,6 +174,29 @@ const { guide } = Astro.props;
     margin: 0;
     font-size: 1.08rem;
     color: var(--text-secondary);
+  }
+
+  .post-byline {
+    margin: 0.85rem 0 0;
+    font-size: 0.84rem;
+    color: var(--text-muted);
+  }
+
+  .post-byline a {
+    color: var(--brand-blue);
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .post-byline a:hover {
+    text-decoration: underline;
+  }
+
+  /* Separator travels with the date so it never strands at the end of a wrapped line. */
+  .post-byline time::before {
+    content: "·";
+    margin-inline-end: 0.4rem;
+    color: var(--text-muted);
   }
 
   .post-body {
