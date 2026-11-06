@@ -556,12 +556,33 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
     }[tag] || tag));
   }
 
+  const FREE_DAILY_QUESTIONS = 3;
+
+  function todayKey(): string {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  }
+
+  // Contador diário: zera sozinho na virada do dia. O formato antigo (apenas
+  // um número salvo no localStorage) é ignorado e tratado como zero.
   function getQuestionCount(): number {
     try {
-      return parseInt(localStorage.getItem('abc_ia_question_count') || '0', 10);
+      const raw = localStorage.getItem('abc_ia_question_count');
+      if (!raw) return 0;
+      const parsed = JSON.parse(raw) as { date?: string; count?: number };
+      if (!parsed || parsed.date !== todayKey()) return 0;
+      return typeof parsed.count === 'number' && Number.isFinite(parsed.count) ? Math.max(0, parsed.count) : 0;
     } catch {
       return 0;
     }
+  }
+
+  function incrementQuestionCount(): number {
+    const next = getQuestionCount() + 1;
+    try {
+      localStorage.setItem('abc_ia_question_count', JSON.stringify({ date: todayKey(), count: next }));
+    } catch {}
+    return next;
   }
 
   // Limpa flag legada em localStorage para que a regra da 2ª pergunta sempre seja exigida por sessão
@@ -579,6 +600,15 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
 
   function openLeadModal(questionText: string) {
     pendingQuestion = questionText;
+    // O modal de lead vive DENTRO do painel de resposta: sem abrir o painel,
+    // o formulário fica invisível e o clique no atalho parece não fazer nada.
+    if (iaResponse && iaResponse.hidden) {
+      iaResponse.hidden = false;
+      iaResponse.classList.add('is-open');
+      requestAnimationFrame(() => {
+        iaResponse.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+    }
     if (leadOverlay) {
       leadOverlay.removeAttribute('hidden');
       leadOverlay.style.display = 'flex';
@@ -621,11 +651,9 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
     const q = questionText.trim();
     if (!q) return;
 
-    // Regra Obrigatória do Captador de Informações na Segunda Pergunta:
-    // 1ª pergunta: totalmente gratuita e sem cadastro
-    // 2ª pergunta em diante (ou pergunta de continuação): BLOQUEIA OBRIGATORIAMENTE com modal até preencher Nome e WhatsApp/E-mail
-    const isSecondQuestionOrMore = conversationHistory.length >= 2 || isFollowUp || getQuestionCount() >= 1;
-    if (isSecondQuestionOrMore && !isLeadCaptured()) {
+    // Regra de acesso: até 3 consultas gratuitas por dia, sem cadastro.
+    // A partir da 4ª consulta do dia, o modal de lead é obrigatório.
+    if (getQuestionCount() >= FREE_DAILY_QUESTIONS && !isLeadCaptured()) {
       openLeadModal(q);
       return;
     }
@@ -641,10 +669,8 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
       });
     }
 
-    // Registra incremento no contador de perguntas
-    try {
-      localStorage.setItem('abc_ia_question_count', String(getQuestionCount() + 1));
-    } catch {}
+    // Registra incremento no contador diário de perguntas
+    incrementQuestionCount();
 
     let followupLoadingElem: HTMLElement | null = null;
 
@@ -743,18 +769,19 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
         }
       }
 
-      // Comunica o limite diário gratuito de consultas (vindo do servidor)
+      // Contador gratuito calculado no próprio dia (não depende do servidor,
+      // que não guarda estado por visitante e sempre responderia 3).
       const freeCounter = document.getElementById('ia-free-counter');
       if (freeCounter) {
-        const remaining = typeof data.remainingFree === 'number' ? data.remainingFree : null;
-        if (remaining !== null) {
-          freeCounter.hidden = false;
+        freeCounter.hidden = false;
+        if (isLeadCaptured()) {
+          freeCounter.textContent = 'Consultas liberadas para esta sessão';
+        } else {
+          const remaining = Math.max(0, FREE_DAILY_QUESTIONS - getQuestionCount());
           freeCounter.textContent =
             remaining > 0
               ? `Restam ${remaining} ${remaining === 1 ? 'consulta gratuita' : 'consultas gratuitas'} hoje`
-              : 'Limite diário de consultas gratuitas atingido — volte amanhã';
-        } else {
-          freeCounter.hidden = true;
+              : 'Limite diário atingido — preencha o contato para continuar';
         }
       }
 
