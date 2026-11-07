@@ -167,6 +167,23 @@ export default async function handler(request: VercelRequest, response: VercelRe
       }
     }
 
+    // Espelho no Google Sheets (via Apps Script Web App). Aditivo: se falhar,
+    // o lead continua no Turso e o usuário não percebe nada.
+    const sheetsUrl = process.env.GOOGLE_LEADS_WEBAPP_URL;
+    if (sheetsUrl) {
+      try {
+        await fetch(sheetsUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout(8000),
+          redirect: 'follow',
+          body: JSON.stringify({ name, contact, question }),
+        });
+      } catch (sheetsErr) {
+        console.error('[ABC Lead] Erro ao espelhar lead no Google Sheets:', sheetsErr);
+      }
+    }
+
     console.log(`[ABC Lead Capturado] Nome: ${name} | Contato: ${contact} | Pergunta: ${question}`);
     json(response, 200, { success: true, message: 'Lead registrado com sucesso.' });
   } catch (error) {
