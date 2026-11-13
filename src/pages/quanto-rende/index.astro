@@ -146,9 +146,10 @@ const pageDescription = 'Descubra quanto rendem seus investimentos com taxas atu
         if (window.__ABC_INDICATORS__) {
           const indicators = window.__ABC_INDICATORS__;
           document.getElementById('selic-rate').textContent = indicators.selic.toFixed(2) + '%';
-          document.getElementById('cdi-rate').textContent = (indicators.selic - 0.10).toFixed(2) + '%';
+          document.getElementById('cdi-rate').textContent = indicators.cdi.toFixed(2) + '%';
           document.getElementById('ipca-rate').textContent = indicators.ipca12m.toFixed(2) + '%';
-          document.getElementById('rate-date').textContent = new Date(indicators.updatedAt).toLocaleDateString('pt-BR');
+          // updatedAt já chega formatado em pt-BR, não como ISO parseável.
+          document.getElementById('rate-date').textContent = indicators.updatedAt;
         } else {
           setTimeout(waitForIndicators, 100);
         }

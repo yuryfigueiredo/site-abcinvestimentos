@@ -276,8 +276,7 @@ const faqSchema = {
       }
 
       function renderResults(indicators) {
-        const selic = indicators.selic / 100;
-        const cdi = (indicators.selic - 0.10) / 100;
+        const cdi = indicators.cdi / 100;
         const ipca = indicators.ipca12m / 100;
 
         // Determine annual rate
@@ -294,9 +293,10 @@ const faqSchema = {
 
         // Display rates
         document.getElementById('selic-rate').textContent = indicators.selic.toFixed(2) + '%';
-        document.getElementById('cdi-rate').textContent = (indicators.selic - 0.10).toFixed(2) + '%';
+        document.getElementById('cdi-rate').textContent = indicators.cdi.toFixed(2) + '%';
         document.getElementById('ipca-rate').textContent = indicators.ipca12m.toFixed(2) + '%';
-        document.getElementById('rate-date').textContent = new Date(indicators.updatedAt).toLocaleDateString('pt-BR');
+        // updatedAt já chega formatado em pt-BR, não como ISO parseável.
+        document.getElementById('rate-date').textContent = indicators.updatedAt;
 
         // Calculate for each period
         const periods = [1, 6, 12, 24];

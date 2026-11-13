@@ -2,6 +2,10 @@
 // e o stream cru fica intacto para o nosso readJsonBody ler com segurança.
 export const config = { api: { bodyParser: false } };
 
+import { createHash } from 'node:crypto';
+
+const MAX_DAILY_FREE_QUESTIONS = 3;
+
 interface VercelRequest {
   method?: string;
   body?: unknown;
@@ -12,6 +16,16 @@ interface VercelResponse {
   status(code: number): VercelResponse;
   setHeader(name: string, value: string): VercelResponse;
   end(body?: string): void;
+}
+
+interface TursoPipelineResponse {
+  results?: Array<{
+    response?: {
+      result?: {
+        rows?: Array<Array<{ value?: string }>>;
+      };
+    };
+  }>;
 }
 
 function json(response: VercelResponse, status: number, data: unknown): void {
@@ -136,6 +150,79 @@ async function saveConversation(question: string, answer: string, mode: string):
 
   if (!result.ok) {
     throw new Error(`Turso HTTP ${result.status}`);
+  }
+}
+
+function clientIp(request: VercelRequest): string | null {
+  const raw = request.headers?.['x-forwarded-for'];
+  const first = (Array.isArray(raw) ? raw[0] : raw)?.split(',')[0]?.trim();
+  return first || null;
+}
+
+/**
+ * Contador diário durável no Turso. Um Map em memória não serve: cada instância
+ * serverless da Vercel teria o seu, e o cap seria furado com cold starts.
+ * O visitante é um hash escopado ao dia, então não vira identificador estável
+ * entre dias, e as linhas de dias anteriores são removidas a cada escrita.
+ * Devolve null quando o store está indisponível (falha aberta, como o resto do handler).
+ */
+async function consumeLlmQuota(ip: string | null): Promise<number | null> {
+  const databaseUrl = process.env.TURSO_DATABASE_URL;
+  const authToken = process.env.TURSO_AUTH_TOKEN;
+  if (!databaseUrl || !authToken || !ip) return null;
+
+  const day = new Date().toISOString().slice(0, 10);
+  const visitor = createHash('sha256').update(`${day}|${ip}`).digest('hex');
+  const endpoint = databaseUrl.replace(/^libsql:\/\//, 'https://').replace(/\/+$/, '') + '/v2/pipeline';
+
+  try {
+    const result = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+        'Content-Type': 'application/json',
+      },
+      signal: AbortSignal.timeout(5000),
+      body: JSON.stringify({
+        requests: [
+          {
+            type: 'execute',
+            stmt: {
+              sql: `CREATE TABLE IF NOT EXISTS ia_daily_usage (
+                day TEXT NOT NULL,
+                visitor TEXT NOT NULL,
+                uses INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (day, visitor)
+              );`,
+            },
+          },
+          { type: 'execute', stmt: { sql: 'DELETE FROM ia_daily_usage WHERE day <> ?', args: [{ type: 'text', value: day }] } },
+          {
+            type: 'execute',
+            stmt: {
+              sql: `INSERT INTO ia_daily_usage (day, visitor, uses) VALUES (?, ?, 1)
+                    ON CONFLICT(day, visitor) DO UPDATE SET uses = uses + 1
+                    RETURNING uses;`,
+              args: [
+                { type: 'text', value: day },
+                { type: 'text', value: visitor },
+              ],
+            },
+          },
+          { type: 'close' },
+        ],
+      }),
+    });
+
+    if (!result.ok) throw new Error(`Turso HTTP ${result.status}`);
+
+    const data = (await result.json()) as TursoPipelineResponse;
+    const execute = data.results?.find((r) => r.response?.result?.rows)?.response?.result;
+    const uses = Number(execute?.rows?.[0]?.[0]?.value);
+    return Number.isFinite(uses) ? uses : null;
+  } catch (error) {
+    console.error('[ABC IA] Falha ao contabilizar cota diária:', error);
+    return null;
   }
 }
 
@@ -1101,7 +1188,6 @@ export default async function handler(request: VercelRequest, response: VercelRe
       json(response, 200, {
         answer: deterministic.answer,
         mode: 'abc-expert-engine',
-        remainingFree: 3,
         recommendedCalculators: deterministic.recommendedCalculators,
         suggestedTool: firstCalculator
           ? {
@@ -1115,6 +1201,19 @@ export default async function handler(request: VercelRequest, response: VercelRe
 
     // Cascata PARALELA de provedores (a ordem define a prioridade; vence a 1ª resposta válida).
     // 1. Cloudflare Workers AI (Titular)  2. Groq  3. Gemini  4. OpenRouter
+    // Só esta rota gasta crédito de LLM, então só ela consome cota. O motor
+    // determinístico acima é matemática local e continua ilimitado.
+    const usesToday = await consumeLlmQuota(clientIp(request));
+    if (usesToday !== null && usesToday > MAX_DAILY_FREE_QUESTIONS) {
+      json(response, 429, {
+        error: 'Você usou as consultas gratuitas de IA de hoje. As calculadoras continuam ilimitadas.',
+        limitReached: true,
+        remainingFree: 0,
+      });
+      return;
+    }
+    const remainingFree = usesToday === null ? undefined : Math.max(0, MAX_DAILY_FREE_QUESTIONS - usesToday);
+
     const providerModes = ['cloudflare-live', 'groq-live', 'gemini-live', 'openrouter-live'];
     const providerTasks: Array<() => Promise<{ result: ProviderResult | null }>> = [];
     if (process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN) {
@@ -1148,7 +1247,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
       answer,
       mode,
       modelUsed: generated?.model,
-      remainingFree: 3,
+      remainingFree,
       suggestedTool: {
         label: 'Explorar as calculadoras ABC',
         url: '/calculadoras/juros-compostos',
