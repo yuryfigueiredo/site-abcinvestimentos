@@ -88,6 +88,10 @@ const bookCovers = await fetchBookCovers();
   <!-- 1. Hero Principal: Consultor IA + 4 Ferramentas + Métricas (Estilo Mais Retorno) -->
   <HeroIA />
 
+  <div class="hero-social-proof">
+    <span class="social-proof-text">Sem cadastro e sem e-mail — taxas atualizadas direto do Banco Central</span>
+  </div>
+
   <!-- 2. Catálogo de Todas as Ferramentas Gratuitas -->
   <section class="section" id="ferramentas">
     <div class="container">
@@ -256,9 +260,9 @@ const bookCovers = await fetchBookCovers();
                 href={book.amazonUrl}
                 target="_blank"
                 rel="noopener noreferrer sponsored"
-                class="btn btn-outline book-btn"
+                class="btn btn-primary book-btn"
               >
-                Ver na Amazon Brasil ↗
+                Comprar na Amazon ↗
               </a>
             </div>
           </div>
@@ -280,6 +284,41 @@ const bookCovers = await fetchBookCovers();
 </BaseLayout>
 
 <style>
+  /* Hero Social Proof */
+  .hero-social-proof {
+    text-align: center;
+    padding: 0.75rem 1rem 0;
+    margin-top: -1.5rem;
+    position: relative;
+    z-index: 5;
+  }
+
+  .social-proof-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: var(--pill-bg);
+    border: 1px solid var(--pill-border);
+    padding: 0.35rem 0.9rem;
+    border-radius: 9999px;
+    backdrop-filter: blur(8px);
+    letter-spacing: 0.01em;
+  }
+
+  .social-proof-text::before {
+    content: '';
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+    flex-shrink: 0;
+  }
+
   /* Tools Catalog Grid */
   .tools-catalog-grid {
     display: grid;

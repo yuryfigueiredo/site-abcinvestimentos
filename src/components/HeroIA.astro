@@ -3,7 +3,7 @@ import { CALCULATORS } from '../data/calculators';
 import FinanceIcon from './icons/FinanceIcon.astro';
 
 const topFour = CALCULATORS.filter((c) => c.isTopFour);
----
+const freeToolsCount = CALCULATORS.length;---
 
 <section class="hero-section" id="consultor-ia">
   <!-- Canvas de Constelação Orbital (Estilo Mais Retorno) -->
@@ -65,7 +65,7 @@ const topFour = CALCULATORS.filter((c) => c.isTopFour);
         <a href="/privacidade">Saiba mais</a>
       </label>
       <p class="ia-daily-limit-hint" id="ia-daily-limit-hint">
-        3 consultas gratuitas de IA por dia — os 6 simuladores continuam 100% ilimitados
+        3 consultas gratuitas de IA por dia — os {freeToolsCount} simuladores continuam 100% ilimitados
       </p>
 
       <!-- Chips de Teste em 1 Clique (Cápsulas de Vidro Escuro) -->

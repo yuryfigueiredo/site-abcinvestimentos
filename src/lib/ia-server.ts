@@ -410,7 +410,7 @@ export const onRequestPost = async (context: { request: Request; env: Env }): Pr
           limitReached: true,
           remainingFree: 0,
           answer:
-            'Você utilizou suas **3 consultas gratuitas de hoje** no Consultor ABC IA! Continue usando todas as nossas **6 calculadoras livremente** ou conheça a **Planilha Oficial ABC** para organizar seu orçamento e planejar seu 1º milhão no Excel/Google Sheets.',
+            'Você utilizou suas **3 consultas gratuitas de hoje** no Consultor ABC IA! Continue usando todas as nossas **7 calculadoras livremente** ou conheça a **Planilha Oficial ABC** para organizar seu orçamento e planejar seu 1º milhão no Excel/Google Sheets.',
           suggestedTool: {
             label: 'Conhecer a Planilha Oficial ABC',
             url: '/planilha-abc',

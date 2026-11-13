@@ -50,7 +50,7 @@ export const CALCULATORS: CalculatorMeta[] = [
   {
     slug: 'renda-fixa',
     id: 'renda-fixa',
-    title: 'Simulador CDI & Comparador de Renda Fixa (CDB vs. LCI/LCA vs. Tesouro)',
+    title: 'Simulador CDI & Comparador de Renda Fixa',
     shortTitle: 'Simulador CDI & Renda Fixa',
     badge: 'Comparador',
     isTopFour: true,
@@ -110,14 +110,14 @@ export const CALCULATORS: CalculatorMeta[] = [
   {
     slug: 'reserva-emergencia',
     id: 'reserva-emergencia',
-    title: 'Calculadora de Reserva de Emergência (CLT, Autônomo/PJ e Servidor)',
+    title: 'Calculadora de Reserva de Emergência',
     shortTitle: 'Reserva de Emergência',
     badge: 'Essencial',
     isTopFour: true,
     icon: 'shield-check',
     subtitle: 'Calcule em 30 segundos o valor exato da sua segurança financeira (CLT, Autônomo ou PJ).',
     seoDescription:
-      'Descubra quantos meses de custo de vida você precisa acumular na sua Reserva de Emergência conforme sua profissão e veja quanto ela rende no Tesouro Selic ou CDB 100% CDI.',
+      'Descubra quantos meses de custo de vida acumular na Reserva de Emergência conforme sua profissão e quanto rende no Tesouro Selic ou CDB 100% CDI.',
     nextStepTitle: 'Acompanhamento visual da sua Reserva já pronto no Excel/Sheets',
     nextStepDescription:
       'A Planilha Oficial ABC já traz uma aba exclusiva de Reserva de Emergência com barra de progresso automática e separação de gastos essenciais vs. estilo de vida.',
@@ -147,7 +147,7 @@ export const CALCULATORS: CalculatorMeta[] = [
     icon: 'home',
     subtitle: 'Coloque na ponta do lápis se vale mais financiar pela Tabela SAC ou alugar e investir a diferença.',
     seoDescription:
-      'Compare matematicamente o financiamento imobiliário (Tabela SAC) contra morar de aluguel e investir o valor da entrada e a diferença mensal das parcelas em Renda Fixa.',
+      'Compare financiamento imobiliário (SAC) contra alugar e investir a entrada e diferença das parcelas em Renda Fixa.',
     nextStepTitle: 'Planejando dar entrada no seu imóvel ou investir a diferença?',
     nextStepDescription:
       'Use a aba de Metas Financeiras da Planilha Oficial ABC para planejar sua entrada imobiliária sem comprometer o orçamento da família.',
@@ -165,14 +165,14 @@ export const CALCULATORS: CalculatorMeta[] = [
   {
     slug: 'preco-teto-acoes-fiis',
     id: 'preco-teto-acoes-fiis',
-    title: 'Calculadora de Preço-Teto (Bazin & Graham) e Número Mágico de FIIs',
+    title: 'Calculadora de Preço-Teto & Número Mágico de FIIs',
     shortTitle: 'Preço-Teto & Magic Number',
     badge: 'Valuation',
     isTopFour: false,
     icon: 'target',
     subtitle: 'Calcule o Preço-Teto de Décio Bazin (6%), o Valor Intrínseco de Graham e o Magic Number de FIIs.',
     seoDescription:
-      'Ferramenta 3 em 1: descubra o Preço-Teto de ações pelo método Décio Bazin, o Valor Intrínseco pela fórmula de Benjamin Graham e quantas cotas de um FII compram uma nova cota sozinhas todo mês.',
+      'Calcule o Preço-Teto de Décio Bazin, o Valor Intrínseco de Graham e o Número Mágico de FIIs (quantas cotas compram +1 cota todo mês).',
     nextStepTitle: 'Domine a mentalidade dos maiores investidores de dividendos',
     nextStepDescription:
       'Organize seus aportes mensais com a Planilha Oficial ABC e estude as obras originais de Décio Bazin, Benjamin Graham e Luiz Barsi.',
@@ -190,6 +190,28 @@ export const CALCULATORS: CalculatorMeta[] = [
         answer:
           'Bazin estabeleceu que uma ação pagadora de dividendos só deveria ser comprada se entregasse no mínimo 6% ao ano em dividendos (em dólar/moeda forte). Logo, Preço-Teto = Dividendo Anual por Ação ÷ 0,06.',
       },
+    ],
+  },
+  {
+    slug: 'divida-cartao',
+    id: 'divida-cartao',
+    title: 'Simulador de Dívida de Cartão de Crédito',
+    shortTitle: 'Dívida Cartão de Crédito',
+    badge: 'Novo',
+    isTopFour: false,
+    icon: 'percent',
+    subtitle: 'Descubra quanto você paga de juros ao quitar apenas o mínimo da fatura do cartão.',
+    seoDescription: 'Simule o custo real de pagar o mínimo do cartão: juros rotativos, tempo de quitação e quanto economiza quitando a fatura integral.',
+    nextStepTitle: 'Elimine suas dívidas com o método 50/30/20',
+    nextStepDescription: 'A Planilha Oficial ABC ajuda você a reorganizar seu orçamento e destinar recursos para quitar dívidas caras como o rotativo do cartão.',
+    nextStepCtaLabel: 'Conhecer a Planilha Oficial ABC',
+    nextStepCtaUrl: '/planilha-abc',
+    recommendedBookId: 'psicologia-financeira',
+    faqs: [
+      { question: 'Qual é a taxa média de juros do rotativo do cartão em 2026?', answer: 'Segundo o Banco Central, a taxa média do rotativo do cartão de crédito no Brasil gira em torno de 12% ao mês (mais de 280% ao ano). É a modalidade de crédito mais cara disponível para pessoa física.' },
+      { question: 'O que acontece se eu pagar apenas o mínimo da fatura por muitos meses?', answer: 'O saldo restante entra no rotativo e passa a render juros compostos. Se o pagamento mínimo for menor do que os juros do mês, a dívida cresce em vez de diminuir: R$ 3.000 com mínimo de 10% a 12% ao mês não é quitada em 12 meses e ainda termina o ano devendo cerca de R$ 2.100. Por isso o mínimo deve ser sempre um plano de saída, nunca o pagamento padrão.' },
+      { question: 'Existe limite para quanto os bancos podem cobrar de juros do rotativo?', answer: 'Sim. Desde 3 de janeiro de 2024, a Lei nº 14.690/2023 e a Resolução CMN nº 5.112/2023 limitam o total de juros e encargos do rotativo e do parcelamento da fatura a 100% do valor original da dívida. Uma dívida de R$ 1.000, portanto, não pode passar de R$ 2.000 em principal mais encargos, por mais tempo que leve para ser renegociada.' },
+      { question: 'Posso negociar a dívida do cartão com o banco?', answer: 'Sim. A maioria dos bancos oferece parcelamento da fatura ou renegociação com taxas menores que o rotativo. Porém, mesmo essas taxas são altas comparadas a um empréstimo pessoal ou crédito consignado.' },
     ],
   },
 ];

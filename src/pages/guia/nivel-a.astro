@@ -1,0 +1,181 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { GUIDES } from '../../data/guides';
+import { SITE_CONFIG } from '../../config/site';
+
+const levelArticles = GUIDES.filter((g) => g.level === 'A');
+
+const breadcrumbJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Início', item: SITE_CONFIG.url },
+    { '@type': 'ListItem', position: 2, name: 'Guia ABC', item: `${SITE_CONFIG.url}/guia` },
+    { '@type': 'ListItem', position: 3, name: 'Nível A — Alicerce & Reserva de Emergência' },
+  ],
+};
+---
+
+<BaseLayout
+  title="Nível A — Alicerce & Reserva de Emergência | ABC"
+  description="Trilha Nível A: os fundamentos essenciais para começar a investir com segurança. Reserva de emergência, orçamento inteligente, juros compostos e mais."
+>
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(breadcrumbJsonLd)} />
+
+  <section class="guide-hub-section">
+    <div class="container">
+      <nav class="breadcrumb" aria-label="Navegação estrutural">
+        <a href="/">Início</a> <span>/</span> <a href="/guia">Guia ABC</a> <span>/</span> <strong>Nível A</strong>
+      </nav>
+
+      <div class="hub-header">
+        <span class="badge-pill">Trilha Nível A</span>
+        <h1>Nível A — Alicerce & Reserva de Emergência</h1>
+        <p>
+          O ponto de partida obrigatório para quem está construindo patrimônio do zero.
+          Aqui você domina os fundamentos: reserva de emergência, orçamento inteligente,
+          juros compostos e as primeiras aplicações seguras.
+        </p>
+      </div>
+
+      <div class="guides-full-grid">
+        {levelArticles.map((g) => (
+          <article class="abc-card guide-article-card">
+            <div class="guide-card-top">
+              <span class="badge-pill">Nível A</span>
+              <span class="read-time">{g.readTime}</span>
+            </div>
+            <h2><a href={`/guia/${g.slug}`}>{g.title}</a></h2>
+            <p class="card-subtitle">{g.subtitle}</p>
+            <p>{g.summary}</p>
+            <div class="guide-card-footer">
+              <a href={`/guia/${g.slug}`} class="btn btn-primary">Ler Guia Completo →</a>
+              <a href={`/calculadoras/${g.relatedCalculatorSlug}`} class="btn btn-secondary">
+                {g.relatedCalculatorLabel}
+              </a>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <div class="level-nav-footer">
+        <a href="/guia" class="btn btn-secondary">← Voltar ao Guia ABC Completo</a>
+        <div class="level-siblings">
+          <a href="/guia/nivel-b" class="btn btn-outline">Nível B — Renda Fixa →</a>
+          <a href="/guia/nivel-c" class="btn btn-outline">Nível C — Renda Passiva →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .guide-hub-section {
+    padding-block: 2.5rem 3.5rem;
+  }
+
+  .breadcrumb {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-block-end: 1.2rem;
+    display: flex;
+    gap: 0.45rem;
+  }
+
+  .breadcrumb a {
+    white-space: nowrap;
+  }
+
+  .hub-header {
+    max-inline-size: 760px;
+    margin-block-end: 2.25rem;
+  }
+
+  .hub-header h1 {
+    font-size: clamp(1.8rem, 3.2vw, 2.5rem);
+    margin-block: 0.6rem 0.5rem;
+  }
+
+  .hub-header p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 1.05rem;
+  }
+
+  .guides-full-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.35rem;
+    margin-block-end: 3rem;
+  }
+
+  .guide-article-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .guide-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .read-time {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+
+  .guide-article-card h2 {
+    font-size: 1.25rem;
+    margin: 0;
+  }
+
+  .guide-article-card h2 a:hover {
+    color: var(--brand-emerald);
+  }
+
+  .card-subtitle {
+    margin: 0.25rem 0 0;
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    font-style: italic;
+  }
+
+  .guide-article-card p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.92rem;
+  }
+
+  .guide-card-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    margin-block-start: 0.5rem;
+  }
+
+  .level-nav-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding-block-start: 1.5rem;
+    border-block-start: 1px solid var(--border-subtle);
+  }
+
+  .level-siblings {
+    display: flex;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+  }
+
+  @media (max-width: 860px) {
+    .guides-full-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

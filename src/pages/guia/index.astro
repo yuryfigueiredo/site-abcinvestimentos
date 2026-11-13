@@ -2,10 +2,41 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import AdSlot from '../../components/AdSlot.astro';
 import { GUIDES, GLOSSARY_TERMS } from '../../data/guides';
+
+// Count articles per level for the hub cards
+const levelCounts = {
+  A: GUIDES.filter((g) => g.level === 'A').length,
+  B: GUIDES.filter((g) => g.level === 'B').length,
+  C: GUIDES.filter((g) => g.level === 'C').length,
+};
+
+const levelHubs = [
+  {
+    key: 'A',
+    title: 'Nível A — Alicerce & Reserva de Emergência',
+    shortTitle: 'Nível A',
+    description: 'Os fundamentos essenciais: reserva de emergência, orçamento 50/30/20, juros compostos e o primeiro investimento seguro.',
+    href: '/guia/nivel-a',
+  },
+  {
+    key: 'B',
+    title: 'Nível B — Dominando a Renda Fixa Inteligente',
+    shortTitle: 'Nível B',
+    description: 'Compare CDB, LCI, LCA e Tesouro Direto com inteligência. Desconte o IR, avalie o ganho real e escolha as melhores taxas.',
+    href: '/guia/nivel-b',
+  },
+  {
+    key: 'C',
+    title: 'Nível C — Renda Passiva, FIIs e Ações',
+    shortTitle: 'Nível C',
+    description: 'Construa renda mensal com Fundos Imobiliários e ações de dividendos. Aprenda o Método Bazin, Graham e o Número Mágico.',
+    href: '/guia/nivel-c',
+  },
+];
 ---
 
 <BaseLayout
-  title="Guia O ABC do Investidor & Dicionário Financeiro (A–Z) | ABC Investimentos"
+  title="Guia O ABC do Investidor & Dicionário Financeiro (A–Z) | ABC"
   description="Aprenda a investir do zero ao avançado com a Trilha A-B-C (Reserva de Emergência, Renda Fixa Inteligente e Renda Passiva com FIIs e Dividendos) e consulte nosso Dicionário Financeiro."
 >
   <section class="guide-hub-section">
@@ -18,7 +49,23 @@ import { GUIDES, GLOSSARY_TERMS } from '../../data/guides';
         </p>
       </div>
 
-      <!-- Os 6 Guias Completos -->
+      <!-- Navegue por Nível: 3 cards para os hubs de cada trilha -->
+      <div class="level-hubs-grid">
+        <h2 class="level-hubs-heading">Navegue por Nível</h2>
+        {levelHubs.map((hub) => (
+          <a href={hub.href} class="abc-card level-hub-card">
+            <div class="level-hub-top">
+              <span class="badge-pill">{hub.shortTitle}</span>
+              <span class="level-count">{levelCounts[hub.key as 'A' | 'B' | 'C']} {levelCounts[hub.key as 'A' | 'B' | 'C'] === 1 ? 'guia' : 'guias'}</span>
+            </div>
+            <h3>{hub.title}</h3>
+            <p>{hub.description}</p>
+            <span class="level-hub-cta">Explorar artigos →</span>
+          </a>
+        ))}
+      </div>
+
+      <!-- Os Guias Completos -->
       <div class="guides-full-grid">
         {GUIDES.map((g) => (
           <article class="abc-card guide-article-card">
@@ -122,6 +169,63 @@ import { GUIDES, GLOSSARY_TERMS } from '../../data/guides';
     font-size: 1.05rem;
   }
 
+  .level-hubs-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+    margin-block-end: 2.5rem;
+  }
+
+  .level-hubs-heading {
+    grid-column: 1 / -1;
+    font-size: 1.4rem;
+    margin: 0 0 0.25rem;
+  }
+
+  .level-hub-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .level-hub-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  }
+
+  .level-hub-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .level-count {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+
+  .level-hub-card h3 {
+    font-size: 1.05rem;
+    margin: 0;
+  }
+
+  .level-hub-card p {
+    margin: 0;
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+  }
+
+  .level-hub-cta {
+    margin-block-start: auto;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--brand-emerald);
+  }
+
   .guides-full-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -204,11 +308,13 @@ import { GUIDES, GLOSSARY_TERMS } from '../../data/guides';
   }
 
   @media (max-width: 700px) {
+    .level-hubs-grid,
     .guides-full-grid,
     .glossary-grid {
       grid-template-columns: 1fr;
     }
 
+    .level-hubs-grid > *,
     .guides-full-grid > *,
     .glossary-grid > * {
       min-width: 0;
@@ -244,6 +350,7 @@ import { GUIDES, GLOSSARY_TERMS } from '../../data/guides';
   }
 
   @media (max-width: 860px) {
+    .level-hubs-grid,
     .guides-full-grid,
     .glossary-grid {
       grid-template-columns: 1fr;

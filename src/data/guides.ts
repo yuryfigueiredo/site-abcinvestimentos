@@ -7,6 +7,10 @@ export interface GuideArticle {
   readTime: string;
   /** ISO date the article first went live. Defaults to SITE_PUBLISHED_AT when omitted. */
   datePublished?: string;
+  /** ISO date of the most recent substantive edit. Shown in byline and Article JSON-LD. */
+  dateModified?: string;
+  /** Name of the person who fact-checked / editorially reviewed this article. */
+  editor?: string;
   summary: string;
   relatedCalculatorSlug: string;
   relatedCalculatorLabel: string;
@@ -32,11 +36,11 @@ export const GUIDES: GuideArticle[] = [
     slug: 'como-montar-reserva-de-emergencia',
     level: 'A',
     levelTitle: 'Nível A — Alicerce & Reserva de Emergência',
-    title: 'Como Montar sua Reserva de Emergência e Sair da Poupança de Vez',
+    title: 'Como Montar Reserva de Emergência e Sair da Poupança',
     subtitle: 'O primeiro passo obrigatório antes de buscar rentabilidades maiores: quanto guardar, onde aplicar com liquidez diária e o que evitar.',
     readTime: '6 min de leitura',
     summary:
-      'Entenda por que a Reserva de Emergência é o seguro da sua liberdade financeira, quantos meses do seu custo de vida acumular e quais títulos substituem a poupança com segurança superior.',
+      'Entenda por que a Reserva de Emergência é o seguro da sua liberdade financeira, quantos meses acumular e quais títulos substituem a poupança com segurança.',
     relatedCalculatorSlug: 'reserva-emergencia',
     relatedCalculatorLabel: 'Simular minha Reserva de Emergência',
     sections: [
@@ -76,7 +80,7 @@ export const GUIDES: GuideArticle[] = [
     slug: 'regra-50-30-20-orcamento-inteligente',
     level: 'A',
     levelTitle: 'Nível A — Alicerce & Reserva de Emergência',
-    title: 'O Método 50/30/20 na Prática: Como Fazer Sobrar Dinheiro Todo Mês',
+    title: 'Método 50/30/20: Como Fazer Sobrar Dinheiro Todo Mês',
     subtitle: 'Aprenda a dividir sua renda líquida em três baldes claros para viver bem no presente sem sacrificar o seu futuro financeiro.',
     readTime: '5 min de leitura',
     summary:
@@ -110,7 +114,7 @@ export const GUIDES: GuideArticle[] = [
     slug: 'cdb-vs-lci-lca-tesouro-como-comparar',
     level: 'B',
     levelTitle: 'Nível B — Dominando a Renda Fixa Inteligente',
-    title: 'CDB, LCI, LCA ou Tesouro Direto: Como Comparar e Descontar o Imposto de Renda',
+    title: 'CDB vs. LCI vs. LCA vs. Tesouro: Como Comparar Líquido',
     subtitle: 'Entenda a tabela regressiva de IR em 2026, a fórmula de equivalência das letras isentas e o papel do FGC.',
     readTime: '7 min de leitura',
     summary:
@@ -151,7 +155,7 @@ export const GUIDES: GuideArticle[] = [
     slug: 'tesouro-ipca-ganho-real-inflacao',
     level: 'B',
     levelTitle: 'Nível B — Dominando a Renda Fixa Inteligente',
-    title: 'Tesouro IPCA+ e Ganho Real: Como Proteger seu Patrimônio da Inflação',
+    title: 'Tesouro IPCA+: Como Proteger o Patrimônio da Inflação',
     subtitle: 'Por que olhar apenas a rentabilidade nominal pode enganar você e como funcionam os títulos híbridos atrelados ao IPCA.',
     readTime: '6 min de leitura',
     summary:
@@ -178,10 +182,10 @@ export const GUIDES: GuideArticle[] = [
     ],
   },
   {
-    slug: 'como-viver-de-renda-Com-fiis-e-dividendos',
+    slug: 'como-viver-de-renda-com-fiis-e-dividendos',
     level: 'C',
     levelTitle: 'Nível C — Renda Passiva, FIIs e Ações',
-    title: 'A Bola de Neve dos Dividendos e o Número Mágico dos FIIs (Atualizado 2026)',
+    title: 'Bola de Neve dos Dividendos & Número Mágico dos FIIs',
     subtitle: 'Como construir uma carteira geradora de renda mensal recorrente e o que mudou com a Lei 15.270/2025.',
     readTime: '8 min de leitura',
     summary:
@@ -213,7 +217,7 @@ export const GUIDES: GuideArticle[] = [
     slug: 'metodo-bazin-e-graham-preco-justo-acoes',
     level: 'C',
     levelTitle: 'Nível C — Renda Passiva, FIIs e Ações',
-    title: 'Preço-Teto de Décio Bazin e Valor Intrínseco de Benjamin Graham Explicados',
+    title: 'Preço-Teto de Bazin e Valor Intrínseco de Graham',
     subtitle: 'Duas das fórmulas mais consagradas da história das finanças para nunca pagar caro demais por uma ação.',
     readTime: '7 min de leitura',
     summary:
@@ -242,13 +246,15 @@ export const GUIDES: GuideArticle[] = [
   {
     slug: 'como-investir-do-zero-guia-completo',
     datePublished: '2026-11-06',
+    dateModified: '2026-11-08',
+    editor: 'Yury Figueiredo',
     level: 'A',
     levelTitle: 'Nível A — Alicerce & Reserva de Emergência',
-    title: 'Como Investir do Zero: Guia Completo para Iniciantes em 2026',
+    title: 'Como Investir do Zero: Guia para Iniciantes',
     subtitle: 'O passo a passo exato para sair da poupança e fazer sua primeira aplicação, mesmo que você tenha apenas R$ 100.',
     readTime: '8 min de leitura',
     summary:
-      'Aprenda os 5 passos fundamentais para começar a investir: organizar dívidas, montar reserva, abrir corretora, escolher o primeiro ativo e criar o hábito de aportar todo mês.',
+      'Aprenda os 5 passos para começar a investir: organizar dívidas, montar reserva, abrir corretora, escolher o primeiro ativo e criar o hábito de aportar.',
     relatedCalculatorSlug: 'reserva-emergencia',
     relatedCalculatorLabel: 'Descobrir Quanto Preciso Guardar',
     sections: [
@@ -301,13 +307,15 @@ export const GUIDES: GuideArticle[] = [
   {
     slug: 'melhor-investimento-para-iniciante',
     datePublished: '2026-11-06',
+    dateModified: '2026-11-08',
+    editor: 'Yury Figueiredo',
     level: 'A',
     levelTitle: 'Nível A — Alicerce & Reserva de Emergência',
     title: 'Qual o Melhor Investimento para Iniciante em 2026?',
     subtitle: 'Comparamos os 5 ativos mais seguros para quem está começando, com números reais do Banco Central.',
     readTime: '7 min de leitura',
     summary:
-      'Descubra qual é o melhor primeiro investimento para iniciantes: Tesouro Selic, CDB 100% CDI, LCI isenta, fundo de renda fixa ou ações? Comparativo direto com taxas atuais.',
+      'Descubra qual é o melhor primeiro investimento: Tesouro Selic, CDB 100% CDI, LCI isenta, fundo de renda fixa ou ações? Comparativo com taxas atuais.',
     relatedCalculatorSlug: 'renda-fixa',
     relatedCalculatorLabel: 'Comparar Rendimento Líquido',
     sections: [
@@ -345,6 +353,8 @@ export const GUIDES: GuideArticle[] = [
   {
     slug: 'poupanca-vs-cdb-qual-melhor',
     datePublished: '2026-11-06',
+    dateModified: '2026-11-08',
+    editor: 'Yury Figueiredo',
     level: 'A',
     levelTitle: 'Nível A — Alicerce & Reserva de Emergência',
     title: 'Poupança vs. CDB: Qual Rende Mais em 2026? (Números Reais)',
@@ -387,6 +397,8 @@ export const GUIDES: GuideArticle[] = [
   {
     slug: 'tesouro-selic-vs-cdb-comparativo',
     datePublished: '2026-11-06',
+    dateModified: '2026-11-08',
+    editor: 'Yury Figueiredo',
     level: 'B',
     levelTitle: 'Nível B — Dominando a Renda Fixa Inteligente',
     title: 'Tesouro Selic ou CDB: Qual Rende Mais em 2026?',
@@ -430,6 +442,8 @@ export const GUIDES: GuideArticle[] = [
   {
     slug: 'cdb-110-por-cento-cdi-vale-a-pena',
     datePublished: '2026-11-06',
+    dateModified: '2026-11-08',
+    editor: 'Yury Figueiredo',
     level: 'B',
     levelTitle: 'Nível B — Dominando a Renda Fixa Inteligente',
     title: 'CDB 110% do CDI Vale a Pena? Análise Completa 2026',
@@ -473,6 +487,8 @@ export const GUIDES: GuideArticle[] = [
   {
     slug: 'ipca-mais-ou-prefixado-2026',
     datePublished: '2026-11-06',
+    dateModified: '2026-11-08',
+    editor: 'Yury Figueiredo',
     level: 'B',
     levelTitle: 'Nível B — Dominando a Renda Fixa Inteligente',
     title: 'IPCA+ ou Prefixado: Qual Escolher em 2026?',
@@ -511,6 +527,8 @@ export const GUIDES: GuideArticle[] = [
   {
     slug: 'como-viver-de-renda-com-500-mil',
     datePublished: '2026-11-06',
+    dateModified: '2026-11-08',
+    editor: 'Yury Figueiredo',
     level: 'C',
     levelTitle: 'Nível C — Renda Passiva, FIIs e Ações',
     title: 'Como Viver de Renda com R$ 500 Mil: Simulação Realista',
@@ -553,6 +571,8 @@ export const GUIDES: GuideArticle[] = [
   {
     slug: 'reserva-de-emergencia-3-6-ou-12-meses',
     datePublished: '2026-11-06',
+    dateModified: '2026-11-08',
+    editor: 'Yury Figueiredo',
     level: 'A',
     levelTitle: 'Nível A — Alicerce & Reserva de Emergência',
     title: 'Reserva de Emergência: 3, 6 ou 12 Meses? Qual o Seu Número',
@@ -596,13 +616,15 @@ export const GUIDES: GuideArticle[] = [
   {
     slug: 'lci-lca-isencao-imposto-renda',
     datePublished: '2026-11-06',
+    dateModified: '2026-11-08',
+    editor: 'Yury Figueiredo',
     level: 'B',
     levelTitle: 'Nível B — Dominando a Renda Fixa Inteligente',
     title: 'LCI e LCA São Isentas de IR? Regras e Pegadinhas de 2026',
     subtitle: 'Tudo sobre a isenção de imposto das letras imobiliárias e do agronegócio: quem tem direito, limites e quando ela acaba.',
     readTime: '6 min de leitura',
     summary:
-      'LCI e LCA continuam isentas de IR para pessoa física em 2026? Sim. Mas há regras de prazo mínimo, carência e um projeto de tributação no Congresso. Veja o quadro completo.',
+      'LCI e LCA continuam isentas de IR em 2026? Sim, mas há regras de prazo mínimo, carência e projeto no Congresso. Veja o quadro completo.',
     relatedCalculatorSlug: 'renda-fixa',
     relatedCalculatorLabel: 'Comparar LCI vs. CDB',
     sections: [
@@ -638,6 +660,8 @@ export const GUIDES: GuideArticle[] = [
   {
     slug: 'juros-compostos-explicados-simples',
     datePublished: '2026-11-06',
+    dateModified: '2026-11-08',
+    editor: 'Yury Figueiredo',
     level: 'A',
     levelTitle: 'Nível A — Alicerce & Reserva de Emergência',
     title: 'Juros Compostos Explicados de Forma Simples (Com Exemplos)',
@@ -671,6 +695,171 @@ export const GUIDES: GuideArticle[] = [
           'Os juros compostos são exponenciais: crescem devagar no começo e explodem no final. Em uma simulação de R$ 300/mês a 12% ao ano, os primeiros 10 anos rendem R$ 62 mil de juros. Os segundos 10 anos rendem R$ 187 mil. Os TERCEIROS 10 anos rendem R$ 560 mil.',
           'Por isso desistir no meio é o maior erro: é exatamente nos últimos anos que a mágica acontece. Quem investe por 20 anos tem um patrimônio 5x maior que quem investe por 10 anos com o mesmo aporte mensal.',
         ],
+      },
+    ],
+  },
+  {
+    slug: 'cdb-110-cdi-ou-lci-90-cdi',
+    datePublished: '2026-11-08',
+    dateModified: '2026-11-08',
+    editor: 'Yury Figueiredo',
+    level: 'B',
+    levelTitle: 'Nível B — Dominando a Renda Fixa Inteligente',
+    title: 'CDB 110% do CDI ou LCI 90% do CDI? Qual Rende Mais?',
+    subtitle: 'Comparativo completo descontando IR e inflação: a resposta vai te surpreender.',
+    readTime: '5 min de leitura',
+    summary:
+      'CDB 110% do CDI parece mais que LCI 90% do CDI — mas o IR muda tudo. Aprenda a calcular o rendimento líquido e descubra qual título coloca mais dinheiro no bolso.',
+    relatedCalculatorSlug: 'renda-fixa',
+    relatedCalculatorLabel: 'Comparar CDB vs. LCI Agora',
+    sections: [
+      {
+        heading: '1. Comparação Prática: Os Dois Títulos Lado a Lado',
+        paragraphs: [
+          'Vamos usar números reais de mercado em 2026 para comparar diretamente as duas ofertas mais comuns que aparecem nas corretoras. De um lado, um CDB de banco médio pagando 110% do CDI com vencimento em 2 anos. Do outro, uma LCI de banco sólido pagando 90% do CDI também com vencimento em 2 anos.',
+          'Com o CDI em 13,65% ao ano, o CDB rende nominalmente 15,015% ao ano (110% × 13,65%). A LCI rende nominalmente 12,285% ao ano (90% × 13,65%). Parece claro que o CDB ganha — mas essa comparação está errada porque ignora o Imposto de Renda.',
+          'O CDB paga IR de 15% sobre o lucro para prazos acima de 720 dias (2+ anos) na tabela regressiva. A LCI é 100% isenta de IR para pessoa física. Então o rendimento líquido do CDB é 15,015% × (1 − 0,15) = 12,76% ao ano. O da LCI continua 12,285% ao ano. A diferença é de 0,48 ponto percentual a favor do CDB — muito menos que os 2,73 pontos percentuais brutos sugeriam.',
+        ],
+        bullets: [
+          'CDB 110% do CDI → bruto: 15,015% a.a. → líquido (IR 15%): 12,76% a.a.',
+          'LCI 90% do CDI → bruto: 12,285% a.a. → líquido (isento): 12,285% a.a.',
+          'Diferença líquida: apenas R$ 107 a mais por R$ 10.000 investidos em 2 anos.',
+        ],
+      },
+      {
+        heading: '2. O Impacto Real do Imposto de Renda no Seu Bolso',
+        paragraphs: [
+          'Para entender por que a isenção de IR da LCI é tão poderosa, vamos simular R$ 20.000 investidos por 2 anos em cada título. No CDB 110% do CDI, o montante bruto ao final seria R$ 26.457 (juros compostos anuais sobre 15,015% a.a.). O lucro de R$ 6.457 sofre 15% de IR (faixa acima de 720 dias), resultando em R$ 969 de imposto. Líquido final: R$ 25.488.',
+          'Na LCI 90% do CDI, o montante bruto seria R$ 25.216 (juros compostos anuais sobre 12,285% a.a.). Como não há IR, o líquido final é exatamente R$ 25.216. Ou seja, o CDB ainda ganha — mas por apenas R$ 272 em 2 anos, não pelos R$ 1.434 que a comparação bruta sugeria.',
+          'Agora considere o cenário de 1 ano (faixa de 361 a 720 dias, IR de 17,5%): o CDB rende R$ 23.003 brutos, paga R$ 526 de IR e resulta em R$ 22.477 líquidos. A LCI rende R$ 22.457 e não paga IR. Neste prazo, o CDB ganha por apenas R$ 20 — uma diferença tão pequena que não compensa o risco adicional de crédito do banco emissor.',
+        ],
+        highlightBox:
+          'Regra de Bolso ABC: Use a fórmula CDB Equivalente = LCI ÷ (1 − IR). Para IR de 15% (prazo acima de 720 dias): LCI 90% ÷ 0,85 = CDB 105,9% do CDI. Ou seja, o CDB precisa pagar ACIMA de 105,9% do CDI para vencer a LCI 90% — e a diferença é mínima.',
+      },
+      {
+        heading: '3. Veredito Final: Qual Escolher em Cada Situação?',
+        paragraphs: [
+          'A resposta depende do prazo, do valor e da sua tolerância ao risco de crédito. Para prazos curtos (até 1 ano), a LCI 90% do CDI praticamente empata com o CDB 110% do CDI no líquido — e com a vantagem de ser isenta de IR, o que simplifica a declaração. Para prazos longos (2+ anos), o CDB 110% leva uma pequena vantagem líquida, mas a diferença raramente justifica abrir mão da previsibilidade fiscal da LCI.',
+          'Se o CDB for emitido por um banco grande e sólido (Itaú, Bradesco, BB, Caixa) e a LCI por um banco médio, a escolha tende para o CDB pela segurança superior do emissor. Se ambos forem bancos médios dentro do limite do FGC (R$ 250 mil), a LCI costuma ser a escolha mais elegante pela isenção fiscal.',
+          'Para valores acima de R$ 250 mil no mesmo banco, diversifique: parte no CDB de um banco e parte na LCI de outro, sempre dentro do teto do FGC por instituição. Nunca concentre todo o patrimônio em um único emissor, independente da taxa oferecida.',
+        ],
+        bullets: [
+          'Prazo até 1 ano: LCI 90% do CDI empata com CDB 110% — prefira a LCI pela simplicidade fiscal.',
+          'Prazo de 2+ anos: CDB 110% ganha por pouco no líquido — vale se o banco emissor for sólido.',
+          'Acima de R$ 250 mil: diversifique entre bancos para manter a proteção integral do FGC.',
+        ],
+        highlightBox:
+          'Veredito ABC: Para a maioria dos investidores pessoa física com prazos de 1 a 3 anos, LCI 90% do CDI é a escolha mais eficiente. A isenção de IR elimina a complexidade tributária e o resultado líquido é praticamente idêntico ao do CDB 110%.',
+      },
+    ],
+  },
+  {
+    slug: 'quanto-investir-por-mes-para-aposentar',
+    datePublished: '2026-11-08',
+    dateModified: '2026-11-08',
+    editor: 'Yury Figueiredo',
+    level: 'A',
+    levelTitle: 'Nível A — Alicerce & Reserva de Emergência',
+    title: 'Quanto Investir por Mês para Aposentar com R$ 5.000?',
+    subtitle: 'O cálculo exato usando dividend yield de 6% ao ano e o poder dos juros compostos.',
+    readTime: '6 min de leitura',
+    summary:
+      'Descubra o valor mensal para construir uma carteira de R$ 5.000/mês de renda passiva na aposentadoria, usando dividend yield de 6% ao ano e juros compostos.',
+    relatedCalculatorSlug: 'dividendos',
+    relatedCalculatorLabel: 'Simular Minha Aposentadoria',
+    sections: [
+      {
+        heading: '1. A Matemática Reversa: De Quanto Patrimônio Você Precisa?',
+        paragraphs: [
+          'Antes de calcular o aporte mensal, precisamos descobrir o patrimônio-alvo. Se você quer R$ 5.000 por mês de renda passiva e sua carteira gera um dividend yield (DY) de 6% ao ano, o cálculo é simples: Patrimônio Necessário = Renda Mensal Desejada ÷ (DY ÷ 12). Ou seja, R$ 5.000 ÷ (0,06 ÷ 12) = R$ 5.000 ÷ 0,005 = R$ 1.000.000.',
+          'Esse é o famoso "número mágico" do milhão: com R$ 1 milhão investido em ativos que pagam 6% ao ano em dividendos, você recebe R$ 5.000 por mês sem nunca vender uma única cota. O patrimônio continua lá, rendendo e se valorizando, enquanto os dividendos pagam suas contas.',
+          'Mas e se o dividend yield for diferente? Com DY de 8% ao ano (carteira mais agressiva em FIIs e ações), o patrimônio necessário cai para R$ 750.000. Com DY de 4% ao ano (carteira mais conservadora), sobe para R$ 1.500.000. A escolha da carteira define a meta.',
+        ],
+        bullets: [
+          'DY de 4% ao ano → Patrimônio necessário: R$ 1.500.000 para R$ 5.000/mês.',
+          'DY de 6% ao ano → Patrimônio necessário: R$ 1.000.000 para R$ 5.000/mês.',
+          'DY de 8% ao ano → Patrimônio necessário: R$ 750.000 para R$ 5.000/mês.',
+        ],
+      },
+      {
+        heading: '2. Quanto Aportar por Mês para Chegar Lá?',
+        paragraphs: [
+          'Agora vem a pergunta que todo mundo quer saber: quanto investir por mês? A resposta depende da taxa de retorno anual da sua carteira e do tempo disponível. Vamos usar a fórmula dos juros compostos com aportes mensais (PMT) para calcular.',
+          'Considerando uma carteira mista (FIIs + ações + renda fixa) com retorno real de 8% ao ano acima da inflação e um horizonte de 25 anos até a aposentadoria: para acumular R$ 1.000.000, você precisa investir aproximadamente R$ 1.050 por mês. Em 20 anos, o aporte sobe para R$ 1.697/mês. Em 30 anos, cai para R$ 670/mês.',
+          'O fator tempo é absolutamente crucial. Quem começa aos 25 anos e investe R$ 1.050/mês por 25 anos acumula R$ 1 milhão com apenas R$ 315.000 investidos do próprio bolso — os outros R$ 685.000 vêm dos juros compostos. Quem começa aos 35 anos precisa aportar R$ 1.697/mês e investir R$ 407.280 do bolso. A diferença de 10 anos custa R$ 92.280 em aportes adicionais.',
+        ],
+        highlightBox:
+          'Exemplo Prático: Aos 30 anos, com 25 anos pela frente e retorno de 8% a.a. real, basta investir R$ 1.050/mês para ter R$ 1 milhão e R$ 5.000/mês de renda passiva aos 55 anos. O segredo não é ganhar mais — é começar mais cedo.',
+      },
+      {
+        heading: '3. Ajustando a Realidade: Inflação, Impostos e Margem de Segurança',
+        paragraphs: [
+          'Os cálculos acima usam retorno REAL (acima da inflação), o que já é o cenário mais útil para planejamento de longo prazo. Mas é importante lembrar que dividendos e aluguéis de FIIs têm tributação: FIIs são isentos de IR para pessoa física (com condições), enquanto ações pagam 15% de IR sobre dividendos acima de R$ 50.000/mês por empresa (regra vigente desde a Lei 15.270/2025).',
+          'Para uma margem de segurança, considere que o dividend yield pode cair ao longo dos anos (empresas cortam dividendos em crises) e que a inflação pode surpreender para cima. Por isso, a recomendação ABC é mirar em um patrimônio-alvo 20% a 30% acima do mínimo calculado. Para R$ 5.000/mês, isso significa buscar R$ 1,2 a R$ 1,3 milhão como meta confortável.',
+          'Outro ponto fundamental: a renda passiva não precisa substituir 100% do seu salário na aposentadoria. Se você terá renda do INSS (mesmo que limitada ao teto), isso reduz o valor que a carteira precisa gerar. Calcule a diferença entre seu custo de vida projetado e a renda do INSS — esse é o valor real que sua carteira precisa cobrir com dividendos.',
+        ],
+        bullets: [
+          'Meta conservadora: R$ 1.200.000 (DY 6% = R$ 6.000/mês, margem para impostos e crises).',
+          'Meta moderada: R$ 1.000.000 (DY 6% = R$ 5.000/mês, considerando complemento do INSS).',
+          'Meta agressiva: R$ 750.000 (DY 8% = R$ 5.000/mês, carteira concentrada em FIIs de alta qualidade).',
+        ],
+        highlightBox:
+          'Plano de Ação ABC: 1) Calcule seu custo de vida mensal na aposentadoria. 2) Subtraia a renda estimada do INSS. 3) Divida o resultado pelo dividend yield mensal esperado (DY anual ÷ 12). 4) Use a Calculadora de Dividendos para simular o aporte mensal necessário no seu horizonte de tempo.',
+      },
+    ],
+  },
+  {
+    slug: 'melhores-fiis-para-investir-2026',
+    datePublished: '2026-11-08',
+    dateModified: '2026-11-08',
+    editor: 'Yury Figueiredo',
+    level: 'C',
+    levelTitle: 'Nível C — Renda Passiva, FIIs e Ações',
+    title: 'Como Escolher os Melhores FIIs: 5 Critérios Objetivos',
+    subtitle: 'P/VP, liquidez, diversificação, gestão e histórico de pagamentos — o checklist completo.',
+    readTime: '7 min de leitura',
+    summary:
+      'Aprenda os 5 critérios para selecionar FIIs: P/VP racional, liquidez, diversificação, gestão comprovada e histórico de dividendos. O checklist completo.',
+    relatedCalculatorSlug: 'preco-teto-acoes-fiis',
+    relatedCalculatorLabel: 'Calcular Preço-Teto de FIIs',
+    sections: [
+      {
+        heading: '1. P/VP: Pague no Máximo o Valor Patrimonial (e Saiba Quando o Desconto é Armadilha)',
+        paragraphs: [
+          'O P/VP (Preço sobre Valor Patrimonial) compara o preço da cota na bolsa com o valor contábil do patrimônio do fundo. P/VP = 1,00 significa que você está pagando exatamente o que os imóveis valem. P/VP = 0,85 significa um desconto de 15% sobre o patrimônio. P/VP = 1,20 significa um ágio de 20%.',
+          'A regra geral é buscar FIIs com P/VP próximo ou abaixo de 1,00. Porém, um P/VP muito baixo (0,60 ou 0,70) pode ser uma armadilha: o mercado pode estar precificando problemas futuros no fundo (vacância alta, inquilinos inadimplentes, imóveis desvalorizados). O desconto nem sempre é uma oportunidade — às vezes é um aviso.',
+          'Para FIIs de papel (CRI/CRA), o P/VP tende a ficar próximo de 1,00 porque o patrimônio é composto por títulos com valor de mercado mais previsível. Para FIIs de tijolo (shoppings, lajes, galpões), o P/VP pode oscilar mais porque o valor dos imóveis depende de avaliações periódicas (laudos) que nem sempre refletem o preço de mercado em tempo real.',
+        ],
+        bullets: [
+          'P/VP entre 0,85 e 1,05: faixa saudável para a maioria dos FIIs de tijolo.',
+          'P/VP abaixo de 0,80: investigue antes de comprar — pode ser armadilha de valor.',
+          'P/VP acima de 1,15: você está pagando ágio — só vale se o fundo tiver crescimento comprovado.',
+        ],
+      },
+      {
+        heading: '2. Liquidez Diária: Nunca Fique Preso em um Fundo que Ninguém Negocia',
+        paragraphs: [
+          'Liquidez é a facilidade de comprar e vender cotas rapidamente sem mover o preço. Um FII que negocia menos de R$ 100 mil por dia em volume financeiro pode ser problemático: se você precisar vender R$ 50 mil de cotas de uma vez, pode não encontrar comprador ou ter que aceitar um preço abaixo do mercado.',
+          'A regra prática é investir apenas em FIIs com volume diário médio acima de R$ 500 mil e pelo menos 200 negócios por dia. Esses fundos têm spread (diferença entre compra e venda) apertado e execução rápida. FIIs menores podem ser interessantes pelo retorno, mas exigem paciência e tolerância a iliquidez.',
+          'Para a parte da sua carteira destinada à renda mensal (a "máquina de dividendos"), priorize sempre FIIs de alta liquidez. Deixe os fundos menores e menos líquidos para uma fatia satélite de oportunidade — nunca para o núcleo da sua estratégia de renda passiva.',
+        ],
+        highlightBox:
+          'Checklist de Liquidez ABC: Volume diário médio > R$ 500 mil ✓ | Mais de 200 negócios/dia ✓ | Spread entre compra e venda < 1% ✓ | Pelo menos 500 cotistas pessoa física ✓',
+      },
+      {
+        heading: '3. Diversificação, Gestão e Histórico: Os 3 Pilares da Qualidade',
+        paragraphs: [
+          'Diversificação interna do fundo importa tanto quanto a diversificação da sua carteira. Um FII de tijolo com 3 imóveis concentrados em um único bairro é mais arriscado que um fundo com 15 imóveis em 8 cidades diferentes. Verifique sempre quantos ativos o fundo possui, em quais regiões e para quais tipos de inquilinos. FIIs de shopping com 4 ou 5 shoppings em estados diferentes são mais resilientes que um fundo com um único galpão logístico.',
+          'A qualidade da gestora é o segundo pilar. Uma boa gestora tem histórico comprovado de administração de fundos imobiliários, transparência na comunicação com cotistas e track record de decisões que preservaram ou aumentaram o valor patrimonial. Pesquise no site da CVM se a gestora já sofreu sanções, leia os relatórios gerenciais trimestrais e verifique a rotatividade de gestores.',
+          'O terceiro pilar é o histórico de pagamentos de dividendos. FIIs sérios pagam dividendos mensais consistentes há pelo menos 3 anos sem interrupção. Desconfie de fundos que começaram a pagar dividendos altos recentemente (pode ser distribuição de capital, não de lucro) ou que têm um histórico irregular de pagamentos. A consistência importa mais que o valor absoluto.',
+        ],
+        bullets: [
+          'Diversificação: mínimo de 5 ativos em 3+ regiões geográficas para FIIs de tijolo.',
+          'Gestão: gestora com 5+ anos de mercado, sem sanções na CVM e relatórios transparentes.',
+          'Pagamentos: histórico de pelo menos 36 meses consecutivos de distribuição sem interrupção.',
+        ],
+        highlightBox:
+          'Os 5 Critérios ABC em 1 Frase: P/VP próximo de 1,00, liquidez acima de R$ 500 mil/dia, diversificação geográfica real, gestora com track record comprovado e histórico de 36+ meses de pagamentos consistentes. Se o FII passa nos 5, é candidato sério à sua carteira.',
       },
     ],
   },

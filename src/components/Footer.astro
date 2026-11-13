@@ -64,6 +64,15 @@ import { GUIDES } from '../data/guides';
       </div>
     </div>
 
+    <!-- Affiliate / partnership disclaimer (E-E-A-T transparency signal) -->
+    <div class="footer-affiliate-disclaimer">
+      <p>
+        Conteúdo com links de afiliados: alguns links de produtos (planilha, livros) podem gerar comissão sem custo adicional para você.
+        Isso financia a criação contínua de calculadoras gratuitas.
+        Ver <a href="/aviso-legal">Aviso Legal</a>.
+      </p>
+    </div>
+
     <div class="footer-legal-box">
       <p>
         <strong>Aviso Legal & Ausência de Vínculo:</strong> {SITE_CONFIG.legalDisclaimer}
@@ -162,6 +171,25 @@ import { GUIDES } from '../data/guides';
   }
 
   .footer-links a:hover {
+    color: #38bdf8;
+  }
+
+  .footer-affiliate-disclaimer {
+    padding-top: 1.5rem;
+    padding-bottom: 0.5rem;
+    font-size: 0.78rem;
+    color: #64748b;
+    line-height: 1.55;
+    max-width: 640px;
+  }
+
+  .footer-affiliate-disclaimer a {
+    color: #94a3b8;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .footer-affiliate-disclaimer a:hover {
     color: #38bdf8;
   }
 

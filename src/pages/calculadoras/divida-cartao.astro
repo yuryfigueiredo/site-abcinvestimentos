@@ -1,0 +1,605 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import NextStepCard from '../../components/NextStepCard.astro';
+import AdSlot from '../../components/AdSlot.astro';
+import { CALCULATORS } from '../../data/calculators';
+import FaqJsonLd from '../../components/FaqJsonLd.astro';
+
+const calc = CALCULATORS.find((c) => c.slug === 'divida-cartao')!;
+---
+
+<BaseLayout title={`${calc.title} | ABC`} description={calc.seoDescription}>
+  <FaqJsonLd calc={calc} />
+  <section class="calc-page-section">
+    <div class="container">
+      <nav class="breadcrumb" aria-label="Navegação estrutural">
+        <a href="/">Início</a> <span>/</span> <a href="/#ferramentas">Calculadoras</a> <span>/</span> <strong>{calc.shortTitle}</strong>
+      </nav>
+
+      <div class="calc-header">
+        <span class="badge-pill">{calc.badge}</span>
+        <h1>{calc.title}</h1>
+        <p>{calc.subtitle}</p>
+      </div>
+
+      <div class="calc-workspace">
+        <!-- Control Panel: Sliders + Number Inputs -->
+        <div class="abc-card calc-controls">
+          <h2>Parâmetros da Dívida</h2>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="dc-saldo">Saldo da Fatura (R$)</label>
+              <output id="dc-saldo-out" for="dc-saldo">R$ 3.000,00</output>
+            </div>
+            <input
+              type="range"
+              id="dc-saldo-slider"
+              class="abc-slider"
+              min="100"
+              max="50000"
+              step="100"
+              value="3000"
+              data-format="brl"
+              aria-label="Controle deslizante do saldo da fatura"
+            />
+            <input type="number" id="dc-saldo" class="abc-input" min="100" max="50000" step="100" value="3000" />
+          </div>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="dc-minimo">Percentual Pago do Mínimo (%)</label>
+              <output id="dc-minimo-out" for="dc-minimo">15%</output>
+            </div>
+            <input
+              type="range"
+              id="dc-minimo-slider"
+              class="abc-slider"
+              min="5"
+              max="30"
+              step="1"
+              value="15"
+              data-format="pct"
+              aria-label="Controle deslizante do percentual mínimo"
+            />
+            <input type="number" id="dc-minimo" class="abc-input" min="5" max="30" step="1" value="15" />
+          </div>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="dc-taxa">Taxa de Juros Mensal do Rotativo (% a.m.)</label>
+              <output id="dc-taxa-out" for="dc-taxa">12,00% a.m.</output>
+            </div>
+            <input
+              type="range"
+              id="dc-taxa-slider"
+              class="abc-slider"
+              min="8"
+              max="15"
+              step="0.5"
+              value="12"
+              data-format="pct"
+              aria-label="Controle deslizante da taxa de juros mensal"
+            />
+            <input type="number" id="dc-taxa" class="abc-input" min="8" max="15" step="0.5" value="12" />
+          </div>
+
+          <div class="dc-info-box">
+            <strong>Como funciona o rotativo:</strong>
+            <p>Quando você paga apenas o mínimo da fatura, o valor restante entra no crédito rotativo e passa a render juros compostos de cerca de 12% ao mês — a modalidade de crédito mais cara do Brasil.</p>
+            <p><strong class="dc-info-sub">Teto legal dos juros:</strong> desde 03/01/2024, a Lei nº 14.690/2023 e a Resolução CMN nº 5.112/2023 limitam os juros e encargos do rotativo a 100% do valor original da dívida. Esta simulação aplica esse teto automaticamente.</p>
+          </div>
+        </div>
+
+        <!-- Results Panel -->
+        <div class="abc-card calc-results">
+          <!-- Comparison Banner -->
+          <div class="comparison-banner" id="dc-comparison-banner">
+            <div class="comparison-row">
+              <div class="comparison-item">
+                <span class="comparison-label">Se quitasse integral</span>
+                <strong class="comparison-value comparison-value--good" id="dc-res-integral">R$ 3.000,00</strong>
+              </div>
+              <div class="comparison-divider">
+                <span class="comparison-vs">VS</span>
+              </div>
+              <div class="comparison-item">
+                <span class="comparison-label">Custo total em 12 meses</span>
+                <strong class="comparison-value comparison-value--bad" id="dc-res-total-minimo">R$ 4.975,74</strong>
+              </div>
+            </div>
+            <div class="comparison-result">
+              <span class="comparison-result-label">Custo dos juros (diferença):</span>
+              <strong class="comparison-result-value" id="dc-res-diferenca">R$ 1.975,74</strong>
+            </div>
+            <p class="comparison-teto" id="dc-res-teto" hidden>
+              ⚖️ Teto legal de 100% aplicado: os juros pararam de crescer ao atingir o valor original da dívida.
+            </p>
+          </div>
+
+          <!-- KPI Summary -->
+          <div class="kpi-grid">
+            <div class="kpi-box kpi-highlight">
+              <span class="kpi-label">Valor do Mínimo Mensal</span>
+              <strong class="kpi-value" id="dc-res-minimo-mensal">R$ 450,00</strong>
+              <span class="kpi-sub" id="dc-res-rotativo-inicial">Valor que entra no rotativo: R$ 2.550,00</span>
+            </div>
+            <div class="kpi-box">
+              <span class="kpi-label">Total de Juros em 12 Meses</span>
+              <strong class="kpi-value" id="dc-res-total-juros">R$ 1.975,74</strong>
+              <span class="kpi-sub" id="dc-res-taxa-anual">Taxa anual equivalente: 289,6% a.a.</span>
+            </div>
+            <div class="kpi-box kpi-emerald">
+              <span class="kpi-label">Saldo Devedor Final (Mês 12)</span>
+              <strong class="kpi-value" id="dc-res-saldo-final">R$ 0,00</strong>
+              <span class="kpi-sub" id="dc-res-saldo-final-sub">Dívida quitada no mês 11</span>
+            </div>
+          </div>
+
+          <!-- Month-by-Month Table -->
+          <div tabindex="0" role="region" aria-labelledby="dc-table-caption" class="table-wrapper">
+            <table
+              class="abc-table"
+              style='--label-2: "Saldo Devedor"; --label-3: "Juros do Mês"; --label-4: "Pagamento Mínimo"; --label-5: "Saldo Após Pagamento";'
+            >
+              <caption id="dc-table-caption">Evolução Mensal da Dívida no Rotativo</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Mês</th>
+                  <th scope="col">Saldo Devedor</th>
+                  <th scope="col">Juros do Mês</th>
+                  <th scope="col">Pagamento Mínimo</th>
+                  <th scope="col">Saldo Após Pagamento</th>
+                </tr>
+              </thead>
+              <tbody id="dc-table-body"></tbody>
+            </table>
+          </div>
+
+          <!-- Next Step CTA -->
+          <NextStepCard calculator={calc} />
+        </div>
+      </div>
+
+      <AdSlot slotId="calc-dc-bottom" />
+
+      <!-- FAQ Section -->
+      <section class="faq-section below-fold-deferred">
+        <h2>Perguntas Frequentes sobre a Dívida do Cartão de Crédito</h2>
+        <div class="faq-grid">
+          {calc.faqs.map((faq) => (
+            <div class="abc-card faq-card">
+              <h3>{faq.question}</h3>
+              <p>{faq.answer}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import { formatBRL, formatPct } from '../../lib/finance';
+
+  const saldoInput = document.getElementById('dc-saldo') as HTMLInputElement;
+  const saldoSlider = document.getElementById('dc-saldo-slider') as HTMLInputElement;
+  const minimoInput = document.getElementById('dc-minimo') as HTMLInputElement;
+  const minimoSlider = document.getElementById('dc-minimo-slider') as HTMLInputElement;
+  const taxaInput = document.getElementById('dc-taxa') as HTMLInputElement;
+  const taxaSlider = document.getElementById('dc-taxa-slider') as HTMLInputElement;
+
+  function bindPair(num: HTMLInputElement, slider: HTMLInputElement) {
+    slider.addEventListener('input', () => {
+      num.value = slider.value;
+      recalc();
+    });
+    num.addEventListener('input', () => {
+      slider.value = num.value;
+      slider.dispatchEvent(new Event('input'));
+      recalc();
+    });
+  }
+
+  function recalc() {
+    const saldo = Number(saldoInput.value) || 3000;
+    const minPct = Number(minimoInput.value) || 15;
+    const taxaMensalPct = Number(taxaInput.value) || 12;
+    const taxaMensalDecimal = taxaMensalPct / 100;
+
+    // Update output labels
+    document.getElementById('dc-saldo-out')!.textContent = formatBRL(saldo);
+    document.getElementById('dc-minimo-out')!.textContent = `${formatPct(minPct, 0)}`;
+    document.getElementById('dc-taxa-out')!.textContent = `${formatPct(taxaMensalPct)} a.m.`;
+
+    // Core calculations
+    const valorMinimo = saldo * (minPct / 100);
+    let saldoRotativo = saldo - valorMinimo;
+
+    // Annual equivalent rate: (1 + monthly)^12 - 1
+    const taxaAnualPct = (Math.pow(1 + taxaMensalDecimal, 12) - 1) * 100;
+
+    // Lei 14.690/2023 + Resolução CMN 5.112/2023: juros e encargos do rotativo
+    // não podem exceder 100% do valor original da dívida.
+    const tetoJuros = saldo;
+
+    let jurosAcumulados = 0;
+    let totalPago = valorMinimo;
+    let tetoAtingido = false;
+    let mesDaQuitacao = 0;
+    const rows: {
+      mes: number;
+      quitado: boolean;
+      saldoDevedor: number;
+      jurosMes: number;
+      pagamentoMinimo: number;
+      saldoAposPagamento: number;
+    }[] = [];
+
+    for (let mes = 1; mes <= 12; mes++) {
+      if (saldoRotativo <= 0.005) {
+        rows.push({ mes, quitado: true, saldoDevedor: 0, jurosMes: 0, pagamentoMinimo: 0, saldoAposPagamento: 0 });
+        continue;
+      }
+
+      const jurosLivres = saldoRotativo * taxaMensalDecimal;
+      const jurosMes = Math.min(jurosLivres, Math.max(0, tetoJuros - jurosAcumulados));
+      if (jurosMes < jurosLivres - 0.005) tetoAtingido = true;
+      jurosAcumulados += jurosMes;
+
+      const saldoBruto = saldoRotativo + jurosMes;
+      const pagamento = Math.min(valorMinimo, saldoBruto);
+      const saldoAposPagamento = saldoBruto - pagamento;
+      totalPago += pagamento;
+
+      if (pagamento < valorMinimo - 0.005) mesDaQuitacao = mes;
+
+      rows.push({
+        mes,
+        quitado: false,
+        saldoDevedor: Number(saldoRotativo.toFixed(2)),
+        jurosMes: Number(jurosMes.toFixed(2)),
+        pagamentoMinimo: Number(pagamento.toFixed(2)),
+        saldoAposPagamento: Number(saldoAposPagamento.toFixed(2)),
+      });
+
+      saldoRotativo = saldoAposPagamento;
+    }
+
+    const saldoFinal = Math.max(0, saldoRotativo);
+    const custoTotal = totalPago + saldoFinal;
+    const custoJuros = jurosAcumulados;
+
+    // Update KPIs
+    document.getElementById('dc-res-minimo-mensal')!.textContent = formatBRL(valorMinimo);
+    document.getElementById('dc-res-rotativo-inicial')!.textContent = `Valor que entra no rotativo: ${formatBRL(saldo - valorMinimo)}`;
+    document.getElementById('dc-res-total-juros')!.textContent = formatBRL(custoJuros);
+    document.getElementById('dc-res-taxa-anual')!.textContent = `Taxa anual equivalente: ${formatPct(taxaAnualPct, 1)} a.a.`;
+    document.getElementById('dc-res-saldo-final')!.textContent = formatBRL(saldoFinal);
+    document.getElementById('dc-res-saldo-final-sub')!.textContent = mesDaQuitacao
+      ? `Dívida quitada no mês ${mesDaQuitacao}`
+      : 'Após 12 pagamentos mínimos';
+
+    // Update comparison banner
+    document.getElementById('dc-res-integral')!.textContent = formatBRL(saldo);
+    document.getElementById('dc-res-total-minimo')!.textContent = formatBRL(custoTotal);
+    document.getElementById('dc-res-diferenca')!.textContent = formatBRL(custoJuros);
+    document.getElementById('dc-res-teto')!.hidden = !tetoAtingido;
+
+    // Update table
+    const tbody = document.getElementById('dc-table-body')!;
+    tbody.innerHTML = rows
+      .map((row) =>
+        row.quitado
+          ? `
+        <tr>
+          <th scope="row">Mês ${row.mes}</th>
+          <td colspan="4" style="color: #10b981; font-weight: 700; text-align: center;">Dívida quitada</td>
+        </tr>
+      `
+          : `
+        <tr>
+          <th scope="row">Mês ${row.mes}</th>
+          <td>${formatBRL(row.saldoDevedor)}</td>
+          <td style="color: #ef4444; font-weight: 700;">+ ${formatBRL(row.jurosMes)}</td>
+          <td>${formatBRL(row.pagamentoMinimo)}</td>
+          <td style="font-weight: 700;">${formatBRL(row.saldoAposPagamento)}</td>
+        </tr>
+      `
+      )
+      .join('');
+
+    // Add total row
+    const totalRow = document.createElement('tr');
+    totalRow.style.borderTop = '2px solid var(--border-subtle)';
+    totalRow.style.fontWeight = '700';
+    totalRow.innerHTML = `
+      <th scope="row">Total em 12 meses</th>
+      <td>—</td>
+      <td style="color: #ef4444;">+ ${formatBRL(custoJuros)}</td>
+      <td>${formatBRL(totalPago)}</td>
+      <td>${formatBRL(saldoFinal)}</td>
+    `;
+    tbody.appendChild(totalRow);
+  }
+
+  bindPair(saldoInput, saldoSlider);
+  bindPair(minimoInput, minimoSlider);
+  bindPair(taxaInput, taxaSlider);
+
+  if ((window as any).__initAbcSliders) (window as any).__initAbcSliders();
+  recalc();
+</script>
+
+<style>
+  .calc-page-section {
+    padding-block: 2rem 3rem;
+  }
+
+  .breadcrumb {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-block-end: 1rem;
+    display: flex;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+  }
+
+  .breadcrumb a:hover {
+    color: var(--brand-emerald);
+  }
+
+  .calc-header {
+    margin-block-end: 2rem;
+  }
+
+  .calc-header h1 {
+    font-size: clamp(1.65rem, 3vw, 2.35rem);
+    margin-block: 0.6rem 0.4rem;
+  }
+
+  .calc-header p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 1.02rem;
+  }
+
+  .calc-workspace {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 1.5rem;
+    align-items: start;
+  }
+
+  .calc-controls h2 {
+    font-size: 1.15rem;
+    margin-block-end: 1.25rem;
+  }
+
+  .control-group {
+    margin-block-end: 1.2rem;
+  }
+
+  .control-label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-block-end: 0.25rem;
+  }
+
+  .control-label-row output {
+    color: var(--text-primary);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Info box in controls */
+  .dc-info-box {
+    margin-top: 1.5rem;
+    padding: 1rem 1.15rem;
+    border-radius: 0.75rem;
+    background: rgba(239, 68, 68, 0.05);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    font-size: 0.84rem;
+    color: var(--text-secondary);
+    line-height: 1.55;
+  }
+
+  .dc-info-box strong {
+    display: block;
+    color: #ef4444;
+    font-size: 0.88rem;
+    margin-bottom: 0.35rem;
+  }
+
+  .dc-info-box p {
+    margin: 0;
+  }
+
+  .dc-info-box p + p {
+    margin-block-start: 0.65rem;
+  }
+
+  .dc-info-box strong.dc-info-sub {
+    display: inline;
+    margin-bottom: 0;
+    font-size: 0.84rem;
+  }
+
+  /* Comparison Banner */
+  .comparison-banner {
+    padding: 1.35rem 1.5rem;
+    border-radius: 1rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-card);
+    margin-block-end: 1.5rem;
+  }
+
+  .comparison-row {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 1rem;
+    align-items: center;
+    margin-block-end: 1rem;
+  }
+
+  .comparison-item {
+    text-align: center;
+  }
+
+  .comparison-label {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+  }
+
+  .comparison-value {
+    font-size: clamp(1.15rem, 2vw, 1.5rem);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .comparison-value--good {
+    color: var(--brand-emerald);
+  }
+
+  .comparison-value--bad {
+    color: #ef4444;
+  }
+
+  .comparison-divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .comparison-vs {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
+    border: 1px solid var(--border-subtle);
+  }
+
+  .comparison-result {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .comparison-result-label {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+  }
+
+  .comparison-result-value {
+    font-size: 1.1rem;
+    color: #ef4444;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .comparison-teto {
+    margin-block: 0.85rem 0;
+    padding: 0.6rem 0.85rem;
+    border-radius: 0.6rem;
+    background: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    font-size: 0.8rem;
+    color: #10b981;
+    line-height: 1.5;
+  }
+
+  /* KPI Grid */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-block-end: 1.35rem;
+  }
+
+  .kpi-box {
+    padding: 1.15rem;
+    border-radius: 0.9rem;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-elevated);
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .kpi-highlight {
+    background: linear-gradient(145deg, rgba(56, 189, 248, 0.06), var(--bg-surface));
+    border-color: rgba(2, 132, 199, 0.28);
+  }
+
+  .kpi-label {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+  }
+
+  .kpi-value {
+    font-size: clamp(1.2rem, 2vw, 1.55rem);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .kpi-emerald .kpi-value {
+    color: var(--text-primary);
+  }
+
+  .kpi-sub {
+    font-size: 0.76rem;
+    color: var(--text-muted);
+  }
+
+  /* FAQ */
+  .faq-section {
+    margin-block-start: 3rem;
+  }
+
+  .faq-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+    gap: 1.25rem;
+  }
+
+  .faq-card h3 {
+    font-size: 1.02rem;
+    margin-block-end: 0.5rem;
+  }
+
+  .faq-card p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+  }
+
+  /* Responsive */
+  @media (max-width: 980px) {
+    .calc-workspace {
+      grid-template-columns: 1fr;
+    }
+    .kpi-grid {
+      grid-template-columns: 1fr;
+    }
+    .comparison-row {
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+    }
+    .comparison-divider {
+      display: none;
+    }
+  }
+</style>

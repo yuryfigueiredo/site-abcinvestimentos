@@ -15,9 +15,9 @@ export const SITE_CONFIG = {
   author: 'Yury Figueiredo',
   domain: 'abcinvestimentos.com.br',
   url: 'https://www.abcinvestimentos.com.br',
-  tagline: 'Simuladores Financeiros, Guia do A ao Z e Inteligência para o seu Patrimônio',
+  tagline: 'Simuladores Financeiros e Guia do Investidor',
   description:
-    'Calculadoras financeiras gratuitas e precisas (Juros Compostos, Comparador CDB vs. LCI/LCA e Tesouro, Dividendos, Reserva de Emergência, Alugar vs. Financiar), Guia ABC do Investidor e Consultor Educativo com IA.',
+    'Calculadoras financeiras gratuitas (Juros Compostos, CDB vs. LCI/LCA, Dividendos, Reserva de Emergência), Guia ABC do Investidor e Consultor com IA.',
 
   // Fallback seguro das séries oficiais do Banco Central e B3 (usado caso a API esteja indisponível)
   defaultIndicators: {

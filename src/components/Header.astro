@@ -26,6 +26,7 @@ const isQuantoRendeActive = pathname.startsWith('/quanto-rende');
             id="calc-menu-btn"
           >
             <span>Ferramentas</span>
+            <span class="nav-badge-new" aria-label="Novo">Novo</span>
             <svg class="caret" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
           </button>
           <div class="mega-dropdown" id="calc-mega-menu" role="region" aria-label="Menu de Calculadoras Financeiras">
@@ -43,6 +44,7 @@ const isQuantoRendeActive = pathname.startsWith('/quanto-rende');
                     <div class="mega-item-title">
                       <span>{calc.shortTitle}</span>
                       <span class="mega-badge">{calc.badge}</span>
+                      {calc.slug === 'divida-cartao' && <span class="mega-badge-new">Novo</span>}
                     </div>
                     <p>{calc.subtitle}</p>
                   </div>
@@ -129,7 +131,10 @@ const isQuantoRendeActive = pathname.startsWith('/quanto-rende');
                   <FinanceIcon name={calc.icon} size={18} />
                 </span>
                 <div class="mobile-calc-info">
-                  <strong class="mobile-calc-name">{calc.shortTitle}</strong>
+                  <strong class="mobile-calc-name">
+                    {calc.shortTitle}
+                    {calc.slug === 'divida-cartao' && <span class="mobile-badge-new" style="margin-inline-start: 0.4rem;">NOVO</span>}
+                  </strong>
                   <span class="mobile-calc-sub">{calc.subtitle}</span>
                 </div>
                 <span class="mobile-calc-arrow" aria-hidden="true">→</span>
@@ -393,6 +398,20 @@ const isQuantoRendeActive = pathname.startsWith('/quanto-rende');
     background: var(--brand-blue);
   }
 
+  .nav-badge-new {
+    font-size: 0.58rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #ffffff;
+    background: linear-gradient(135deg, #0284c7, #0ea5e9);
+    padding: 0.1rem 0.38rem;
+    border-radius: 4px;
+    line-height: 1.4;
+    flex-shrink: 0;
+    box-shadow: 0 1px 4px rgba(2, 132, 199, 0.3);
+  }
+
   .caret {
     transition: transform 0.2s ease;
     opacity: 0.7;
@@ -490,6 +509,19 @@ const isQuantoRendeActive = pathname.startsWith('/quanto-rende');
     border: 1px solid var(--pill-border);
     padding: 0.08rem 0.38rem;
     border-radius: 4px;
+  }
+
+  .mega-badge-new {
+    font-size: 0.58rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #ffffff;
+    background: linear-gradient(135deg, #0284c7, #0ea5e9);
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    line-height: 1.4;
+    box-shadow: 0 1px 3px rgba(2, 132, 199, 0.25);
   }
 
   .mega-item p {

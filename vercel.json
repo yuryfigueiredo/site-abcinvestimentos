@@ -4,6 +4,18 @@
       "maxDuration": 30
     }
   },
+  "redirects": [
+    {
+      "source": "/guia/como-viver-de-renda-Com-fiis-e-dividendos",
+      "destination": "/guia/como-viver-de-renda-com-fiis-e-dividendos",
+      "permanent": true
+    },
+    {
+      "source": "/guia/como-viver-de-renda-Com-fiis-e-dividendos/",
+      "destination": "/guia/como-viver-de-renda-com-fiis-e-dividendos/",
+      "permanent": true
+    }
+  ],
   "headers": [
     {
       "source": "/",

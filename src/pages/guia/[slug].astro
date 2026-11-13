@@ -18,12 +18,25 @@ interface Props {
 const { guide } = Astro.props;
 
 const publishedAt = guide.datePublished ?? SITE_PUBLISHED_AT;
+const modifiedAt = guide.dateModified ?? publishedAt;
 const publishedLabel = new Date(`${publishedAt}T12:00:00`).toLocaleDateString('pt-BR', {
   day: '2-digit',
   month: '2-digit',
   year: 'numeric',
 });
+const modifiedLabel = new Date(`${modifiedAt}T12:00:00`).toLocaleDateString('pt-BR', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+});
+// Show "Atualizado em" only when dateModified differs from datePublished
+const showModifiedDate = guide.dateModified && guide.dateModified !== publishedAt;
 const articleUrl = new URL(Astro.url.pathname, SITE_CONFIG.url).toString();
+
+// Related articles: same level, excluding current article, up to 3
+const relatedArticles = GUIDES
+  .filter((g) => g.level === guide.level && g.slug !== guide.slug)
+  .slice(0, 3);
 
 const guideJsonLd = {
   '@context': 'https://schema.org',
@@ -34,13 +47,23 @@ const guideJsonLd = {
       description: guide.summary,
       image: [new URL('/og-image.png', SITE_CONFIG.url).toString()],
       datePublished: publishedAt,
-      dateModified: publishedAt,
+      dateModified: modifiedAt,
+      isAccessibleForFree: true,
       inLanguage: 'pt-BR',
       author: {
         '@type': 'Person',
         name: SITE_CONFIG.author,
         url: `${SITE_CONFIG.url}/sobre`,
+        jobTitle: 'Educador Financeiro',
+        knowsAbout: ['Renda Fixa', 'Fundos Imobiliários', 'Ações', 'Juros Compostos', 'Educação Financeira'],
       },
+      editor: guide.editor
+        ? {
+            '@type': 'Person',
+            name: guide.editor,
+            url: `${SITE_CONFIG.url}/sobre`,
+          }
+        : undefined,
       publisher: { '@id': `${SITE_CONFIG.url}/#organization` },
       isPartOf: { '@type': 'WebSite', '@id': `${SITE_CONFIG.url}/#website` },
       mainEntityOfPage: { '@type': 'WebPage', '@id': articleUrl },
@@ -57,7 +80,7 @@ const guideJsonLd = {
 };
 ---
 
-<BaseLayout title={`${guide.title} | Guia ABC Investimentos`} description={guide.summary}>
+<BaseLayout title={`${guide.title} | ABC`} description={guide.summary}>
   <script type="application/ld+json" is:inline set:html={JSON.stringify(guideJsonLd)} />
   <article class="guide-post-section">
     <div class="container guide-container">
@@ -74,7 +97,12 @@ const guideJsonLd = {
         <p class="post-lead">{guide.subtitle}</p>
         <p class="post-byline">
           Por <a href="/sobre">{SITE_CONFIG.author}</a>
-          <time datetime={publishedAt}>Atualizado em {publishedLabel}</time>
+          {guide.editor && <span class="badge-editor-verified">✓ Verificado por {guide.editor}</span>}
+          {showModifiedDate ? (
+            <time datetime={modifiedAt}>Atualizado em {modifiedLabel}</time>
+          ) : (
+            <time datetime={publishedAt}>Publicado em {publishedLabel}</time>
+          )}
         </p>
       </header>
 
@@ -100,6 +128,12 @@ const guideJsonLd = {
           </section>
         ))}
 
+        <!-- Expert tip callout (E-E-A-T signal) -->
+        <div class="post-expert-tip">
+          <strong>💡 Dica:</strong> Use nossas calculadoras gratuitas para aplicar os conceitos deste guia na prática.
+          Todos os simuladores usam dados oficiais do Banco Central atualizados em tempo real.
+        </div>
+
         <div class="post-tool-cta">
           <div>
             <span class="badge-pill">Simulador Prático</span>
@@ -123,6 +157,22 @@ const guideJsonLd = {
         </div>
         <a href="/planilha-abc" class="btn btn-secondary">Conhecer a Planilha Oficial →</a>
       </aside>
+
+      <!-- Related articles from the same level (E-E-A-T internal linking) -->
+      {relatedArticles.length > 0 && (
+        <section class="post-related-articles">
+          <h2>Leia também</h2>
+          <div class="related-grid">
+            {relatedArticles.map((related) => (
+              <a href={`/guia/${related.slug}`} class="related-card">
+                <span class="badge-pill">{related.levelTitle}</span>
+                <h3>{related.title}</h3>
+                <span class="related-read-time">{related.readTime}</span>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   </article>
 </BaseLayout>
@@ -275,5 +325,87 @@ const guideJsonLd = {
     margin: 0;
     font-size: 0.9rem;
     color: var(--text-secondary);
+  }
+
+  /* Editor verification badge (E-E-A-T signal) */
+  .badge-editor-verified {
+    display: inline-block;
+    margin-inline-start: 0.5rem;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--brand-emerald);
+    background: color-mix(in oklab, var(--brand-emerald) 12%, transparent);
+    border: 1px solid color-mix(in oklab, var(--brand-emerald) 25%, transparent);
+    vertical-align: middle;
+  }
+
+  /* Expert tip callout */
+  .post-expert-tip {
+    margin-block: 1.5rem 2rem;
+    padding: 1rem 1.2rem;
+    border-radius: 0.8rem;
+    background: color-mix(in oklab, var(--brand-blue) 8%, var(--bg-elevated));
+    border-inline-start: 4px solid var(--brand-blue);
+    font-size: 0.94rem;
+    color: var(--text-secondary);
+    line-height: 1.55;
+  }
+
+  .post-expert-tip strong {
+    color: var(--text-primary);
+  }
+
+  /* Related articles section */
+  .post-related-articles {
+    margin-block-start: 2.5rem;
+  }
+
+  .post-related-articles h2 {
+    font-size: 1.3rem;
+    margin-block-end: 1.25rem;
+  }
+
+  .related-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .related-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .related-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1.2rem;
+    border-radius: 0.85rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    text-decoration: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .related-card:hover {
+    border-color: var(--brand-blue);
+    box-shadow: 0 2px 12px rgba(2, 132, 199, 0.08);
+  }
+
+  .related-card h3 {
+    font-size: 0.95rem;
+    margin: 0;
+    color: var(--text-primary);
+    line-height: 1.4;
+  }
+
+  .related-read-time {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    font-weight: 600;
   }
 </style>

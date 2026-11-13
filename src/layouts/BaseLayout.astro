@@ -37,6 +37,22 @@ const siteJsonLd = {
       slogan: SITE_CONFIG.tagline,
       email: SITE_CONFIG.contact.email,
       logo: new URL('/favicon.svg', SITE_CONFIG.url).toString(),
+      founder: {
+        '@type': 'Person',
+        name: SITE_CONFIG.author,
+        url: `${SITE_CONFIG.url}/sobre`,
+      },
+      foundingDate: '2026-10-25',
+      areaServed: 'BR',
+      knowsAbout: [
+        'Educação Financeira',
+        'Renda Fixa',
+        'Fundos Imobiliários',
+        'Ações',
+        'Juros Compostos',
+        'Simuladores Financeiros',
+      ],
+      // Add social profile URLs here as the site grows (e.g. Twitter, YouTube, Instagram)
       sameAs: [],
     },
     {
@@ -53,7 +69,7 @@ const siteJsonLd = {
 ---
 
 <!doctype html>
-<html lang="pt-BR" data-theme="dark">
+<html lang="pt-BR" data-theme="dark" itemscope itemtype="https://schema.org/WebSite">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -174,6 +190,9 @@ const siteJsonLd = {
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImageUrl} />
+
+    <!-- Copyright notice -->
+    <meta name="copyright" content="© 2026 ABC Investimentos — abcinvestimentos.com.br" />
 
     <!-- Dados Estruturados: Organização & WebSite -->
     <script type="application/ld+json" set:html={JSON.stringify(siteJsonLd)} />
