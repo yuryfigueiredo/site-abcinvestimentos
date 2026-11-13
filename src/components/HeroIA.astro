@@ -1,21 +1,24 @@
 ---
 import { CALCULATORS } from '../data/calculators';
 import FinanceIcon from './icons/FinanceIcon.astro';
+import { getIndicators } from '../lib/indicators';
+import { formatPct } from '../lib/finance';
 
 const topFour = CALCULATORS.filter((c) => c.isTopFour);
-const freeToolsCount = CALCULATORS.length;---
+const freeToolsCount = CALCULATORS.length;
+const indicators = await getIndicators();---
 
 <section class="hero-section" id="consultor-ia">
   <!-- Canvas de Constelação Orbital (Estilo Mais Retorno) -->
   <canvas id="hero-constellation-canvas" class="hero-canvas" aria-hidden="true"></canvas>
 
-  <!-- Tags Flutuantes de Mercado no Espaço Cósmico (taxas injetadas ao vivo pelo BCB) -->
+  <!-- Tags Flutuantes de Mercado no Espaço Cósmico (taxas do BCB já no HTML; o script renova quando o Ticker traz dados novos) -->
   <div class="ambient-tags-layer" aria-hidden="true">
-    <span class="ambient-tag tag-pos-1"><span class="tag-dot"></span><span id="ambient-selic">Selic —%</span></span>
+    <span class="ambient-tag tag-pos-1"><span class="tag-dot"></span><span id="ambient-selic">Selic {formatPct(indicators.selic)}</span></span>
     <span class="ambient-tag tag-pos-2"><span class="tag-dot"></span>Isenção IR • LCI/LCA</span>
-    <span class="ambient-tag tag-pos-3"><span class="tag-dot"></span><span id="ambient-cdi">CDI —%</span></span>
+    <span class="ambient-tag tag-pos-3"><span class="tag-dot"></span><span id="ambient-cdi">CDI {formatPct(indicators.cdi)}</span></span>
     <span class="ambient-tag tag-pos-4"><span class="tag-dot"></span>Liquidez Diária</span>
-    <span class="ambient-tag tag-pos-5"><span class="tag-dot"></span><span id="ambient-ipca">IPCA —%</span></span>
+    <span class="ambient-tag tag-pos-5"><span class="tag-dot"></span><span id="ambient-ipca">IPCA {formatPct(indicators.ipca12m)}</span></span>
     <span class="ambient-tag tag-pos-6"><span class="tag-dot"></span>Renda Passiva</span>
   </div>
 
