@@ -63,7 +63,13 @@ function latestRealizedDate(dates: Array<string | null>): string | null {
  */
 export default async function handler(request: VercelRequest, response: VercelResponse): Promise<void> {
   const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret || request.headers?.authorization !== `Bearer ${cronSecret}`) {
+  // 500 e não 401 quando a variável falta: é config nossa, e o Vercel marca a
+  // invocação agendada como falha, o que dispara o alerta de e-mail do cron.
+  if (!cronSecret) {
+    json(response, 500, { error: 'CRON_SECRET não configurada.' });
+    return;
+  }
+  if (request.headers?.authorization !== `Bearer ${cronSecret}`) {
     json(response, 401, { error: 'Unauthorized' });
     return;
   }

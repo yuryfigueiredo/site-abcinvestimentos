@@ -94,13 +94,14 @@ describe('api/cron/indicadores — rebuild diário das taxas', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('rejeita quando CRON_SECRET não está configurado', async () => {
+  it('falha como erro de servidor quando CRON_SECRET não está configurado', async () => {
     delete process.env.CRON_SECRET;
     const { fetchMock } = stubFetch({ bcbOk: true, publishedDate: '11/11/2026' });
 
-    const { statusCode } = await callHandler(`Bearer ${SECRET}`);
+    const { statusCode, payload } = await callHandler(`Bearer ${SECRET}`);
 
-    expect(statusCode).toBe(401);
+    expect(statusCode).toBe(500);
+    expect(payload.error).toContain('CRON_SECRET');
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
