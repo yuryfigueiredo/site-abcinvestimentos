@@ -1,6 +1,3 @@
-import { getIndicators } from '../../src/lib/indicators';
-import { SITE_CONFIG } from '../../src/config/site';
-
 interface VercelRequest {
   headers?: Record<string, string | string[] | undefined>;
 }
@@ -11,6 +8,10 @@ interface VercelResponse {
   end(body?: string): void;
 }
 
+const SITE_URL = 'https://www.abcinvestimentos.com.br';
+// 432 Meta Selic, 4389 CDI, 13522 IPCA 12m, 1 Dólar: as mesmas séries do build.
+const SERIE_CODES = [432, 4389, 13522, 1];
+
 function json(response: VercelResponse, status: number, data: unknown): void {
   response.status(status);
   response.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -18,9 +19,47 @@ function json(response: VercelResponse, status: number, data: unknown): void {
   response.end(JSON.stringify(data));
 }
 
+async function lastObservation(code: number): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://api.bcb.gov.br/dados/serie/bcdata.sgs.${code}/dados/ultimos/1?formato=json`,
+      { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(3500) },
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as Array<{ data: string; valor: string }>;
+    if (!Array.isArray(data) || !data[0]?.data || !Number.isFinite(Number(String(data[0].valor).replace(',', '.')))) return null;
+    return data[0].data;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Data da observação realizada mais recente, descartando as futuras: a Meta Selic
+ * (432) já vem datada para o próximo período do Copom.
+ */
+function latestRealizedDate(dates: Array<string | null>): string | null {
+  const today = new Date().toISOString().slice(0, 10);
+  const iso = dates
+    .map((d) => /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(d ?? ''))
+    .filter((m): m is RegExpExecArray => m !== null)
+    .map((m) => `${m[3]}-${m[2]}-${m[1]}`)
+    .filter((value) => value <= today)
+    .sort();
+  const latest = iso.at(-1);
+  if (!latest) return null;
+  const [year, month, day] = latest.split('-');
+  return `${day}/${month}/${year}`;
+}
+
 /**
  * Cron diário: o site é estático, então taxas novas só entram no HTML com um
  * rebuild. O build já busca o BCB, logo basta disparar o Deploy Hook.
+ *
+ * Este arquivo não importa nada do projeto de propósito. Cada arquivo em api/ é
+ * compilado como função isolada pela Vercel: importar de outra função ou de src/
+ * quebra em runtime (src/config/site.ts usa import.meta.env, que não existe aqui).
+ * A lógica de data duplica a de src/lib/indicators.ts -- se mudar uma, mude outra.
  */
 export default async function handler(request: VercelRequest, response: VercelResponse): Promise<void> {
   const cronSecret = process.env.CRON_SECRET;
@@ -35,8 +74,9 @@ export default async function handler(request: VercelRequest, response: VercelRe
     return;
   }
 
-  const fresh = await getIndicators();
-  if (fresh.source !== 'bcb-sgs-live') {
+  const observed = await Promise.all(SERIE_CODES.map(lastObservation));
+  const freshDate = latestRealizedDate(observed);
+  if (!freshDate) {
     // Rebuildar agora trocaria as taxas publicadas pelos defaults hardcoded.
     json(response, 200, { skipped: 'bcb-indisponivel' });
     return;
@@ -45,14 +85,14 @@ export default async function handler(request: VercelRequest, response: VercelRe
   // A entrega do cron é best-effort e pode repetir o mesmo agendamento, e em fins
   // de semana o BCB não publica série nova. Só rebuilda quando a data mudou.
   try {
-    const current = await fetch(`${SITE_CONFIG.url}/api/indicadores.json`, {
+    const current = await fetch(`${SITE_URL}/api/indicadores.json`, {
       headers: { Accept: 'application/json' },
       signal: AbortSignal.timeout(8000),
     });
     if (current.ok) {
       const published = (await current.json()) as { updatedAt?: string };
-      if (published.updatedAt === fresh.updatedAt) {
-        json(response, 200, { skipped: 'sem-dados-novos', updatedAt: fresh.updatedAt });
+      if (published.updatedAt === freshDate) {
+        json(response, 200, { skipped: 'sem-dados-novos', updatedAt: freshDate });
         return;
       }
     }
@@ -67,5 +107,5 @@ export default async function handler(request: VercelRequest, response: VercelRe
     return;
   }
 
-  json(response, 200, { rebuilt: true, updatedAt: fresh.updatedAt });
+  json(response, 200, { rebuilt: true, updatedAt: freshDate });
 }

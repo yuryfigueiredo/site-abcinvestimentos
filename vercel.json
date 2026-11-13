@@ -10,6 +10,12 @@
       "maxDuration": 30
     }
   },
+  "rewrites": [
+    {
+      "source": "/api/consulta",
+      "destination": "/api/ia"
+    }
+  ],
   "redirects": [
     {
       "source": "/guia/como-viver-de-renda-Com-fiis-e-dividendos",
