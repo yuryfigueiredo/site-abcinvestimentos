@@ -1,6 +1,6 @@
 ---
-import { SITE_CONFIG } from '../config/site';
-const d = SITE_CONFIG.defaultIndicators;
+import { getIndicators } from '../lib/indicators';
+const d = await getIndicators();
 
 function splitNumberChars(val: number): string[] {
   return val
@@ -21,12 +21,12 @@ const dolarChars = splitNumberChars(d.dolar);
       class="ticker-info-badge"
       id="bcb-ticker-badge"
       role="status"
-      title="Indicadores macroeconômicos sincronizados em tempo real com o Banco Central do Brasil (SGS)"
+      title={`Indicadores do Banco Central do Brasil (SGS) referentes a ${d.updatedAt}`}
     >
       <span class="live-beacon-dot" aria-hidden="true"></span>
       <span class="ticker-badge-text">
         <span class="badge-prefix">BCB SGS</span>
-        <span class="ticker-source" id="bcb-ticker-source">Ao Vivo</span>
+        <span class="ticker-source" id="bcb-ticker-source">{d.updatedAt}</span>
       </span>
     </div>
 
@@ -455,8 +455,8 @@ const dolarChars = splitNumberChars(d.dolar);
 
     if (liveData) {
       const sourceEl = document.getElementById('bcb-ticker-source');
-      if (sourceEl && liveData.source === 'bcb-sgs-live') {
-        sourceEl.textContent = 'Ao Vivo';
+      if (sourceEl && typeof liveData.updatedAt === 'string') {
+        sourceEl.textContent = liveData.updatedAt;
       }
       (window as any).__ABC_INDICATORS__ = liveData;
       window.dispatchEvent(new CustomEvent('abc:indicators-loaded', { detail: liveData }));

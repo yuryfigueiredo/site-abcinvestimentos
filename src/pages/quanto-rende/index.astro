@@ -1,9 +1,13 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { PRODUCTS, AMOUNTS } from '../../data/quanto-rende';
+import { PRODUCTS, AMOUNTS, calculateReturns } from '../../data/quanto-rende';
+import { getIndicators } from '../../lib/indicators';
+import { formatBRL, formatPct } from '../../lib/finance';
+
+const indicators = await getIndicators();
 
 const canonicalUrl = 'https://www.abcinvestimentos.com.br/quanto-rende';
-const pageTitle = 'Quanto Rende: Simulações de Investimento com Taxas Ao Vivo | ABC';
+const pageTitle = 'Quanto Rende: Simulações com Taxas do Banco Central | ABC';
 const pageDescription = 'Descubra quanto rendem seus investimentos com taxas atualizadas do Banco Central. Simulações para poupança, CDB, LCI, LCA e Tesouro Direto.';
 ---
 
@@ -43,22 +47,22 @@ const pageDescription = 'Descubra quanto rendem seus investimentos com taxas atu
         <div class="abc-grid abc-grid-cols-2 md:abc-grid-cols-4 abc-gap-4">
           <div class="abc-text-center">
             <div class="abc-text-sm abc-text-gray-600">Selic</div>
-            <div class="abc-text-2xl abc-font-bold abc-text-abc-blue" id="selic-rate">--</div>
+            <div class="abc-text-2xl abc-font-bold abc-text-abc-blue" id="selic-rate">{formatPct(indicators.selic)}</div>
             <div class="abc-text-xs abc-text-gray-500">ao ano</div>
           </div>
           <div class="abc-text-center">
             <div class="abc-text-sm abc-text-gray-600">CDI</div>
-            <div class="abc-text-2xl abc-font-bold abc-text-abc-blue" id="cdi-rate">--</div>
+            <div class="abc-text-2xl abc-font-bold abc-text-abc-blue" id="cdi-rate">{formatPct(indicators.cdi)}</div>
             <div class="abc-text-xs abc-text-gray-500">ao ano</div>
           </div>
           <div class="abc-text-center">
             <div class="abc-text-sm abc-text-gray-600">IPCA</div>
-            <div class="abc-text-2xl abc-font-bold abc-text-abc-blue" id="ipca-rate">--</div>
+            <div class="abc-text-2xl abc-font-bold abc-text-abc-blue" id="ipca-rate">{formatPct(indicators.ipca12m)}</div>
             <div class="abc-text-xs abc-text-gray-500">ao ano</div>
           </div>
           <div class="abc-text-center">
             <div class="abc-text-sm abc-text-gray-600">Atualizado</div>
-            <div class="abc-text-sm abc-text-gray-700" id="rate-date">--</div>
+            <div class="abc-text-sm abc-text-gray-700" id="rate-date">{indicators.updatedAt}</div>
             <div class="abc-text-xs abc-text-gray-500">Banco Central</div>
           </div>
         </div>
@@ -85,6 +89,9 @@ const pageDescription = 'Descubra quanto rendem seus investimentos com taxas atu
                 <div class="abc-text-sm abc-text-gray-600">
                   em {product.name}
                 </div>
+                <div class="abc-text-sm abc-text-green-600 abc-font-semibold abc-mt-2">
+                  {formatBRL(calculateReturns(amount.value, product, indicators, 12).netReturn)} em 12 meses
+                </div>
                 <div class="abc-text-xs abc-text-abc-blue abc-mt-2">
                   Ver simulação completa →
                 </div>
@@ -110,8 +117,8 @@ const pageDescription = 'Descubra quanto rendem seus investimentos com taxas atu
             protegendo seu poder de compra.
           </p>
           <p>
-            Nossas simulações utilizam as <strong>taxas ao vivo do Banco Central</strong>, atualizadas diariamente, para que você tenha 
-            os números mais precisos possíveis. Os cálculos consideram juros compostos e, quando aplicável, a tabela regressiva do 
+            Nossas simulações utilizam as <strong>taxas publicadas pelo Banco Central</strong> (Selic {formatPct(indicators.selic)} e CDI {formatPct(indicators.cdi)} em {indicators.updatedAt}), para que você tenha
+            os números mais precisos possíveis. Os cálculos consideram juros compostos e, quando aplicável, a tabela regressiva do
             Imposto de Renda.
           </p>
         </div>
@@ -123,7 +130,7 @@ const pageDescription = 'Descubra quanto rendem seus investimentos com taxas atu
           Quer simulações mais detalhadas?
         </h2>
         <p class="abc-text-lg abc-mb-6 abc-opacity-90">
-          Use nossas calculadoras gratuitas com dados ao vivo do Banco Central
+          Use nossas calculadoras gratuitas com as taxas do Banco Central
         </p>
         <div class="abc-flex abc-flex-wrap abc-gap-4 abc-justify-center">
           <a href="/calculadoras/renda-fixa" class="abc-bg-white abc-text-abc-blue abc-px-6 abc-py-3 abc-rounded-lg abc-font-semibold hover:abc-bg-gray-100 abc-transition">
@@ -139,23 +146,4 @@ const pageDescription = 'Descubra quanto rendem seus investimentos com taxas atu
       </section>
     </div>
   </div>
-
-  <script>
-    (function() {
-      function waitForIndicators() {
-        if (window.__ABC_INDICATORS__) {
-          const indicators = window.__ABC_INDICATORS__;
-          document.getElementById('selic-rate').textContent = indicators.selic.toFixed(2) + '%';
-          document.getElementById('cdi-rate').textContent = indicators.cdi.toFixed(2) + '%';
-          document.getElementById('ipca-rate').textContent = indicators.ipca12m.toFixed(2) + '%';
-          // updatedAt já chega formatado em pt-BR, não como ISO parseável.
-          document.getElementById('rate-date').textContent = indicators.updatedAt;
-        } else {
-          setTimeout(waitForIndicators, 100);
-        }
-      }
-
-      waitForIndicators();
-    })();
-  </script>
 </BaseLayout>

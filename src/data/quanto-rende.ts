@@ -1,3 +1,5 @@
+import type { Indicators } from '../lib/indicators';
+
 export interface QuantoRendeProduct {
   slug: string;
   name: string;
@@ -25,7 +27,6 @@ export const PRODUCTS: QuantoRendeProduct[] = [
     name: 'Poupança',
     type: 'poupanca',
     rateType: 'fixed',
-    rate: 6.17, // 0.5% month + TR ≈ 6.17% year (2026 estimate)
     hasIR: false,
     hasFGC: true,
     liquidity: 'daily',
@@ -114,52 +115,44 @@ export interface PeriodCalculation {
   irRate?: number;
 }
 
+export function annualRateFor(product: QuantoRendeProduct, indicators: Indicators): number {
+  if (product.type === 'poupanca') return indicators.poupanca / 100;
+  if (product.rateType === 'cdi' && product.ratePercent) {
+    return (indicators.cdi / 100) * (product.ratePercent / 100);
+  }
+  if (product.rateType === 'ipca' && product.ratePercent) {
+    return (indicators.ipca12m + product.ratePercent) / 100;
+  }
+  if (product.rateType === 'fixed' && product.rate) return product.rate / 100;
+  return 0;
+}
+
 export function calculateReturns(
   principal: number,
   product: QuantoRendeProduct,
-  selicAnnual: number,
-  ipcaAnnual: number,
+  indicators: Indicators,
   periodMonths: number
 ): PeriodCalculation {
-  const cdiAnnual = selicAnnual - 0.10; // CDI is typically 0.10pp below Selic
-  
-  let annualRate: number;
-  
-  if (product.rateType === 'fixed' && product.rate) {
-    annualRate = product.rate / 100;
-  } else if (product.rateType === 'cdi' && product.ratePercent) {
-    annualRate = (cdiAnnual * product.ratePercent) / 100;
-  } else if (product.rateType === 'ipca' && product.ratePercent) {
-    annualRate = ((ipcaAnnual + product.ratePercent)) / 100;
-  } else {
-    annualRate = 0;
-  }
-
-  // Convert annual rate to monthly
-  const monthlyRate = Math.pow(1 + annualRate, 1/12) - 1;
-  
-  // Calculate gross return
+  const annualRate = annualRateFor(product, indicators);
+  const monthlyRate = Math.pow(1 + annualRate, 1 / 12) - 1;
   const grossReturn = principal * (Math.pow(1 + monthlyRate, periodMonths) - 1);
-  
-  // Calculate IR rate based on period
+
   let irRate = 0;
   if (product.hasIR) {
     if (periodMonths <= 6) irRate = 0.225;
-    else if (periodMonths <= 12) irRate = 0.20;
+    else if (periodMonths <= 12) irRate = 0.2;
     else if (periodMonths <= 24) irRate = 0.175;
     else irRate = 0.15;
   }
-  
-  // Calculate net return
+
   const netReturn = grossReturn * (1 - irRate);
-  const finalAmount = principal + netReturn;
-  
+
   return {
     months: periodMonths,
     label: periodMonths === 1 ? '1 mês' : `${periodMonths} meses`,
     grossReturn,
     netReturn,
-    finalAmount,
+    finalAmount: principal + netReturn,
     irRate: irRate > 0 ? irRate : undefined,
   };
 }

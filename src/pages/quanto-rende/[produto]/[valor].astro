@@ -1,7 +1,9 @@
 ---
 import { type GetStaticPathsResult, type GetStaticPathsResultKey } from 'astro';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
-import { PRODUCTS, AMOUNTS, type QuantoRendeProduct, type QuantoRendeAmount } from '../../../data/quanto-rende';
+import { PRODUCTS, AMOUNTS, calculateReturns, type QuantoRendeProduct, type QuantoRendeAmount } from '../../../data/quanto-rende';
+import { getIndicators } from '../../../lib/indicators';
+import { formatBRL, formatPct } from '../../../lib/finance';
 
 export async function getStaticPaths(): Promise<GetStaticPathsResult> {
   const paths: GetStaticPathsResultKey[] = [];
@@ -20,6 +22,18 @@ export async function getStaticPaths(): Promise<GetStaticPathsResult> {
 
 const { product, amount } = Astro.props as { product: QuantoRendeProduct; amount: QuantoRendeAmount };
 
+const indicators = await getIndicators();
+const PERIODS = [1, 6, 12, 24];
+const results = PERIODS.map((months) => calculateReturns(amount.value, product, indicators, months));
+
+// Poupança não se compara com ela mesma: o rival vira um CDB de liquidez diária.
+const isPoupanca = product.type === 'poupanca';
+const rival = PRODUCTS.find((p) => p.slug === (isPoupanca ? 'cdb-100-cdi' : 'poupanca'))!;
+const product12 = calculateReturns(amount.value, product, indicators, 12);
+const rival12 = calculateReturns(amount.value, rival, indicators, 12);
+const difference = product12.finalAmount - rival12.finalAmount;
+const winner = difference >= 0 ? product : rival;
+
 const canonicalUrl = `https://www.abcinvestimentos.com.br/quanto-rende/${product.slug}/${amount.slug}`;
 const pageTitle = `Quanto rende ${amount.displayText} em ${product.name} | ABC`;
 const pageDescription = `Descubra quanto ${amount.displayText} rendem em ${product.name} em 1, 6, 12 e 24 meses com taxas atualizadas do Banco Central.`;
@@ -33,7 +47,7 @@ const faqSchema = {
       name: `Quanto rende ${amount.displayText} em ${product.name}?`,
       acceptedAnswer: {
         '@type': 'Answer',
-        text: `Com as taxas atuais do Banco Central, ${amount.displayText} em ${product.name} rendem aproximadamente R$ ${Math.round(amount.value * 0.01)} em 1 mês, R$ ${Math.round(amount.value * 0.06)} em 6 meses e R$ ${Math.round(amount.value * 0.13)} em 12 meses.`,
+        text: `Com as taxas do Banco Central de ${indicators.updatedAt} (Selic ${formatPct(indicators.selic)}, CDI ${formatPct(indicators.cdi)}), ${amount.displayText} em ${product.name} rendem ${formatBRL(results[0].netReturn)} em 1 mês, ${formatBRL(results[1].netReturn)} em 6 meses e ${formatBRL(results[2].netReturn)} em 12 meses, já líquidos${product.hasIR ? ' do Imposto de Renda' : ' (isento de Imposto de Renda)'}. O valor final em 12 meses é ${formatBRL(product12.finalAmount)}.`,
       },
     },
     {
@@ -108,22 +122,22 @@ const faqSchema = {
           <div id="rate-display" class="abc-grid abc-grid-cols-2 md:abc-grid-cols-4 abc-gap-4">
             <div class="abc-text-center">
               <div class="abc-text-sm abc-text-gray-600">Selic</div>
-              <div class="abc-text-2xl abc-font-bold abc-text-abc-blue" id="selic-rate">--</div>
+              <div class="abc-text-2xl abc-font-bold abc-text-abc-blue" id="selic-rate">{formatPct(indicators.selic)}</div>
               <div class="abc-text-xs abc-text-gray-500">ao ano</div>
             </div>
             <div class="abc-text-center">
               <div class="abc-text-sm abc-text-gray-600">CDI</div>
-              <div class="abc-text-2xl abc-font-bold abc-text-abc-blue" id="cdi-rate">--</div>
+              <div class="abc-text-2xl abc-font-bold abc-text-abc-blue" id="cdi-rate">{formatPct(indicators.cdi)}</div>
               <div class="abc-text-xs abc-text-gray-500">ao ano</div>
             </div>
             <div class="abc-text-center">
               <div class="abc-text-sm abc-text-gray-600">IPCA</div>
-              <div class="abc-text-2xl abc-font-bold abc-text-abc-blue" id="ipca-rate">--</div>
+              <div class="abc-text-2xl abc-font-bold abc-text-abc-blue" id="ipca-rate">{formatPct(indicators.ipca12m)}</div>
               <div class="abc-text-xs abc-text-gray-500">ao ano</div>
             </div>
             <div class="abc-text-center">
               <div class="abc-text-sm abc-text-gray-600">Atualizado</div>
-              <div class="abc-text-sm abc-text-gray-700" id="rate-date">--</div>
+              <div class="abc-text-sm abc-text-gray-700" id="rate-date">{indicators.updatedAt}</div>
               <div class="abc-text-xs abc-text-gray-500">Banco Central</div>
             </div>
           </div>
@@ -145,11 +159,14 @@ const faqSchema = {
                 </tr>
               </thead>
               <tbody id="results-body">
-                <tr>
-                  <td colspan="4" class="abc-px-4 abc-py-8 abc-text-center abc-text-gray-500">
-                    Carregando cálculos...
-                  </td>
-                </tr>
+                {results.map((result) => (
+                  <tr class="abc-border-t">
+                    <td class="abc-px-4 abc-py-3 abc-font-medium">{result.label}</td>
+                    <td class="abc-px-4 abc-py-3">{formatBRL(result.grossReturn)}</td>
+                    <td class="abc-px-4 abc-py-3 abc-font-semibold">{formatBRL(result.netReturn)}</td>
+                    <td class="abc-px-4 abc-py-3 abc-text-green-600 abc-font-bold">{formatBRL(result.finalAmount)}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -165,27 +182,27 @@ const faqSchema = {
           )}
         </section>
 
-        <!-- Comparison with Poupança -->
+        <!-- Comparison -->
         <section class="abc-bg-green-50 abc-border abc-border-green-200 abc-rounded-lg abc-p-6 abc-mb-8">
           <h2 class="abc-text-xl abc-font-semibold abc-text-gray-900 abc-mb-4">
-            Comparação com a Poupança
+            Comparação com {rival.name}
           </h2>
           <p class="abc-text-gray-700 abc-mb-4">
-            Em 12 meses, {amount.displayText} em {product.name} rendem significativamente mais que na poupança.
+            Em 12 meses, {amount.displayText} em {winner.name} rendem {formatBRL(Math.abs(difference))} a mais que em {winner === product ? rival.name : product.name}.
           </p>
           <div class="abc-grid md:abc-grid-cols-2 abc-gap-4">
             <div class="abc-bg-white abc-rounded-lg abc-p-4 abc-text-center">
-              <div class="abc-text-sm abc-text-gray-600 abc-mb-1">Na Poupança (12 meses)</div>
-              <div class="abc-text-2xl abc-font-bold abc-text-gray-700" id="poupanca-12m">--</div>
+              <div class="abc-text-sm abc-text-gray-600 abc-mb-1">Em {product.name} (12 meses)</div>
+              <div class="abc-text-2xl abc-font-bold abc-text-gray-700" id="product-12m">{formatBRL(product12.finalAmount)}</div>
             </div>
             <div class="abc-bg-white abc-rounded-lg abc-p-4 abc-text-center">
-              <div class="abc-text-sm abc-text-gray-600 abc-mb-1">Em {product.name} (12 meses)</div>
-              <div class="abc-text-2xl abc-font-bold abc-text-green-600" id="product-12m">--</div>
+              <div class="abc-text-sm abc-text-gray-600 abc-mb-1">Em {rival.name} (12 meses)</div>
+              <div class="abc-text-2xl abc-font-bold abc-text-green-600" id="rival-12m">{formatBRL(rival12.finalAmount)}</div>
             </div>
           </div>
           <div class="abc-mt-4 abc-text-center">
-            <div class="abc-text-sm abc-text-gray-600">Diferença em 12 meses</div>
-            <div class="abc-text-3xl abc-font-bold abc-text-green-600" id="difference-12m">--</div>
+            <div class="abc-text-sm abc-text-gray-600">Diferença em 12 meses a favor de {winner.name}</div>
+            <div class="abc-text-3xl abc-font-bold abc-text-green-600" id="difference-12m">{formatBRL(Math.abs(difference))}</div>
           </div>
         </section>
 
@@ -222,7 +239,7 @@ const faqSchema = {
             Quer simular outros valores e produtos?
           </h2>
           <p class="abc-text-lg abc-mb-6 abc-opacity-90">
-            Use nossas calculadoras gratuitas com dados ao vivo do Banco Central
+            Use nossas calculadoras gratuitas com as taxas do Banco Central
           </p>
           <div class="abc-flex abc-flex-wrap abc-gap-4 abc-justify-center">
             <a href="/calculadoras/renda-fixa" class="abc-bg-white abc-text-abc-blue abc-px-6 abc-py-3 abc-rounded-lg abc-font-semibold hover:abc-bg-gray-100 abc-transition">
@@ -254,89 +271,4 @@ const faqSchema = {
     </div>
   </div>
 
-  <script define:vars={{ productSlug: product.slug, productType: product.type, rateType: product.rateType, ratePercent: product.ratePercent, fixedRate: product.rate, hasIR: product.hasIR, amountValue: amount.value }}>
-    (function() {
-      function formatCurrency(value) {
-        return 'R$ ' + value.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-      }
-
-      function calculateIRRate(months) {
-        if (months <= 6) return 0.225;
-        if (months <= 12) return 0.20;
-        if (months <= 24) return 0.175;
-        return 0.15;
-      }
-
-      function calculateReturns(principal, annualRate, months, hasIR) {
-        const monthlyRate = Math.pow(1 + annualRate, 1/12) - 1;
-        const grossReturn = principal * (Math.pow(1 + monthlyRate, months) - 1);
-        const irRate = hasIR ? calculateIRRate(months) : 0;
-        const netReturn = grossReturn * (1 - irRate);
-        return { grossReturn, netReturn, finalAmount: principal + netReturn, irRate };
-      }
-
-      function renderResults(indicators) {
-        const cdi = indicators.cdi / 100;
-        const ipca = indicators.ipca12m / 100;
-
-        // Determine annual rate
-        let annualRate;
-        if (productType === 'poupanca') {
-          annualRate = 0.0617; // Fixed ~6.17% year
-        } else if (rateType === 'cdi') {
-          annualRate = cdi * (ratePercent / 100);
-        } else if (rateType === 'ipca') {
-          annualRate = ipca + (ratePercent / 100);
-        } else {
-          annualRate = 0;
-        }
-
-        // Display rates
-        document.getElementById('selic-rate').textContent = indicators.selic.toFixed(2) + '%';
-        document.getElementById('cdi-rate').textContent = indicators.cdi.toFixed(2) + '%';
-        document.getElementById('ipca-rate').textContent = indicators.ipca12m.toFixed(2) + '%';
-        // updatedAt já chega formatado em pt-BR, não como ISO parseável.
-        document.getElementById('rate-date').textContent = indicators.updatedAt;
-
-        // Calculate for each period
-        const periods = [1, 6, 12, 24];
-        const tbody = document.getElementById('results-body');
-        tbody.innerHTML = '';
-
-        periods.forEach(months => {
-          const result = calculateReturns(amountValue, annualRate, months, hasIR);
-          const row = document.createElement('tr');
-          row.className = 'abc-border-t';
-          row.innerHTML = `
-            <td class="abc-px-4 abc-py-3 abc-font-medium">${months === 1 ? '1 mês' : months + ' meses'}</td>
-            <td class="abc-px-4 abc-py-3">${formatCurrency(result.grossReturn)}</td>
-            <td class="abc-px-4 abc-py-3 abc-font-semibold">${formatCurrency(result.netReturn)}</td>
-            <td class="abc-px-4 abc-py-3 abc-text-green-600 abc-font-bold">${formatCurrency(result.finalAmount)}</td>
-          `;
-          tbody.appendChild(row);
-        });
-
-        // Comparison with poupança
-        const poupancaResult = calculateReturns(amountValue, 0.0617, 12, false);
-        const productResult = calculateReturns(amountValue, annualRate, 12, hasIR);
-        
-        document.getElementById('poupanca-12m').textContent = formatCurrency(poupancaResult.finalAmount);
-        document.getElementById('product-12m').textContent = formatCurrency(productResult.finalAmount);
-        
-        const difference = productResult.finalAmount - poupancaResult.finalAmount;
-        document.getElementById('difference-12m').textContent = '+' + formatCurrency(difference);
-      }
-
-      // Wait for indicators
-      function waitForIndicators() {
-        if (window.__ABC_INDICATORS__) {
-          renderResults(window.__ABC_INDICATORS__);
-        } else {
-          setTimeout(waitForIndicators, 100);
-        }
-      }
-
-      waitForIndicators();
-    })();
-  </script>
 </BaseLayout>
