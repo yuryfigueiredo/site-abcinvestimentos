@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/indicadores",
-      "schedule": "0 9 * * *"
+      "schedule": "30 17 * * *"
     }
   ],
   "functions": {
