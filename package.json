@@ -11,8 +11,7 @@
     "preview": "astro preview",
     "build:planilha": "node scripts/build-planilha-abc.mjs",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "atualizar:indicadores": "node scripts/atualizar-indicadores.mjs"
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.4",
