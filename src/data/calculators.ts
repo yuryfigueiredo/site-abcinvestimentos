@@ -57,7 +57,7 @@ export const CALCULATORS: CalculatorMeta[] = [
     icon: 'percent',
     subtitle: 'Compare quanto seu dinheiro rende líquido (já descontando Imposto de Renda) vs. Poupança.',
     seoDescription:
-      'Compare em tempo real CDB, LCI/LCA isenta de IR, Tesouro Selic e Poupança. Calcule automaticamente a tabela regressiva de Imposto de Renda e a taxa equivalente.',
+      'Compare em tempo real CDB, LCI/LCA isenta de IR, Tesouro Selic e Poupança. Calcule a tabela regressiva de Imposto de Renda e a taxa equivalente.',
     nextStepTitle: 'Descobriu onde rende mais? Organize seus aportes mensais',
     nextStepDescription:
       'Use a Planilha Oficial ABC para separar automaticamente os 20% do seu salário destinados à Renda Fixa e acompanhar o crescimento líquido do seu patrimônio.',
@@ -87,7 +87,7 @@ export const CALCULATORS: CalculatorMeta[] = [
     icon: 'coins',
     subtitle: 'Descubra quanto patrimônio você precisa para receber a renda mensal dos seus sonhos.',
     seoDescription:
-      'Calcule o patrimônio necessário para viver de dividendos de Ações e FIIs, simule o efeito bola de neve reinvestindo proventos e confira as regras da Lei 15.270/2025.',
+      'Calcule o patrimônio para viver de dividendos de Ações e FIIs, simule o efeito bola de neve reinvestindo proventos e veja as regras da Lei 15.270/2025.',
     nextStepTitle: 'Acelere sua bola de neve poupando mais todos os meses',
     nextStepDescription:
       'Quanto maior o seu aporte mensal, mais rápido você atinge a independência financeira. Veja como estruturar seu orçamento e metas na Planilha Oficial ABC.',

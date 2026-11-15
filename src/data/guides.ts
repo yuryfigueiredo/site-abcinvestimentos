@@ -357,7 +357,7 @@ export const GUIDES: GuideArticle[] = [
     editor: 'Yury Figueiredo',
     level: 'A',
     levelTitle: 'Nível A — Alicerce & Reserva de Emergência',
-    title: 'Poupança vs. CDB: Qual Rende Mais em 2026? (Números Reais)',
+    title: 'Poupança vs. CDB: Qual Rende Mais em 2026?',
     subtitle: 'Comparação lado a lado com taxas do Banco Central: veja quanto seu dinheiro rende em cada um, mês a mês.',
     readTime: '6 min de leitura',
     summary:
@@ -575,7 +575,7 @@ export const GUIDES: GuideArticle[] = [
     editor: 'Yury Figueiredo',
     level: 'A',
     levelTitle: 'Nível A — Alicerce & Reserva de Emergência',
-    title: 'Reserva de Emergência: 3, 6 ou 12 Meses? Qual o Seu Número',
+    title: 'Reserva de Emergência: 3, 6 ou 12 Meses?',
     subtitle: 'O guia para calcular quantos meses de custo de vida você realmente precisa guardar, segundo sua profissão.',
     readTime: '6 min de leitura',
     summary:
@@ -620,7 +620,7 @@ export const GUIDES: GuideArticle[] = [
     editor: 'Yury Figueiredo',
     level: 'B',
     levelTitle: 'Nível B — Dominando a Renda Fixa Inteligente',
-    title: 'LCI e LCA São Isentas de IR? Regras e Pegadinhas de 2026',
+    title: 'LCI e LCA São Isentas de IR? Pegadinhas de 2026',
     subtitle: 'Tudo sobre a isenção de imposto das letras imobiliárias e do agronegócio: quem tem direito, limites e quando ela acaba.',
     readTime: '6 min de leitura',
     summary:
@@ -664,11 +664,11 @@ export const GUIDES: GuideArticle[] = [
     editor: 'Yury Figueiredo',
     level: 'A',
     levelTitle: 'Nível A — Alicerce & Reserva de Emergência',
-    title: 'Juros Compostos Explicados de Forma Simples (Com Exemplos)',
+    title: 'Juros Compostos Explicados com Exemplos Reais',
     subtitle: 'A fórmula que Einstein chamou de oitava maravilha do mundo, traduzida em números que você vê no dia a dia.',
     readTime: '6 min de leitura',
     summary:
-      'Entenda por que R$ 300/mês viram R$ 1 milhão em 25 anos, qual a diferença entre juros simples e compostos, e a Regra dos 72 para saber quando seu dinheiro dobra.',
+      'Entenda por que R$ 300/mês viram R$ 1 milhão em 25 anos, a diferença entre juros simples e compostos e a Regra dos 72 que mostra quando o dinheiro dobra.',
     relatedCalculatorSlug: 'juros-compostos',
     relatedCalculatorLabel: 'Ver Meus Juros Compostos',
     sections: [
@@ -709,7 +709,7 @@ export const GUIDES: GuideArticle[] = [
     subtitle: 'Comparativo completo descontando IR e inflação: a resposta vai te surpreender.',
     readTime: '5 min de leitura',
     summary:
-      'CDB 110% do CDI parece mais que LCI 90% do CDI — mas o IR muda tudo. Aprenda a calcular o rendimento líquido e descubra qual título coloca mais dinheiro no bolso.',
+      'CDB 110% do CDI parece mais que LCI 90% do CDI — mas o IR muda tudo. Calcule o rendimento líquido e descubra qual título coloca mais dinheiro no bolso.',
     relatedCalculatorSlug: 'renda-fixa',
     relatedCalculatorLabel: 'Comparar CDB vs. LCI Agora',
     sections: [

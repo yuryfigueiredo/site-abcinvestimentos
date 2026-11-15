@@ -15,6 +15,8 @@ export default defineConfig({
   },
   integrations: [
     sitemap({
+      // Página de utilidade interna, bloqueada no robots.txt: listá-la seria contraditório.
+      filter: (page) => !page.includes('/ignorar-analytics'),
       // lastmod só nas páginas cujo HTML muda com as taxas do BCB. Marcar o resto
       // como atualizado todo dia seria sinal falso, que o Google passa a ignorar.
       serialize(item) {

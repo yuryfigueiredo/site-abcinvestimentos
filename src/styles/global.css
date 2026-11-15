@@ -827,3 +827,132 @@ button, input, select, textarea {
     font-size: 0.85rem;
   }
 }
+
+/* ==========================================================================
+   Camada de utilitários abc-* (cluster /quanto-rende)
+   As classes eram usadas nos templates sem existir na folha de estilo, então
+   49 páginas renderizavam sem grid, sem container e sem cores. Cada utilitário
+   resolve pelos tokens de tema, não por cores fixas — o cluster acompanha o
+   modo escuro/claro do restante do site.
+   ========================================================================== */
+
+.abc-container {
+  width: 100%;
+  max-width: 1240px;
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+}
+
+.abc-max-w-none { max-width: none; }
+.abc-max-w-3xl { max-width: 48rem; }
+.abc-max-w-4xl { max-width: 56rem; }
+.abc-max-w-6xl { max-width: 72rem; }
+.abc-mx-auto { margin-inline: auto; }
+.abc-w-full { width: 100%; }
+.abc-block { display: block; }
+.abc-flex { display: flex; }
+.abc-flex-wrap { flex-wrap: wrap; }
+.abc-justify-center { justify-content: center; }
+.abc-grid { display: grid; }
+.abc-grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.abc-gap-2 { gap: 0.5rem; }
+.abc-gap-4 { gap: 1rem; }
+.abc-overflow-x-auto { overflow-x: auto; }
+.abc-text-center { text-align: center; }
+.abc-text-left { text-align: left; }
+
+/* Marcador numérico sobrevive ao display:flex no Chromium, então a trilha com
+   separadores "›" intercalados sai "1. Início 3. Calculadoras 5." no breadcrumb. */
+ol.abc-flex,
+ul.abc-flex,
+ol.abc-grid,
+ul.abc-grid {
+  list-style: none;
+  margin-block: 0;
+  padding-inline-start: 0;
+}
+
+.abc-p-4 { padding: 1rem; }
+.abc-p-6 { padding: 1.5rem; }
+.abc-p-8 { padding: 2rem; }
+.abc-px-4 { padding-inline: 1rem; }
+.abc-px-6 { padding-inline: 1.5rem; }
+.abc-py-3 { padding-block: 0.75rem; }
+.abc-py-8 { padding-block: 2.5rem; }
+.abc-mb-1 { margin-bottom: 0.25rem; }
+.abc-mb-2 { margin-bottom: 0.5rem; }
+.abc-mb-4 { margin-bottom: 1rem; }
+.abc-mb-6 { margin-bottom: 1.5rem; }
+.abc-mb-8 { margin-bottom: 2rem; }
+.abc-mb-12 { margin-bottom: 3rem; }
+.abc-mt-1 { margin-top: 0.25rem; }
+.abc-mt-2 { margin-top: 0.5rem; }
+.abc-mt-4 { margin-top: 1rem; }
+.abc-mt-8 { margin-top: 2rem; }
+.abc-mt-12 { margin-top: 3rem; }
+.abc-space-y-3 > * + * { margin-top: 0.75rem; }
+
+.abc-text-xs { font-size: 0.78rem; }
+.abc-text-sm { font-size: 0.88rem; }
+.abc-text-lg { font-size: 1.12rem; }
+.abc-text-xl { font-size: 1.3rem; }
+.abc-text-2xl { font-size: 1.55rem; }
+.abc-text-3xl { font-size: 1.9rem; }
+.abc-text-4xl { font-size: 2.3rem; }
+.abc-leading-relaxed { line-height: 1.65; }
+.abc-font-medium { font-weight: 500; }
+.abc-font-semibold { font-weight: 600; }
+.abc-font-bold { font-weight: 700; }
+
+.abc-rounded-lg { border-radius: 12px; }
+.abc-opacity-90 { opacity: 0.9; }
+.abc-transition { transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease; }
+
+.abc-text-gray-900 { color: var(--text-primary); }
+.abc-text-gray-700 { color: var(--text-secondary); }
+.abc-text-gray-600 { color: var(--text-muted); }
+.abc-text-gray-500 { color: var(--text-muted); }
+.abc-text-white { color: #fff; }
+.abc-text-abc-blue { color: var(--brand-blue); }
+.abc-text-green-600 { color: var(--brand-positive); }
+
+/* `.abc-table td` pinta cor com elemento+classe, que ganha do utilitário isolado
+   (0,1,1 vs 0,1,0) — sem isto a coluna "Valor Final" saía cinza nos dois temas. */
+.abc-table td.abc-text-green-600 { color: var(--brand-positive); }
+
+.abc-bg-white { background-color: var(--bg-card); }
+.abc-bg-gray-50 { background-color: var(--bg-elevated); }
+.abc-bg-gray-100 { background-color: var(--bg-elevated); }
+.abc-bg-abc-blue { background-color: var(--brand-primary); }
+.abc-bg-blue-50 { background-color: var(--bg-surface); background-color: color-mix(in srgb, var(--brand-blue) 10%, var(--bg-surface)); }
+.abc-bg-green-50 { background-color: var(--bg-surface); background-color: color-mix(in srgb, var(--brand-positive) 10%, var(--bg-surface)); }
+
+.abc-border { border: 1px solid var(--border-card); }
+.abc-border-t { border-top: 1px solid var(--border-subtle); }
+.abc-border-gray-200 { border-color: var(--border-subtle); }
+.abc-border-blue-200 { border-color: color-mix(in srgb, var(--brand-blue) 40%, var(--border-card)); }
+.abc-border-green-200 { border-color: color-mix(in srgb, var(--brand-positive) 40%, var(--border-card)); }
+
+.abc-prose p { margin-block: 1rem; }
+.abc-prose strong { color: var(--text-primary); }
+
+.hover\:abc-underline:hover { text-decoration: underline; }
+.hover\:abc-bg-gray-100:hover { background-color: var(--bg-elevated); }
+.hover\:abc-border-abc-blue:hover { border-color: var(--brand-blue); }
+.hover\:abc-shadow-md:hover { box-shadow: var(--card-shadow); }
+
+@media (min-width: 480px) {
+  .sm\:abc-grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (min-width: 768px) {
+  .md\:abc-grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .md\:abc-grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .md\:abc-text-4xl { font-size: 2.3rem; }
+  .md\:abc-text-5xl { font-size: 3rem; }
+}
+
+@media (min-width: 1024px) {
+  .lg\:abc-grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .lg\:abc-grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}

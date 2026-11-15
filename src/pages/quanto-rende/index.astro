@@ -7,8 +7,8 @@ import { formatBRL, formatPct } from '../../lib/finance';
 const indicators = await getIndicators();
 
 const canonicalUrl = 'https://www.abcinvestimentos.com.br/quanto-rende';
-const pageTitle = 'Quanto Rende: Simulações com Taxas do Banco Central | ABC';
-const pageDescription = 'Descubra quanto rendem seus investimentos com taxas atualizadas do Banco Central. Simulações para poupança, CDB, LCI, LCA e Tesouro Direto.';
+const pageTitle = 'Quanto Rende Seu Dinheiro? Simule de R$ 500 a R$ 100.000';
+const pageDescription = `Veja em 1, 6, 12 e 24 meses quanto rendem R$ 500 a R$ 100.000 em Poupança, CDB, LCI e Tesouro com as taxas do Banco Central de ${indicators.updatedAt}.`;
 ---
 
 <BaseLayout
@@ -19,7 +19,7 @@ const pageDescription = 'Descubra quanto rendem seus investimentos com taxas atu
   ogDescription={pageDescription}
 >
   <div class="abc-container abc-py-8">
-    <div class="abc-max-w-6xl">
+    <div class="abc-max-w-6xl abc-mx-auto">
       <!-- Breadcrumb -->
       <nav aria-label="Breadcrumb" class="abc-text-sm abc-text-gray-500 abc-mb-6">
         <ol class="abc-flex abc-gap-2">

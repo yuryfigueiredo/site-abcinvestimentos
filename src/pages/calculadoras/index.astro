@@ -1,0 +1,130 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { CALCULATORS } from '../../data/calculators';
+import { PRODUCTS, AMOUNTS, calculateReturns } from '../../data/quanto-rende';
+import { getIndicators } from '../../lib/indicators';
+import { formatBRL } from '../../lib/finance';
+
+const indicators = await getIndicators();
+
+const popularProducts = PRODUCTS.filter((p) => ['poupanca', 'cdb-100-cdi'].includes(p.slug));
+const popularAmounts = AMOUNTS.filter((a) => [5000, 20000, 50000].includes(a.value));
+
+const canonicalUrl = 'https://www.abcinvestimentos.com.br/calculadoras';
+const pageTitle = 'Calculadoras Financeiras Gratuitas: 7 Simuladores | ABC';
+const pageDescription = `Simule juros compostos, CDB vs. LCI, dividendos, reserva de emergência e dívida de cartão com as taxas do Banco Central de ${indicators.updatedAt}.`;
+---
+
+<BaseLayout
+  title={pageTitle}
+  description={pageDescription}
+  canonical={canonicalUrl}
+  ogTitle={pageTitle}
+  ogDescription={pageDescription}
+>
+  <div class="abc-container abc-py-8">
+    <div class="abc-max-w-6xl abc-mx-auto">
+      <nav aria-label="Breadcrumb" class="abc-text-sm abc-text-gray-500 abc-mb-6">
+        <ol class="abc-flex abc-gap-2">
+          <li><a href="/" class="abc-text-abc-blue hover:abc-underline">Início</a></li>
+          <li aria-hidden="true">›</li>
+          <li class="abc-text-gray-700">Calculadoras</li>
+        </ol>
+      </nav>
+
+      <header class="abc-text-center abc-mb-12">
+        <h1 class="abc-text-3xl md:abc-text-4xl abc-font-bold abc-text-gray-900 abc-mb-4">
+          Calculadoras Financeiras Gratuitas
+        </h1>
+        <p class="abc-text-lg abc-text-gray-600 abc-max-w-3xl abc-mx-auto">
+          Sete simuladores matemáticos com as taxas oficiais do Banco Central. Sem cadastro, sem e-mail e sem recomendação de investimento.
+        </p>
+      </header>
+
+      <section class="abc-mb-12">
+        <div class="abc-grid sm:abc-grid-cols-2 lg:abc-grid-cols-3 abc-gap-4">
+          {CALCULATORS.map((calc) => (
+            <a
+              href={`/calculadoras/${calc.slug}`}
+              class="abc-block abc-bg-white abc-border abc-border-gray-200 abc-rounded-lg abc-p-6 hover:abc-border-abc-blue hover:abc-shadow-md abc-transition"
+            >
+              <span class="badge-pill">{calc.badge}</span>
+              <div class="abc-text-xl abc-font-semibold abc-text-gray-900 abc-mt-4 abc-mb-2">
+                {calc.shortTitle}
+              </div>
+              <p class="abc-text-sm abc-text-gray-600 abc-leading-relaxed">
+                {calc.subtitle}
+              </p>
+              <div class="abc-text-sm abc-text-abc-blue abc-mt-4">Abrir simulador →</div>
+            </a>
+          ))}
+        </div>
+      </section>
+
+      <section class="abc-bg-gray-50 abc-rounded-lg abc-p-8 abc-mb-12">
+        <h2 class="abc-text-2xl abc-font-bold abc-text-gray-900 abc-mb-2">
+          Valores mais buscados: quanto rende meu dinheiro?
+        </h2>
+        <p class="abc-text-gray-600 abc-mb-6">
+          Simulações prontas com rendimento líquido em 12 meses, atualizadas com as taxas de {indicators.updatedAt}.
+        </p>
+        <div class="abc-grid sm:abc-grid-cols-2 lg:abc-grid-cols-3 abc-gap-4">
+          {popularProducts.map((product) =>
+            popularAmounts.map((amount) => (
+              <a
+                href={`/quanto-rende/${product.slug}/${amount.slug}`}
+                class="abc-block abc-bg-white abc-border abc-border-gray-200 abc-rounded-lg abc-p-4 hover:abc-border-abc-blue abc-transition"
+              >
+                <div class="abc-font-semibold abc-text-gray-900">
+                  Quanto rende {amount.displayText} em {product.name}
+                </div>
+                <div class="abc-text-sm abc-text-green-600 abc-font-semibold abc-mt-2">
+                  {formatBRL(calculateReturns(amount.value, product, indicators, 12).netReturn, 0)} líquidos em 12 meses
+                </div>
+              </a>
+            ))
+          )}
+        </div>
+        <div class="abc-mt-6">
+          <a href="/quanto-rende" class="abc-text-abc-blue abc-font-semibold hover:abc-underline">
+            Ver todas as simulações (R$ 500 a R$ 100.000) →
+          </a>
+        </div>
+      </section>
+
+      <section class="abc-mb-12">
+        <h2 class="abc-text-2xl abc-font-bold abc-text-gray-900 abc-mb-4">
+          Como as calculadoras foram construídas
+        </h2>
+        <div class="abc-prose abc-max-w-none abc-text-gray-700">
+          <p>
+            Cada simulador usa a taxa mensal equivalente derivada da série oficial (<code>(1 + taxa anual)^(1/12) - 1</code>),
+            juros compostos mês a mês e, quando o produto é tributado, a tabela regressiva de Imposto de Renda
+            (22,5% até 180 dias, 20% até 360, 17,5% até 720 e 15% acima de 720 dias).
+          </p>
+          <p>
+            Os números são educativos: nenhuma página recomenda compra ou venda de valores mobiliários, atividade
+            reservada pela CVM a assessores e analistas credenciados.
+          </p>
+        </div>
+      </section>
+
+      <section class="abc-bg-abc-blue abc-text-white abc-rounded-lg abc-p-8 abc-text-center">
+        <h2 class="abc-text-2xl abc-font-bold abc-mb-4">
+          Simulou? Agora cabe no orçamento
+        </h2>
+        <p class="abc-text-lg abc-mb-6 abc-opacity-90">
+          A Planilha Oficial ABC organiza seus aportes na regra 50/30/20 e acompanha sua jornada até o 1º milhão.
+        </p>
+        <div class="abc-flex abc-flex-wrap abc-gap-4 abc-justify-center">
+          <a href="/planilha-abc" class="abc-bg-white abc-text-abc-blue abc-px-6 abc-py-3 abc-rounded-lg abc-font-semibold hover:abc-bg-gray-100 abc-transition">
+            Conhecer a Planilha ABC
+          </a>
+          <a href="/guia" class="abc-px-6 abc-py-3 abc-rounded-lg abc-font-semibold abc-border abc-border-gray-200 abc-text-white hover:abc-bg-gray-100 abc-transition">
+            Ler o Guia do Investidor
+          </a>
+        </div>
+      </section>
+    </div>
+  </div>
+</BaseLayout>
