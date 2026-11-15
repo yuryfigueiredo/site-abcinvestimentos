@@ -888,6 +888,7 @@ ul.abc-grid {
 .abc-mt-1 { margin-top: 0.25rem; }
 .abc-mt-2 { margin-top: 0.5rem; }
 .abc-mt-4 { margin-top: 1rem; }
+.abc-mt-6 { margin-top: 1.5rem; }
 .abc-mt-8 { margin-top: 2rem; }
 .abc-mt-12 { margin-top: 3rem; }
 .abc-space-y-3 > * + * { margin-top: 0.75rem; }
