@@ -16,7 +16,7 @@ Sites financeiros amadores destroem a confiança do usuário (e derrubam o tempo
 No **ABC Investimentos**, aplicamos o conceito **LuxuryAd**:
 1. **Zero Poluição na Primeira Dobra (Zona Sagrada de Credibilidade)**: É estritamente proibido exibir anúncios no Ticker mecânico, no Header, no Hero da IA ou entre os controles deslizantes (sliders) e os KPIs de resultado das calculadoras.
 2. **Inserção Exclusiva Pós-Valor (Zona de Transição Editorial)**: O anúncio ou recomendação só aparece **depois** que o usuário já recebeu o cálculo financeiro ou concluiu a leitura de um bloco de alto valor.
-3. **Moldura Editorial Integrada (`.luxury-ad-frame`)**: Nenhum bloco do Google AdSense fica "solto" na página. Todo anúncio é envelopado pelo componente [`src/components/AdSlot.astro`](file:///c:/Users/Yury/Documents/Projetos%20Yury/Site%20abcinvestimentos.com.br/src/components/AdSlot.astro) com:
+3. **Moldura Editorial Integrada (`.luxury-ad-frame`)**: Nenhum bloco do Google AdSense fica "solto" na página. Todo anúncio é envelopado pelo componente [`src/components/AdSlot.astro`](src/components/AdSlot.astro) com:
    - Superfície em vidro escuro/claro adaptativo (`background: var(--bg-surface)`, `border: 1px solid var(--border-subtle)`, `border-radius: 12px`).
    - Cabeçalho minimalista com micro-tipografia espaçada (`ESPAÇO PUBLICITÁRIO • PARCEIRO INSTITUCIONAL` em `0.65rem`, `letter-spacing: 0.08em`).
    - Gatilho comercial embutido (`"Anuncie no ABC ↗"`), transformando cada espaço do AdSense em uma vitrine para vender patrocínios diretos (Mídia Kit) para corretoras, FIIs, assessores e fintechs por valores muito superiores ao CPM comum.
