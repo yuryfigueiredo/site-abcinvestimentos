@@ -14,7 +14,7 @@ const feedRateValues = [
   SITE_CONFIG.defaultIndicators.selic,
   SITE_CONFIG.defaultIndicators.cdi,
   SITE_CONFIG.defaultIndicators.ipca12m,
-  SITE_CONFIG.defaultIndicators.poupanca,
+  SITE_CONFIG.defaultIndicators.dolar,
 ].map(String);
 
 function calculatorSources(): { file: string; source: string }[] {

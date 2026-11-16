@@ -19,18 +19,19 @@ export const SITE_CONFIG = {
   description:
     'Calculadoras financeiras gratuitas (Juros Compostos, CDB vs. LCI/LCA, Dividendos, Reserva de Emergência), Guia ABC do Investidor e Consultor com IA.',
 
-  // Fallback seguro das séries oficiais do Banco Central e B3 (usado caso a API esteja indisponível)
+  // Fallback das séries medidas do Banco Central (usado caso a API esteja indisponível)
   defaultIndicators: {
     selic: 13.75,
     cdi: 13.65,
-    poupanca: 7.12,
     ipca12m: 4.58,
     dolar: 5.42,
-    ibovespa: 131850,
-    ifix: 3385,
-    trAnual: 0.95,
     updatedAt: 'Out/2026 (Referência BCB)',
   },
+
+  // A TR não mora em defaultIndicators porque aquele objeto é o valor usado quando o BCB
+  // falha, e a TR é usada sempre: ela não é uma série que a coleta consulta. É referência
+  // datada, e a ressalva publicada tem de dizer isso. Buscar a TR medida é tarefa à parte.
+  poupancaTrReference: { annualPct: 0.95, referencia: 'Out/2026' },
 
   // Produto Digital Oficial de Lançamento (Foco 100% em utilidade real e zero risco fiscal)
   product: {
