@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import JsonLdBreadcrumb from '../../components/JsonLdBreadcrumb.astro';
 import { CALCULATORS } from '../../data/calculators';
 import { PRODUCTS, AMOUNTS, calculateReturns } from '../../data/quanto-rende';
 import { getIndicators } from '../../lib/indicators';
@@ -22,6 +23,9 @@ const pageDescription = `Simule juros compostos, CDB vs. LCI, dividendos, reserv
   ogTitle={pageTitle}
   ogDescription={pageDescription}
 >
+  <JsonLdBreadcrumb
+    crumbs={[{ name: 'Início', path: '/' }, { name: 'Calculadoras' }]}
+  />
   <div class="abc-container abc-py-8">
     <div class="abc-max-w-6xl abc-mx-auto">
       <nav aria-label="Breadcrumb" class="abc-text-sm abc-text-gray-500 abc-mb-6">

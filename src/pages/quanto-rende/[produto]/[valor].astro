@@ -1,9 +1,11 @@
 ---
 import { type GetStaticPathsResult, type GetStaticPathsResultKey } from 'astro';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
+import JsonLdBreadcrumb from '../../../components/JsonLdBreadcrumb.astro';
+import Byline from '../../../components/Byline.astro';
 import { PRODUCTS, AMOUNTS, calculateReturns, type QuantoRendeProduct, type QuantoRendeAmount } from '../../../data/quanto-rende';
 import { getIndicators } from '../../../lib/indicators';
-import { formatBRL, formatPct } from '../../../lib/finance';
+import { formatBRL, formatPct, formatDateBr } from '../../../lib/finance';
 
 export async function getStaticPaths(): Promise<GetStaticPathsResult> {
   const paths: GetStaticPathsResultKey[] = [];
@@ -112,6 +114,13 @@ const faqSchema = {
   ogDescription={pageDescription}
 >
   <script type="application/ld+json" set:html={JSON.stringify(faqSchema)} />
+  <JsonLdBreadcrumb
+    crumbs={[
+      { name: 'Início', path: '/' },
+      { name: 'Calculadoras', path: '/calculadoras' },
+      { name: 'Quanto rende' },
+    ]}
+  />
 
   <div class="abc-container abc-py-8">
     <div class="abc-max-w-4xl abc-mx-auto">
@@ -134,6 +143,7 @@ const faqSchema = {
         <p class="abc-text-lg abc-text-gray-600">
           Simulação com taxas atualizadas do Banco Central do Brasil
         </p>
+        <Byline updatedAt={indicators.updatedAt} />
         <p class="abc-text-lg abc-font-semibold abc-text-gray-900 abc-mt-4">
           Resposta direta: em 12 meses, {amount.displayText} em {product.name} rendem
           {formatBRL(net12)} líquidos ({formatBRL(net12 / 12)} por mês), totalizando
@@ -172,7 +182,7 @@ const faqSchema = {
             </div>
             <div class="abc-text-center">
               <div class="abc-text-sm abc-text-gray-600">Atualizado</div>
-              <div class="abc-text-sm abc-text-gray-700" id="rate-date">{indicators.updatedAt}</div>
+              <div class="abc-text-sm abc-text-gray-700" id="rate-date">{formatDateBr(indicators.updatedAt)}</div>
               <div class="abc-text-xs abc-text-gray-500">Banco Central</div>
             </div>
           </div>

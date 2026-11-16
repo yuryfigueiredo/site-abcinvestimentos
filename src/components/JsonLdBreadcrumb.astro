@@ -1,0 +1,11 @@
+---
+import { breadcrumbSchema, ldJson, type Crumb } from '../lib/seo';
+
+interface Props {
+  crumbs: Crumb[];
+}
+
+const { crumbs } = Astro.props;
+---
+
+<script type="application/ld+json" is:inline set:html={ldJson(breadcrumbSchema(crumbs))} />

@@ -716,3 +716,18 @@ export function formatPct(value: number, decimals = 2): string {
     maximumFractionDigits: decimals,
   })}%`;
 }
+
+/**
+ * A série do SGS chega como data ISO (YYYY-MM-DD). Parsear sem hora devolve meia-noite
+ * UTC, que em fuso negativo cai no dia anterior — o T12:00:00 ancora o meio-dia local.
+ * O fallback de SITE_CONFIG.defaultIndicators é rótulo livre ('Out/2026 (Referência BCB)'),
+ * então o que não tem formato de data passa sem reescrita em vez de virar Invalid Date.
+ */
+export function formatDateBr(iso: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
+  return new Date(`${iso}T12:00:00`).toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+}

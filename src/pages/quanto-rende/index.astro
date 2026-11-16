@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import JsonLdBreadcrumb from '../../components/JsonLdBreadcrumb.astro';
 import { PRODUCTS, AMOUNTS, calculateReturns } from '../../data/quanto-rende';
 import { getIndicators } from '../../lib/indicators';
 import { formatBRL, formatPct } from '../../lib/finance';
@@ -28,6 +29,7 @@ const pageDescription = `Veja em 1, 6, 12 e 24 meses quanto rendem R$ 500 a R$ 1
           <li class="abc-text-gray-700">Quanto Rende</li>
         </ol>
       </nav>
+      <JsonLdBreadcrumb crumbs={[{ name: 'Início', path: '/' }, { name: 'Quanto Rende' }]} />
 
       <!-- Header -->
       <header class="abc-text-center abc-mb-12">

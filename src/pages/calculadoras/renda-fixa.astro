@@ -3,15 +3,22 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import NextStepCard from '../../components/NextStepCard.astro';
 import AdSlot from '../../components/AdSlot.astro';
 import { CALCULATORS } from '../../data/calculators';
-import { SITE_CONFIG } from '../../config/site';
+import { getIndicators } from '../../lib/indicators';
 import FaqJsonLd from '../../components/FaqJsonLd.astro';
+import CalcSeo from '../../components/CalcSeo.astro';
+import Byline from '../../components/Byline.astro';
+import CalcDisclaimer from '../../components/CalcDisclaimer.astro';
 
 const calc = CALCULATORS.find((c) => c.slug === 'renda-fixa')!;
-const d = SITE_CONFIG.defaultIndicators;
+
+// As taxas pré-preenchidas vêm do mesmo feed que o byline carimba: um número fixo
+// aqui discordaria da "taxas do Banco Central de <data>" poucos dias depois do Copom.
+const indicators = await getIndicators();
 ---
 
 <BaseLayout title={`${calc.title} | ABC`} description={calc.seoDescription}>
   <FaqJsonLd calc={calc} />
+  <CalcSeo calc={calc} />
   <section class="calc-page-section">
     <div class="container">
       <nav class="breadcrumb" aria-label="Navegação estrutural">
@@ -22,6 +29,7 @@ const d = SITE_CONFIG.defaultIndicators;
         <span class="badge-pill">{calc.badge}</span>
         <h1>{calc.title}</h1>
         <p>{calc.subtitle}</p>
+        <Byline updatedAt={indicators.updatedAt} />
       </div>
 
       <div class="calc-workspace">
@@ -127,15 +135,15 @@ const d = SITE_CONFIG.defaultIndicators;
           <div class="rates-mini-grid">
             <div>
               <label for="rf-cdi">CDI (% a.a.)</label>
-              <input type="number" id="rf-cdi" class="abc-input" step="0.05" value={d.cdi} />
+              <input type="number" id="rf-cdi" class="abc-input" step="0.05" value={indicators.cdi} />
             </div>
             <div>
               <label for="rf-selic">Selic (% a.a.)</label>
-              <input type="number" id="rf-selic" class="abc-input" step="0.05" value={d.selic} />
+              <input type="number" id="rf-selic" class="abc-input" step="0.05" value={indicators.selic} />
             </div>
             <div>
               <label for="rf-ipca">IPCA (% a.a.)</label>
-              <input type="number" id="rf-ipca" class="abc-input" step="0.05" value={d.ipca12m} />
+              <input type="number" id="rf-ipca" class="abc-input" step="0.05" value={indicators.ipca12m} />
             </div>
           </div>
         </div>
@@ -175,6 +183,8 @@ const d = SITE_CONFIG.defaultIndicators;
               <tbody id="rf-table-body"></tbody>
             </table>
           </div>
+
+          <CalcDisclaimer />
 
           <NextStepCard calculator={calc} />
 
@@ -259,9 +269,11 @@ const d = SITE_CONFIG.defaultIndicators;
     const months = Number(monthsInput.value) || 1;
     const cdbPctCdi = Number(cdbInput.value) || 100;
     const lciLcaPctCdi = Number(lciInput.value) || 90;
-    const cdiAnnualPct = Number(cdiInput.value) || 13.65;
-    const selicAnnualPct = Number(selicInput.value) || 13.75;
-    const ipcaAnnualPct = Number(ipcaInput.value) || 4.58;
+    // Campo vazio volta para a taxa que o servidor renderizou, não para uma constante
+    // que envelhece: defaultValue é o value= que saiu do build.
+    const cdiAnnualPct = Number(cdiInput.value || cdiInput.defaultValue);
+    const selicAnnualPct = Number(selicInput.value || selicInput.defaultValue);
+    const ipcaAnnualPct = Number(ipcaInput.value || ipcaInput.defaultValue);
 
     const res = simulateFixedIncomeComparison({
       amount,

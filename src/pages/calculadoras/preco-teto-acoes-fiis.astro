@@ -4,12 +4,17 @@ import NextStepCard from '../../components/NextStepCard.astro';
 import AdSlot from '../../components/AdSlot.astro';
 import { CALCULATORS } from '../../data/calculators';
 import FaqJsonLd from '../../components/FaqJsonLd.astro';
+import CalcSeo from '../../components/CalcSeo.astro';
+import Byline from '../../components/Byline.astro';
+import CalcDisclaimer from '../../components/CalcDisclaimer.astro';
 
 const calc = CALCULATORS.find((c) => c.slug === 'preco-teto-acoes-fiis')!;
+
 ---
 
 <BaseLayout title={`${calc.title} | ABC`} description={calc.seoDescription}>
   <FaqJsonLd calc={calc} />
+  <CalcSeo calc={calc} />
   <section class="calc-page-section">
     <div class="container">
       <nav class="breadcrumb" aria-label="Navegação estrutural">
@@ -20,6 +25,7 @@ const calc = CALCULATORS.find((c) => c.slug === 'preco-teto-acoes-fiis')!;
         <span class="badge-pill">{calc.badge}</span>
         <h1>{calc.title}</h1>
         <p>{calc.subtitle}</p>
+        <Byline />
       </div>
 
       <div class="calc-workspace">
@@ -79,6 +85,8 @@ const calc = CALCULATORS.find((c) => c.slug === 'preco-teto-acoes-fiis')!;
           </div>
 
           <div class="fii-explainer" id="fii-explainer-box"></div>
+
+          <CalcDisclaimer />
 
           <NextStepCard calculator={calc} />
         </div>

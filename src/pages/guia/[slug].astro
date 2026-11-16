@@ -3,6 +3,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import AdSlot from '../../components/AdSlot.astro';
 import { GUIDES, SITE_PUBLISHED_AT, type GuideArticle } from '../../data/guides';
 import { SITE_CONFIG } from '../../config/site';
+import { absUrl, breadcrumbSchema } from '../../lib/seo';
 
 export function getStaticPaths() {
   return GUIDES.map((guide) => ({
@@ -31,7 +32,7 @@ const modifiedLabel = new Date(`${modifiedAt}T12:00:00`).toLocaleDateString('pt-
 });
 // Show "Atualizado em" only when dateModified differs from datePublished
 const showModifiedDate = guide.dateModified && guide.dateModified !== publishedAt;
-const articleUrl = new URL(Astro.url.pathname, SITE_CONFIG.url).toString();
+const articleUrl = absUrl(Astro.url.pathname);
 
 // Related articles: same level, excluding current article, up to 3
 const relatedArticles = GUIDES
@@ -53,7 +54,7 @@ const guideJsonLd = {
       author: {
         '@type': 'Person',
         name: SITE_CONFIG.author,
-        url: `${SITE_CONFIG.url}/sobre`,
+        url: absUrl('/sobre'),
         jobTitle: 'Educador Financeiro',
         knowsAbout: ['Renda Fixa', 'Fundos Imobiliários', 'Ações', 'Juros Compostos', 'Educação Financeira'],
       },
@@ -61,26 +62,29 @@ const guideJsonLd = {
         ? {
             '@type': 'Person',
             name: guide.editor,
-            url: `${SITE_CONFIG.url}/sobre`,
+            url: absUrl('/sobre'),
           }
         : undefined,
       publisher: { '@id': `${SITE_CONFIG.url}/#organization` },
       isPartOf: { '@type': 'WebSite', '@id': `${SITE_CONFIG.url}/#website` },
       mainEntityOfPage: { '@type': 'WebPage', '@id': articleUrl },
     },
-    {
-      '@type': 'BreadcrumbList',
-      itemListElement: [
-        { '@type': 'ListItem', position: 1, name: 'Início', item: SITE_CONFIG.url },
-        { '@type': 'ListItem', position: 2, name: 'Guia ABC', item: `${SITE_CONFIG.url}/guia` },
-        { '@type': 'ListItem', position: 3, name: guide.title },
-      ],
-    },
+    breadcrumbSchema([
+      { name: 'Início', path: '/' },
+      { name: 'Guia ABC', path: '/guia' },
+      { name: guide.title },
+    ]),
   ],
 };
 ---
 
-<BaseLayout title={`${guide.title} | ABC`} description={guide.summary}>
+<BaseLayout
+  title={`${guide.title} | ABC`}
+  description={guide.summary}
+  ogType="article"
+  publishedTime={publishedAt}
+  modifiedTime={modifiedAt}
+>
   <script type="application/ld+json" is:inline set:html={JSON.stringify(guideJsonLd)} />
   <article class="guide-post-section">
     <div class="container guide-container">

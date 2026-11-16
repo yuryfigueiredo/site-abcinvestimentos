@@ -3,13 +3,21 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import NextStepCard from '../../components/NextStepCard.astro';
 import AdSlot from '../../components/AdSlot.astro';
 import { CALCULATORS } from '../../data/calculators';
+import { getIndicators } from '../../lib/indicators';
+import { formatPct } from '../../lib/finance';
 import FaqJsonLd from '../../components/FaqJsonLd.astro';
+import CalcSeo from '../../components/CalcSeo.astro';
+import Byline from '../../components/Byline.astro';
+import CalcDisclaimer from '../../components/CalcDisclaimer.astro';
 
 const calc = CALCULATORS.find((c) => c.slug === 'juros-compostos')!;
+
+const indicators = await getIndicators();
 ---
 
 <BaseLayout title={`${calc.title} | ABC`} description={calc.seoDescription}>
   <FaqJsonLd calc={calc} />
+  <CalcSeo calc={calc} />
   <section class="calc-page-section">
     <div class="container">
       <nav class="breadcrumb" aria-label="Navegação estrutural">
@@ -20,6 +28,7 @@ const calc = CALCULATORS.find((c) => c.slug === 'juros-compostos')!;
         <span class="badge-pill">{calc.badge}</span>
         <h1>{calc.title}</h1>
         <p>{calc.subtitle}</p>
+        <Byline updatedAt={indicators.updatedAt} />
       </div>
 
       <div class="calc-workspace">
@@ -106,9 +115,9 @@ const calc = CALCULATORS.find((c) => c.slug === 'juros-compostos')!;
           <div class="control-group">
             <div class="control-label-row">
               <label for="jc-inflation">Inflação Anual Estimada — IPCA (% a.a.)</label>
-              <output id="jc-inflation-out" for="jc-inflation">4,58% a.a.</output>
+              <output id="jc-inflation-out" for="jc-inflation">{formatPct(indicators.ipca12m)} a.a.</output>
             </div>
-            <input type="number" id="jc-inflation" class="abc-input" min="0" max="30" step="0.1" value="4.58" />
+            <input type="number" id="jc-inflation" class="abc-input" min="0" max="30" step="0.1" value={indicators.ipca12m} />
           </div>
         </div>
 
@@ -173,6 +182,8 @@ const calc = CALCULATORS.find((c) => c.slug === 'juros-compostos')!;
           </div>
 
           <!-- Card Contextual de Próximo Passo (Planilha ABC + Livro) -->
+          <CalcDisclaimer />
+
           <NextStepCard calculator={calc} />
 
           <!-- Strategic CTA: Planilha ABC cross-sell within results -->

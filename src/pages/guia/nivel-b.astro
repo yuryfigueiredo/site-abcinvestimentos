@@ -1,26 +1,22 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { GUIDES } from '../../data/guides';
-import { SITE_CONFIG } from '../../config/site';
+import JsonLdBreadcrumb from '../../components/JsonLdBreadcrumb.astro';
 
 const levelArticles = GUIDES.filter((g) => g.level === 'B');
 
-const breadcrumbJsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'BreadcrumbList',
-  itemListElement: [
-    { '@type': 'ListItem', position: 1, name: 'Início', item: SITE_CONFIG.url },
-    { '@type': 'ListItem', position: 2, name: 'Guia ABC', item: `${SITE_CONFIG.url}/guia` },
-    { '@type': 'ListItem', position: 3, name: 'Nível B — Dominando a Renda Fixa Inteligente' },
-  ],
-};
+const crumbs = [
+  { name: 'Início', path: '/' },
+  { name: 'Guia ABC', path: '/guia' },
+  { name: 'Nível B — Dominando a Renda Fixa Inteligente' }
+];
 ---
 
 <BaseLayout
   title="Nível B — Dominando a Renda Fixa Inteligente | ABC"
   description="Trilha Nível B: aprenda a comparar CDB, LCI, LCA e Tesouro Direto com inteligência. Desconte o IR, avalie o risco e maximize seu ganho real."
 >
-  <script type="application/ld+json" is:inline set:html={JSON.stringify(breadcrumbJsonLd)} />
+  <JsonLdBreadcrumb crumbs={crumbs} />
 
   <section class="guide-hub-section">
     <div class="container">

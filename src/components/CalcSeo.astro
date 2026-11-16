@@ -1,0 +1,31 @@
+---
+import JsonLdBreadcrumb from './JsonLdBreadcrumb.astro';
+import { applicationSchema, ldJson } from '../lib/seo';
+import type { CalculatorMeta } from '../data/calculators';
+
+interface Props {
+  calc: CalculatorMeta;
+}
+
+const { calc } = Astro.props;
+
+const schema = applicationSchema({
+  name: calc.title,
+  description: calc.seoDescription,
+  path: `/calculadoras/${calc.slug}`,
+  featureList: [
+    calc.subtitle,
+    'Dados oficiais do Banco Central do Brasil (série SGS)',
+    'Uso gratuito, sem cadastro',
+  ],
+});
+---
+
+<JsonLdBreadcrumb
+  crumbs={[
+    { name: 'Início', path: '/' },
+    { name: 'Calculadoras', path: '/calculadoras' },
+    { name: calc.shortTitle },
+  ]}
+/>
+<script type="application/ld+json" is:inline set:html={ldJson(schema)} />

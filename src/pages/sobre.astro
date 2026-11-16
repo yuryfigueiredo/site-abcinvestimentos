@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import JsonLdBreadcrumb from '../components/JsonLdBreadcrumb.astro';
 import { SITE_CONFIG } from '../config/site';
 
 const canonicalUrl = 'https://www.abcinvestimentos.com.br/sobre';
@@ -14,6 +15,9 @@ const pageDescription = 'Conheça o ABC Investimentos: plataforma independente d
   ogTitle={pageTitle}
   ogDescription={pageDescription}
 >
+  <JsonLdBreadcrumb
+    crumbs={[{ name: 'Início', path: '/' }, { name: 'Sobre' }]}
+  />
   <div class="container">
     <div class="about-page">
       <nav class="breadcrumb" aria-label="Navegação estrutural">
@@ -66,7 +70,7 @@ const pageDescription = 'Conheça o ABC Investimentos: plataforma independente d
         </p>
       </section>
 
-      <section class="about-section">
+      <section id="metodologia" class="about-section">
         <h2>Metodologia e Fontes</h2>
         <p>Todos os dados exibidos no site vêm de fontes primárias oficiais:</p>
         <table class="sources-table">
