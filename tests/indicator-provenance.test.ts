@@ -8,7 +8,7 @@ import { PRODUCTS } from '../src/data/quanto-rende';
 // número de fórmula lê-se como medição. Este portão exige que cada campo declare a origem.
 //
 // Verificado por mutação em 2026-11-16 — cada linha é a promessa quebrada de volta e o
-// assert que pegou (7/7):
+// assert que pegou (16/16; as nove últimas são os portões da revisão final):
 //   origins.poupanca = 'bcb-sgs'            → series vivas declaram origem bcb-sgs
 //   load() publica ibovespa                 → payload nao publica campo sem fonte
 //   title sai da pílula                     → a pilula da poupanca declara a regra que gerou o numero
@@ -16,6 +16,16 @@ import { PRODUCTS } from '../src/data/quanto-rende';
 //   frase à mão no Ticker                   → a pilula da poupanca declara a regra que gerou o numero
 //   poupancaTrReference.referencia = ''     → poupanca sempre traz a regra que a gerou
 //   ratesLead fixo 'Com as taxas do BCB'    → meta description de pagina de poupanca nao chama a formula de taxa do bcb
+//   /sobre volta a citar SGS 196            → a metodologia cita exatamente as series que a coleta consulta
+//   /sobre reincludes Poupança na leitura direta do BCB → idem (assert de "vêm diretamente")
+//   frase da Poupança escrita à mão no /sobre → idem (assert de poupancaReferenceText na linha)
+//   CalcSeo 'dados oficiais (serie SGS)'    → o json-ld das calculadoras nomeia o que alega medido
+//   pontas do ternário do subtítulo trocadas → subtitulo e byline da pagina de poupanca nao prometem taxa medida
+//   Byline sem sourceLabel                  → idem
+//   isPoupanca = product.type === 'cdb'     → o gate da ressalva esta preso ao produto poupanca
+//   finance.ts default TR = 0.95            → a TR das calculadoras vem do unico lugar declarado (+ o teste que
+//                                             muda o config e exige que a poupanca da calculadora mude junto)
+//   finance.ts comparador ?? 0.95           → idem
 
 const REALIZED = '30/10/2026';
 
@@ -177,7 +187,11 @@ describe('superficie publicada', () => {
 
     expect(citadas.sort()).toEqual(consultadas.sort());
     expect(src).not.toMatch(/Poupan[çc]a[^<\n]{0,80}v[êe]m diretamente/);
-    expect(src).toContain('poupancaReferenceText');
+    // Onde a pagina explica a Poupanca, a frase vem da funcao: escrita a mao ela perde a data
+    // da referencia e volta a ser um numero sem origem (a mutacao que passou nos 8 primeiros).
+    const linhasRegra = src.split('\n').filter((line) => line.includes('não é série lida'));
+    expect(linhasRegra.length).toBeGreaterThan(0);
+    for (const line of linhasRegra) expect(line, 'frase da poupanca escrita a mao').toContain('poupancaReferenceText(');
   });
 
   // CalcSeo monta o JSON-LD das sete calculadoras, inclusive a de renda fixa que compara CDB
