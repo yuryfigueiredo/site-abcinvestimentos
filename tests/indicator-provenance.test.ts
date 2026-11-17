@@ -5,6 +5,16 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 // Selic/CDI/IPCA/Dólar vinham do SGS, Ibovespa/IFIX nunca foram buscados por ninguém, e a
 // Poupança era 6,17 + uma TR chumbada no config desde 25/10. Publicado desse jeito, um
 // número de fórmula lê-se como medição. Este portão exige que cada campo declare a origem.
+//
+// Verificado por mutação em 2026-11-16 — cada linha é a promessa quebrada de volta e o
+// assert que pegou (7/7):
+//   origins.poupanca = 'bcb-sgs'            → series vivas declaram origem bcb-sgs
+//   load() publica ibovespa                 → payload nao publica campo sem fonte
+//   title sai da pílula                     → a pilula da poupanca declara a regra que gerou o numero
+//   {isPoupanca &&} incondicional           → pagina de poupanca publica a ressalva pela mesma funcao da barra
+//   frase à mão no Ticker                   → a pilula da poupanca declara a regra que gerou o numero
+//   poupancaTrReference.referencia = ''     → poupanca sempre traz a regra que a gerou
+//   ratesLead fixo 'Com as taxas do BCB'    → meta description de pagina de poupanca nao chama a formula de taxa do bcb
 
 const REALIZED = '30/10/2026';
 
