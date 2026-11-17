@@ -149,9 +149,9 @@ const faqSchema = {
           Quanto rende {amount.displayText} em {product.name}
         </h1>
         <p class="abc-text-lg abc-text-gray-600">
-          Simulação com taxas atualizadas do Banco Central do Brasil
+          {isPoupanca ? 'Simulação com a regra oficial da poupança, sobre Selic e CDI medidos pelo Banco Central' : 'Simulação com taxas atualizadas do Banco Central do Brasil'}
         </p>
-        <Byline updatedAt={indicators.updatedAt} />
+        <Byline updatedAt={indicators.updatedAt} sourceLabel={isPoupanca ? 'Selic e CDI medidos no Banco Central' : 'taxas do Banco Central'} />
         <p class="abc-text-lg abc-font-semibold abc-text-gray-900 abc-mt-4">
           Resposta direta: em 12 meses, {amount.displayText} em {product.name} rendem
           {formatBRL(net12)} líquidos ({formatBRL(net12 / 12)} por mês), totalizando

@@ -1,3 +1,5 @@
+import { SITE_CONFIG } from '../config/site';
+
 /**
  * Motor Matemático e Financeiro — ABC Investimentos (abcinvestimentos.com.br)
  * Regras fiscais brasileiras atualizadas para 2026:
@@ -204,7 +206,10 @@ export function getRegressiveIrRatePct(days: number): number {
  * - Selic > 8,5% a.a.: 0,5% ao mês (6,1678% a.a.) + TR
  * - Selic <= 8,5% a.a.: 70% da Selic + TR
  */
-export function getPoupancaAnnualRatePct(selicAnnualPct: number, trAnnualPct = 0.95): number {
+export function getPoupancaAnnualRatePct(
+  selicAnnualPct: number,
+  trAnnualPct: number = SITE_CONFIG.poupancaTrReference.annualPct,
+): number {
   if (selicAnnualPct > 8.5) {
     const baseMonthly = 0.005; // 0,5% a.m.
     const trMonthly = annualToMonthlyDecimal(trAnnualPct);
@@ -315,7 +320,7 @@ export function simulateFixedIncomeComparison(input: FixedIncomeInput): FixedInc
   const irDecimal = irBracketPct / 100;
   const totalInvested = Number((initial + monthly * months).toFixed(2));
 
-  const poupancaAnnualPct = getPoupancaAnnualRatePct(input.selicAnnualPct, input.trAnnualPct ?? 0.95);
+  const poupancaAnnualPct = getPoupancaAnnualRatePct(input.selicAnnualPct, input.trAnnualPct ?? SITE_CONFIG.poupancaTrReference.annualPct);
   const cdbGrossAnnualPct = (input.cdiAnnualPct * input.cdbPctCdi) / 100;
   const lciGrossAnnualPct = (input.cdiAnnualPct * input.lciLcaPctCdi) / 100;
   const tesouroGrossAnnualPct = input.selicAnnualPct;

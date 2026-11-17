@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { PRODUCTS } from '../src/data/quanto-rende';
 
 // O selo "dados oficiais do Banco Central" cobria oito campos de origens diferentes:
 // Selic/CDI/IPCA/Dólar vinham do SGS, Ibovespa/IFIX nunca foram buscados por ninguém, e a
@@ -164,5 +165,57 @@ describe('superficie publicada', () => {
     for (const line of alegacoes) {
       expect(line, 'alegacao de taxa medida fora do ramo que mede').toContain('isPoupanca');
     }
+  });
+
+  // /sobre e a pagina para onde o byline manda quem desconfia de um numero ("como calculamos").
+  // Ela citava "SGS 196" para a Poupanca e mantinha linhas de Ibovespa e IFIX depois que o
+  // payload passou a nao publicar esses campos: uma citacao de fonte que a coleta nao faz.
+  it('a metodologia cita exatamente as series que a coleta consulta', () => {
+    const src = readFileSync('src/pages/sobre.astro', 'utf8');
+    const consultadas = [...readFileSync('src/lib/indicators.ts', 'utf8').matchAll(/fetchBcbLastValue\((\d+)\)/g)].map((m) => m[1]);
+    const citadas = [...src.matchAll(/SGS\s*(\d+)/g)].map((m) => m[1]);
+
+    expect(citadas.sort()).toEqual(consultadas.sort());
+    expect(src).not.toMatch(/Poupan[çc]a[^<\n]{0,80}v[êe]m diretamente/);
+    expect(src).toContain('poupancaReferenceText');
+  });
+
+  // CalcSeo monta o JSON-LD das sete calculadoras, inclusive a de renda fixa que compara CDB
+  // com a Poupanca de formula. "Dados oficiais do Banco Central (serie SGS)" era alegacao de
+  // medicao sem dizer o que e medido — e o JSON-LD e a primeira string que o Google le.
+  it('o json-ld das calculadoras nomeia o que alega medido', () => {
+    const src = readFileSync('src/components/CalcSeo.astro', 'utf8');
+    expect(src).not.toMatch(/[Dd]ados oficiais do Banco Central do Brasil \(s[ée]rie SGS\)/);
+    const alegacoes = src.split('\n').filter((line) => line.includes('Banco Central'));
+    expect(alegacoes.length).toBeGreaterThan(0);
+    for (const line of alegacoes) {
+      expect(line, 'alegacao de SGS sem nomear as taxas').toMatch(/Selic/);
+    }
+  });
+
+  // A ressalva abaixo da tabela convive com duas frases acima dela que carimbam a pagina como
+  // leitura do BCB: o subtitulo do H1 e o byline "taxas do Banco Central de <data>". Na pagina
+  // de Poupanca, as duas alegam medicao justamente do numero que veio de formula.
+  it('subtitulo e byline da pagina de poupanca nao prometem taxa medida', () => {
+    const src = readFileSync('src/pages/quanto-rende/[produto]/[valor].astro', 'utf8');
+    for (const parte of ['taxas atualizadas do Banco Central', '<Byline ']) {
+      const linhas = src.split('\n').filter((line) => line.includes(parte));
+      expect(linhas.length, parte).toBeGreaterThan(0);
+      for (const line of linhas) {
+        expect(line, parte).toContain('isPoupanca');
+        // Trocar as pontas do ternario da pagina de Poupanca o mesmo texto do bug.
+        const ramoPoupanca = /\bisPoupanca\s*\?\s*'([^']*)'/.exec(line)?.[1];
+        if (ramoPoupanca !== undefined) expect(ramoPoupanca, parte).toMatch(/regra|medid/);
+      }
+    }
+  });
+
+  // O gate das paginas era o nome da variavel: trocar product.type === 'poupanca' por 'cdb'
+  // punha a ressalva na pagina do CDB e deixava o 7,12 nu na da Poupanca, e os 13 portoes
+  // passavam (reproduzido em 2026-11-16). O assert prende o gate ao produto.
+  it('o gate da ressalva esta preso ao produto poupanca, nao ao nome da variavel', () => {
+    const src = readFileSync('src/pages/quanto-rende/[produto]/[valor].astro', 'utf8');
+    expect(src).toMatch(/const isPoupanca = product\.type === 'poupanca'/);
+    expect(PRODUCTS.filter((p) => p.type === 'poupanca').map((p) => p.slug)).toEqual(['poupanca']);
   });
 });
