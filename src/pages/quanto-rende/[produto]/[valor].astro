@@ -4,7 +4,7 @@ import BaseLayout from '../../../layouts/BaseLayout.astro';
 import JsonLdBreadcrumb from '../../../components/JsonLdBreadcrumb.astro';
 import Byline from '../../../components/Byline.astro';
 import { PRODUCTS, AMOUNTS, calculateReturns, type QuantoRendeProduct, type QuantoRendeAmount } from '../../../data/quanto-rende';
-import { getIndicators } from '../../../lib/indicators';
+import { getIndicators, poupancaReferenceText } from '../../../lib/indicators';
 import { formatBRL, formatPct, formatDateBr } from '../../../lib/finance';
 
 export async function getStaticPaths(): Promise<GetStaticPathsResult> {
@@ -56,10 +56,18 @@ const titleCandidates = [
 ];
 const pageTitle = titleCandidates.find((t) => t.length <= TITLE_LIMIT) ?? titleCandidates.at(-1)!;
 
+// Selic e CDI sao medidos; o numero da Poupança vem de regra com TR de referência. As frases
+// estruturadas não podem carimbar os dois juntos como "taxas do Banco Central" — e o JSON-LD é
+// a primeira string que o Google lê, à frente da visível.
+const ratesLead = isPoupanca ? poupancaReferenceText(indicators) : 'Com as taxas do Banco Central';
+const ratesTail = isPoupanca
+  ? `; Selic ${formatPct(indicators.selic)} e CDI ${formatPct(indicators.cdi)} medidos em ${indicators.updatedAt}`
+  : ` de ${indicators.updatedAt} (Selic ${formatPct(indicators.selic)}, CDI ${formatPct(indicators.cdi)})`;
+
 // Partes em ordem de valor para o clique: resposta, frescor, rival, profundidade.
 const descriptionParts = [
   `${amount.displayText} em ${product.name} rende ${net12Short} líquido em 12 meses (${monthlyShort} por mês).`,
-  `Taxas BCB de ${indicators.updatedAt}.`,
+  isPoupanca ? `${poupancaReferenceText(indicators)}.` : `Taxas BCB de ${indicators.updatedAt}.`,
   winner === product
     ? `Supera ${rival.name} em ${differenceShort}.`
     : `${rival.name} rende ${differenceShort} a mais.`,
@@ -79,7 +87,7 @@ const faqSchema = {
       name: `Quanto rende ${amount.displayText} em ${product.name}?`,
       acceptedAnswer: {
         '@type': 'Answer',
-        text: `Com as taxas do Banco Central de ${indicators.updatedAt} (Selic ${formatPct(indicators.selic)}, CDI ${formatPct(indicators.cdi)}), ${amount.displayText} em ${product.name} rendem ${formatBRL(results[0].netReturn)} em 1 mês, ${formatBRL(results[1].netReturn)} em 6 meses e ${formatBRL(results[2].netReturn)} em 12 meses, já líquidos${product.hasIR ? ' do Imposto de Renda' : ' (isento de Imposto de Renda)'}. O valor final em 12 meses é ${formatBRL(product12.finalAmount)}.`,
+        text: `${ratesLead}${ratesTail}, ${amount.displayText} em ${product.name} rendem ${formatBRL(results[0].netReturn)} em 1 mês, ${formatBRL(results[1].netReturn)} em 6 meses e ${formatBRL(results[2].netReturn)} em 12 meses, já líquidos${product.hasIR ? ' do Imposto de Renda' : ' (isento de Imposto de Renda)'}. O valor final em 12 meses é ${formatBRL(product12.finalAmount)}.`,
       },
     },
     {
@@ -215,6 +223,11 @@ const faqSchema = {
               </tbody>
             </table>
           </div>
+          {isPoupanca && (
+            <p class="abc-text-sm abc-text-gray-600 abc-mt-2">
+              {poupancaReferenceText(indicators)} — por isso o valor não é lido diretamente de uma série do BCB.
+            </p>
+          )}
           {product.hasIR && (
             <p class="abc-text-sm abc-text-gray-600 abc-mt-2">
               * Valores líquidos já descontam o Imposto de Renda conforme tabela regressiva.

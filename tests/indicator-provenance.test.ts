@@ -125,4 +125,34 @@ describe('superficie publicada', () => {
     const start = src.indexOf("el.setAttribute('aria-label'");
     expect(src.slice(start, start + 220)).toContain('originNote');
   });
+
+  // As 8 paginas /quanto-rende/poupanca/* mostram o 7,12 em tabela. Sem a linha abaixo da
+  // tabela, o visitante ve um numero de formula na pagina que se apresenta com data do BCB.
+  it('pagina de poupanca publica a ressalva pela mesma funcao da barra', () => {
+    const src = readFileSync('src/pages/quanto-rende/[produto]/[valor].astro', 'utf8');
+    expect(src).toContain('poupancaReferenceText');
+    expect(src).toMatch(/isPoupanca\s*&&/);
+  });
+
+  // O JSON-LD e a primeira string que o Google le. Hoje ele abre "Com as taxas do Banco
+  // Central de <data>" tambem na pagina de Poupança, cujo numero nao veio de serie nenhuma.
+  it('meta description de pagina de poupanca nao chama a formula de taxa do bcb', () => {
+    const src = readFileSync('src/pages/quanto-rende/[produto]/[valor].astro', 'utf8');
+    const alegacoes = src.split('\n').filter((line) => line.includes('Com as taxas do Banco Central'));
+    expect(alegacoes.length).toBeGreaterThan(0);
+    for (const line of alegacoes) {
+      expect(line, 'alegacao de taxa medida fora do ramo que mede').toContain('isPoupanca');
+    }
+  });
+
+  // O byline visivel e a frase "Taxas BCB de <data>" do <meta description> carimbam a mesma
+  // mentira do JSON-LD: na pagina de Poupança, a cifra exibida nao e taxa do Banco Central.
+  it('a frase taxas BCB so aparece em pagina de taxa medida', () => {
+    const src = readFileSync('src/pages/quanto-rende/[produto]/[valor].astro', 'utf8');
+    const alegacoes = src.split('\n').filter((line) => line.includes('Taxas BCB de'));
+    expect(alegacoes.length).toBeGreaterThan(0);
+    for (const line of alegacoes) {
+      expect(line, 'alegacao de taxa medida fora do ramo que mede').toContain('isPoupanca');
+    }
+  });
 });
