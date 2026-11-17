@@ -1,5 +1,5 @@
 ---
-import { getIndicators } from '../lib/indicators';
+import { getIndicators, poupancaReferenceText } from '../lib/indicators';
 const d = await getIndicators();
 
 function splitNumberChars(val: number): string[] {
@@ -10,12 +10,12 @@ function splitNumberChars(val: number): string[] {
 
 const selicChars = splitNumberChars(d.selic);
 const cdiChars = splitNumberChars(d.cdi);
-const poupancaChars = splitNumberChars(d.poupanca || 7.12);
+const poupancaChars = splitNumberChars(d.poupanca);
 const ipcaChars = splitNumberChars(d.ipca12m);
 const dolarChars = splitNumberChars(d.dolar);
 ---
 
-<div class="ticker-bar" aria-label="Indicadores macroeconômicos oficiais do Banco Central do Brasil">
+<div class="ticker-bar" aria-label="Indicadores econômicos: Banco Central e regra oficial de poupança">
   <div class="container ticker-inner">
     <div
       class="ticker-info-badge"
@@ -107,10 +107,12 @@ const dolarChars = splitNumberChars(d.dolar);
         <strong
           class="ticker-val"
           id="bcb-poupanca"
-          data-value={(d.poupanca || 7.12).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          title={poupancaReferenceText(d)}
+          data-value={d.poupanca.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           data-suffix="% a.a."
           data-suffix-mobile="%"
-          aria-label={`Poupança: ${(d.poupanca || 7.12).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}% a.a.`}
+          data-origin-note={poupancaReferenceText(d)}
+          aria-label={`Poupança: ${d.poupanca.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}% a.a. — ${poupancaReferenceText(d)}`}
         >
           <span class="flap-board" aria-hidden="true">
             {poupancaChars.map((ch, idx) =>
@@ -132,6 +134,7 @@ const dolarChars = splitNumberChars(d.dolar);
             )}
           </span>
           <span class="flap-unit" aria-hidden="true">% a.a.</span>
+          <span class="ticker-origin" aria-hidden="true">fórmula</span>
         </strong>
       </a>
 
@@ -379,9 +382,10 @@ const dolarChars = splitNumberChars(d.dolar);
 
     const prefix = el.dataset.prefix || '';
     const suffix = el.dataset.suffix ? ` ${el.dataset.suffix}` : '';
+    const originNote = el.dataset.originNote ? ` — ${el.dataset.originNote}` : '';
     const labelEl = el.parentElement?.querySelector('.ticker-label');
     const labelText = labelEl ? `${labelEl.textContent}: ` : '';
-    el.setAttribute('aria-label', `${labelText}${prefix}${formattedNumber}${suffix}`);
+    el.setAttribute('aria-label', `${labelText}${prefix}${formattedNumber}${suffix}${originNote}`);
     el.dataset.value = formattedNumber;
 
     // Mobile lê o valor em texto (CSS); não gasta frames girando cartões ocultos.
@@ -743,6 +747,23 @@ const dolarChars = splitNumberChars(d.dolar);
 
   .flap-unit--prefix {
     margin-inline-end: 0.05rem;
+  }
+
+  /* Le-se sem hover: o valor da Poupança é regra aplicada, não série medida. */
+  .ticker-origin {
+    font-size: 0.60rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: #94a3b8;
+    border: 1px dashed rgba(148, 163, 184, 0.5);
+    border-radius: 9999px;
+    padding: 0.02rem 0.3rem;
+  }
+
+  :root[data-theme="light"] .ticker-origin,
+  :root:has(> head > meta[name="color-scheme"][content="light"]) .ticker-origin {
+    color: #475569;
+    border-color: rgba(71, 85, 105, 0.35);
   }
 
   @keyframes flap-module-wake {

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 // O selo "dados oficiais do Banco Central" cobria oito campos de origens diferentes:
@@ -93,5 +94,35 @@ describe('proveniência dos indicadores publicados', () => {
     const { calls } = await collect(ALL_LIVE);
 
     expect(calls).toEqual([432, 4389, 13522, 1]);
+  });
+});
+
+describe('superficie publicada', () => {
+  // A barra e a unica superficie que mostra o 7,12 ao visitante, e o selo dela diz
+  // "Banco Central". Se a pílula nao carregar a regra, o numero volta a ler-se como medicao.
+  it('a pilula da poupanca declara a regra que gerou o numero', () => {
+    const src = readFileSync('src/components/Ticker.astro', 'utf8');
+    expect(src).toContain('poupancaReferenceText');
+    const poupancaPill = src.slice(src.indexOf('id="bcb-poupanca"'));
+    expect(poupancaPill).toContain('title={poupancaReferenceText(d)}');
+  });
+
+  it('nenhum valor de taxa sai hardcoded na barra', () => {
+    const src = readFileSync('src/components/Ticker.astro', 'utf8');
+    expect(src).not.toMatch(/poupanca \|\| 7\.12/);
+  });
+
+  // Um dos cinco itens e formula, entao o rotulo do conjunto nao pode morena-los como medição.
+  it('o rotulo do conjunto nao chama os cinco itens de oficiais do banco central', () => {
+    const src = readFileSync('src/components/Ticker.astro', 'utf8');
+    expect(src).not.toMatch(/oficiais do Banco Central do Brasil/);
+  });
+
+  // O script de hidratacao regrava o aria-label com o numero formatado. Se a nota de origem
+  // nao entrar nessa concatenacao, o conserto visivel sobrevive so ate o primeiro giro das placas.
+  it('o giro das placas mantem a origem no aria-label', () => {
+    const src = readFileSync('src/components/Ticker.astro', 'utf8');
+    const start = src.indexOf("el.setAttribute('aria-label'");
+    expect(src.slice(start, start + 220)).toContain('originNote');
   });
 });
