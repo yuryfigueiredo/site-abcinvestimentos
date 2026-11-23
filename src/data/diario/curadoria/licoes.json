@@ -1,0 +1,74 @@
+[
+  {
+    "id": "licao-reserva-liquidez",
+    "title": "Segurança e liquidez antes da rentabilidade",
+    "body": "A reserva de emergência protege o plano financeiro de imprevistos. Na reserva, segurança e liquidez diária vêm antes da busca por rentabilidade adicional.",
+    "guideSlug": "como-montar-reserva-de-emergencia"
+  },
+  {
+    "id": "licao-baldes-orcamento",
+    "title": "Organize a renda em necessidades, estilo de vida e futuro",
+    "body": "Separe a renda líquida em necessidades essenciais, estilo de vida e liberdade financeira. Automatize os aportes quando o salário entrar para não depender do que sobrar no fim do mês.",
+    "guideSlug": "regra-50-30-20-orcamento-inteligente"
+  },
+  {
+    "id": "licao-taxa-liquida",
+    "title": "Compare títulos pelo rendimento líquido",
+    "body": "CDB e Tesouro Direto têm imposto de renda sobre o lucro, enquanto LCI e LCA são isentos para pessoa física. Para comparar títulos, considere a taxa líquida e o prazo, não apenas a taxa bruta.",
+    "guideSlug": "cdb-vs-lci-lca-tesouro-como-comparar"
+  },
+  {
+    "id": "licao-juro-real",
+    "title": "Entenda juro real e marcação a mercado",
+    "body": "O juro real desconta a inflação do rendimento nominal. O Tesouro IPCA+ combina inflação e taxa de juro real, mas o preço pode oscilar antes do vencimento.",
+    "guideSlug": "tesouro-ipca-ganho-real-inflacao"
+  },
+  {
+    "id": "licao-numero-magico",
+    "title": "Rendimentos podem recomprar cotas",
+    "body": "O número mágico de um fundo imobiliário é a quantidade de cotas em que os próprios rendimentos mensais já compram uma cota nova. Esse marco ajuda a visualizar o efeito dos rendimentos reinvestidos.",
+    "guideSlug": "como-viver-de-renda-com-fiis-e-dividendos"
+  },
+  {
+    "id": "licao-preco-filtro",
+    "title": "Preço-teto é filtro de estudo",
+    "body": "Os métodos de Bazin e Graham ajudam a estimar limites de preço a partir de fundamentos da empresa. Fórmulas são filtros iniciais de estudo, não recomendações automáticas de compra.",
+    "guideSlug": "metodo-bazin-e-graham-preco-justo-acoes"
+  },
+  {
+    "id": "licao-dividas-primeiro",
+    "title": "Quite dívidas antes de começar",
+    "body": "Dívidas caras podem consumir o ganho dos investimentos. Antes de aplicar, organize dívidas, monte a reserva de emergência e escolha uma corretora regulada.",
+    "guideSlug": "como-investir-do-zero-guia-completo"
+  },
+  {
+    "id": "licao-protecao-iniciante",
+    "title": "Comece pela proteção financeira",
+    "body": "Para iniciantes, o guia destaca Tesouro Selic e CDB de liquidez diária como alternativas de segurança e liquidez. A reserva de emergência vem antes da exposição à renda variável.",
+    "guideSlug": "melhor-investimento-para-iniciante"
+  },
+  {
+    "id": "licao-regras-resgate",
+    "title": "Considere liquidez e imposto na comparação",
+    "body": "A comparação entre poupança e CDB envolve rendimento, imposto de renda e regras de resgate. A poupança pode fazer sentido para saques antes do dia de aniversário, quando o CDB sofre impacto do IOF regressivo.",
+    "guideSlug": "poupanca-vs-cdb-qual-melhor"
+  },
+  {
+    "id": "licao-risco-soberano-fgc",
+    "title": "Risco soberano e garantia do FGC",
+    "body": "O Tesouro Selic tem risco soberano, enquanto o CDB conta com proteção do FGC dentro dos limites. A escolha também depende da liquidez e da praticidade de resgate.",
+    "guideSlug": "tesouro-selic-vs-cdb-comparativo"
+  },
+  {
+    "id": "licao-taxa-risco-credito",
+    "title": "Taxa maior pode embutir risco de crédito",
+    "body": "CDBs com taxas muito acima do CDI podem vir de bancos menores e trazer risco de crédito adicional. Compare o rendimento líquido, a solidez do emissor e os limites da proteção do FGC.",
+    "guideSlug": "cdb-110-por-cento-cdi-vale-a-pena"
+  },
+  {
+    "id": "licao-prefixado-ipca",
+    "title": "Inflação e marcação a mercado mudam a escolha",
+    "body": "No prefixado, a taxa de vencimento é conhecida; no IPCA+, o rendimento acompanha a inflação e inclui juro real. Ambos podem oscilar de preço se vendidos antes do vencimento.",
+    "guideSlug": "ipca-mais-ou-prefixado-2026"
+  }
+]

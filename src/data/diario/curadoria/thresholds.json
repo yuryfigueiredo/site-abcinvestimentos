@@ -1,0 +1,27 @@
+{
+  "version": "1.0.0",
+  "timezone": "America/Sao_Paulo",
+  "runLocal": "19:00",
+  "dollarAbsChangePct": 1.0,
+  "lessonWeekday": 1,
+  "maxLessonsPerIsoWeek": 1,
+  "lessonOnlyWhenQuiet": true,
+  "newsWindowHours": 24,
+  "minMediaSources": 2,
+  "maxItems": 3,
+  "topics": [
+    "renda-fixa",
+    "juros",
+    "inflacao",
+    "cambio",
+    "bolsa-fiis",
+    "regulacao"
+  ],
+  "events": [
+    "copom",
+    "ipca",
+    "igp-m",
+    "payroll",
+    "fomc"
+  ]
+}
