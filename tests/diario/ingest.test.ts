@@ -936,6 +936,77 @@ describe('allowlisted ingestion', () => {
     expect(result.sources[0]?.excerpt).toBe('Resumo 1 < 2 &amp; &');
   });
 
+  it('accepts a 239-character CDATA title with 120 ampersands', async () => {
+    setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
+    const title = `${'A'.repeat(119)}${'&'.repeat(120)}`;
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(rss([
+          `<item><title><![CDATA[${title}]]></title><link>${ARTICLE}</link></item>`,
+        ]), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources.map((item) => item.sourceId)).toEqual(['alpha', 'beta']);
+    expect(result.sources[0]).toMatchObject({ title, canonicalUrl: ARTICLE });
+  });
+
+  it('accepts a CDATA URL whose escaped representation exceeds the URL limit', async () => {
+    setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
+    const link = `https://news.example.test/${'x&'.repeat(600)}`;
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(rss([
+          `<item><title>URL CDATA longa</title><link><![CDATA[${link}]]></link></item>`,
+        ]), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources.map((item) => item.sourceId)).toEqual(['alpha', 'beta']);
+    expect(result.sources[0]?.canonicalUrl).toBe(link);
+  });
+
+  it('accepts an RSS link record with xml:lang and CDATA text', async () => {
+    setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
+    const link = `${ARTICLE}?b=2&a=1&utm_source=feed#section`;
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(rss([
+          `<item><title>Link RSS com idioma</title><link xml:lang="pt-BR"><![CDATA[${link}]]></link></item>`,
+        ]), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources.map((item) => item.sourceId)).toEqual(['alpha', 'beta']);
+    expect(result.sources[0]?.canonicalUrl).toBe(`${ARTICLE}?a=1&b=2`);
+  });
+
+  it('preserves Atom alternate href precedence over non-URL link text', async () => {
+    setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(atomFeed([
+          `<entry><title>Link Atom alternativo</title><link href="${ARTICLE}" rel="alternate">texto do link</link><summary>Resumo.</summary></entry>`,
+        ]), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources.map((item) => item.sourceId)).toEqual(['alpha', 'beta']);
+    expect(result.sources[0]?.canonicalUrl).toBe(ARTICLE);
+  });
+
   it('accepts processing instructions containing literal ampersands', async () => {
     setSources([source('alpha', ALPHA_FEED)]);
     const xml = rss([rssItem()]).replace(
@@ -953,6 +1024,24 @@ describe('allowlisted ingestion', () => {
   });
 
   it.each([
+    ['zero-width non-joiner in a PI target', '<?foo\u200Cbar?>', 'start'],
+    ['zero-width joiner in a PI target', '<?foo\u200Dbar?>', 'start'],
+  ])('accepts %s without suppressing the feed', async (_label, instruction) => {
+    setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
+    const xml = rss([rssItem()]).replace('?>', `?>${instruction}`);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) return new Response(xml, { status: 200 });
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources.map((item) => item.sourceId)).toEqual(['alpha', 'beta']);
+  });
+
+  it.each([
+    ['a zero-width non-joiner at the start of a PI target', '<?\u200Cfoo?>', 'start'],
+    ['a zero-width joiner at the start of a PI target', '<?\u200Dfoo?>', 'start'],
     ['an ampersand in the PI target', '<?foo&bar?>', 'start'],
     ['a literal ampersand in the XML declaration', '<?xml version="1.0" &?>', 'start'],
     ['an XML declaration without a version', '<?xml encoding="UTF-8"?>', 'start'],

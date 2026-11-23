@@ -29,7 +29,7 @@ const CONTROL_OR_SPACE = /[\u0000-\u0020\u007F-\u009F]/u;
 const INVALID_URL_CHARACTER = /[<>"\\]/u;
 const HOSTNAME = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/u;
 const TRACKING_PARAMETERS = /^(?:utm_.*|fbclid|gclid|dclid|mc_cid|mc_eid|igshid|ref|referrer)$/iu;
-const XML_NAME = /^[\p{L}\p{Nl}_:][\p{L}\p{N}\p{M}_.:\-\u00B7\u0300-\u036F\u203F-\u2040]*$/u;
+const XML_NAME = /^[\p{L}\p{Nl}_:][\p{L}\p{N}\p{M}_.:\-\u00B7\u0300-\u036F\u200C\u200D\u203F-\u2040]*$/u;
 const XML_DECLARATION = /^[\t\n\r ]+version[\t\n\r ]*=[\t\n\r ]*(?:"1\.0"|'1\.0')(?:[\t\n\r ]+encoding[\t\n\r ]*=[\t\n\r ]*(?:"[A-Za-z][A-Za-z0-9._-]*"|'[A-Za-z][A-Za-z0-9._-]*'))?(?:[\t\n\r ]+standalone[\t\n\r ]*=[\t\n\r ]*(?:"(?:yes|no)"|'(?:yes|no)'))?[\t\n\r ]*$/u;
 const XML_CHARACTER_REFERENCE = /&(?:amp|lt|gt|apos|quot|#(?:\d+|x[\da-fA-F]+));/gu;
 const XML_REFERENCE_AT_POSITION = /&(?:amp|lt|gt|apos|quot|#(?:\d+|x[\da-fA-F]+));/yu;
@@ -209,9 +209,9 @@ function parsedXmlText(value: unknown): ParsedXmlText | null {
 
 function normalizedMetadata(value: unknown, maxLength: number): string | null {
   const parsed = parsedXmlText(value);
-  if (!parsed || parsed.text.length > maxLength || UNSAFE_CONTROL_CHARACTER.test(parsed.text)) return null;
-  const decoded = decodeXmlReferences(parsed.text, maxLength);
-  if (decoded === null) return null;
+  if (!parsed || parsed.text.length > MAX_FEED_BYTES || UNSAFE_CONTROL_CHARACTER.test(parsed.text)) return null;
+  const decoded = decodeXmlReferences(parsed.text, MAX_FEED_BYTES);
+  if (decoded === null || decoded.length > maxLength) return null;
   const normalized = decoded.normalize('NFKC');
   if (UNSAFE_CONTROL_CHARACTER.test(normalized) || FORMAT_CONTROL.test(normalized) || XML_MARKUP.test(normalized)) return null;
   const plainText = normalized.replace(/\s+/gu, ' ').trim();
@@ -220,9 +220,9 @@ function normalizedMetadata(value: unknown, maxLength: number): string | null {
 
 function canonicalUrl(value: unknown): string | null {
   const parsed = parsedXmlText(value);
-  if (!parsed || parsed.text.length > MAX_URL_LENGTH) return null;
-  const decoded = decodeXmlReferences(parsed.text, MAX_URL_LENGTH);
-  if (decoded === null || CONTROL_CHARACTER.test(decoded) || INVALID_URL_CHARACTER.test(decoded)) return null;
+  if (!parsed || parsed.text.length > MAX_FEED_BYTES) return null;
+  const decoded = decodeXmlReferences(parsed.text, MAX_FEED_BYTES);
+  if (decoded === null || decoded.length > MAX_URL_LENGTH || CONTROL_CHARACTER.test(decoded) || INVALID_URL_CHARACTER.test(decoded)) return null;
   try {
     const url = new URL(decoded);
     if (url.protocol !== 'https:' || url.username || url.password || !HOSTNAME.test(url.hostname)) return null;
@@ -407,8 +407,9 @@ function alternateLink(item: Record<string, unknown>): unknown {
   if (typeof item.link === 'string') return item.link;
   for (const value of asArray(item.link)) {
     const link = asRecord(value);
-    if (!link || typeof link['@href'] !== 'string') continue;
-    if (link['@rel'] === undefined || link['@rel'] === 'alternate') return link['@href'];
+    if (!link || (link['@rel'] !== undefined && link['@rel'] !== 'alternate')) continue;
+    if (typeof link['@href'] === 'string') return link['@href'];
+    if (typeof link['#text'] === 'string') return link['#text'];
   }
   return null;
 }
