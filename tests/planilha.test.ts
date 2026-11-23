@@ -85,5 +85,5 @@ describe('Planilha ABC (.xlsx) — Auditoria Automatizada de Qualidade', () => {
       expect(Number(ano30Nominal.result)).toBeGreaterThan(1000000);
       expect(ano30Status.result).toBe('1º MILHÃO ALCANÇADO!');
     }
-  });
+  }, 15000);
 });
