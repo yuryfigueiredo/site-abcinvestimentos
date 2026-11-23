@@ -29,8 +29,8 @@ const CONTROL_OR_SPACE = /[\u0000-\u0020\u007F-\u009F]/u;
 const INVALID_URL_CHARACTER = /[<>"\\]/u;
 const HOSTNAME = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/u;
 const TRACKING_PARAMETERS = /^(?:utm_.*|fbclid|gclid|dclid|mc_cid|mc_eid|igshid|ref|referrer)$/iu;
-const CDATA_PROP_NAME = '#cdata';
-const XML_DECLARATION_AT_POSITION = /<!\s*(?:DOCTYPE|ENTITY)\b/iy;
+const XML_NAME = /^[\p{L}\p{Nl}_:][\p{L}\p{N}\p{M}_.:\-\u00B7\u0300-\u036F\u203F-\u2040]*$/u;
+const XML_DECLARATION = /^[\t\n\r ]+version[\t\n\r ]*=[\t\n\r ]*(?:"1\.0"|'1\.0')(?:[\t\n\r ]+encoding[\t\n\r ]*=[\t\n\r ]*(?:"[A-Za-z][A-Za-z0-9._-]*"|'[A-Za-z][A-Za-z0-9._-]*'))?(?:[\t\n\r ]+standalone[\t\n\r ]*=[\t\n\r ]*(?:"(?:yes|no)"|'(?:yes|no)'))?[\t\n\r ]*$/u;
 const XML_CHARACTER_REFERENCE = /&(?:amp|lt|gt|apos|quot|#(?:\d+|x[\da-fA-F]+));/gu;
 const XML_REFERENCE_AT_POSITION = /&(?:amp|lt|gt|apos|quot|#(?:\d+|x[\da-fA-F]+));/yu;
 const XML_PREDEFINED_ENTITIES: Readonly<Record<string, string>> = {
@@ -76,37 +76,112 @@ function decodeXmlReference(reference: string): string | null {
   return isValidXmlCodePoint(codePoint) ? String.fromCodePoint(codePoint) : null;
 }
 
-function validateXml(xml: string): boolean {
-  for (let index = 0; index < xml.length; index += 1) {
+function xmlReferenceEnd(xml: string, start: number): number | null {
+  XML_REFERENCE_AT_POSITION.lastIndex = start;
+  const match = XML_REFERENCE_AT_POSITION.exec(xml);
+  if (!match || decodeXmlReference(match[0]) === null) return null;
+  return start + match[0].length;
+}
+
+function xmlTagEnd(xml: string, start: number): number | null {
+  let quote: '"' | "'" | null = null;
+  let index = start + 1;
+  while (index < xml.length) {
+    const character = xml[index];
+    if (quote !== null) {
+      if (character === quote) {
+        quote = null;
+      } else if (character === '<') {
+        return null;
+      } else if (character === '&') {
+        const end = xmlReferenceEnd(xml, index);
+        if (end === null) return null;
+        index = end;
+        continue;
+      }
+      index += 1;
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+    } else if (character === '<') {
+      return null;
+    } else if (character === '>') {
+      return index + 1;
+    } else if (character === '&') {
+      const end = xmlReferenceEnd(xml, index);
+      if (end === null) return null;
+      index = end;
+      continue;
+    }
+    index += 1;
+  }
+  return null;
+}
+
+function isXmlWhitespace(character: string): boolean {
+  return character === ' ' || character === '\t' || character === '\n' || character === '\r';
+}
+
+function validProcessingInstruction(xml: string, start: number, data: string): boolean {
+  let targetEnd = 0;
+  while (targetEnd < data.length && !isXmlWhitespace(data[targetEnd])) targetEnd += 1;
+  if (targetEnd === 0) return false;
+  const target = data.slice(0, targetEnd);
+  if (!XML_NAME.test(target)) return false;
+  if (target.toLowerCase() !== 'xml') return true;
+  const documentStart = start === 0 || (start === 1 && xml.startsWith('\uFEFF'));
+  return target === 'xml' && documentStart && XML_DECLARATION.test(data.slice(targetEnd));
+}
+
+function prepareXml(xml: string): string | null {
+  let prepared = '';
+  let copiedUntil = 0;
+  let index = 0;
+  while (index < xml.length) {
     if (xml.startsWith('<!--', index)) {
       const end = xml.indexOf('-->', index + 4);
-      if (end === -1) return false;
-      index = end + 2;
+      if (end === -1) return null;
+      prepared += xml.slice(copiedUntil, end + 3);
+      index = end + 3;
+      copiedUntil = index;
       continue;
     }
     if (xml.startsWith('<![CDATA[', index)) {
       const end = xml.indexOf(']]>', index + 9);
-      if (end === -1) return false;
-      index = end + 2;
+      if (end === -1) return null;
+      prepared += xml.slice(copiedUntil, index);
+      prepared += xml.slice(index + 9, end).replaceAll('&', '&amp;').replaceAll('<', '&lt;');
+      index = end + 3;
+      copiedUntil = index;
       continue;
     }
     if (xml.startsWith('<?', index)) {
       const end = xml.indexOf('?>', index + 2);
-      if (end === -1) return false;
-      index = end + 1;
+      if (end === -1 || !validProcessingInstruction(xml, index, xml.slice(index + 2, end))) return null;
+      prepared += xml.slice(copiedUntil, end + 2);
+      index = end + 2;
+      copiedUntil = index;
       continue;
     }
     if (xml[index] === '<') {
-      XML_DECLARATION_AT_POSITION.lastIndex = index;
-      if (XML_DECLARATION_AT_POSITION.test(xml)) return false;
+      if (xml.startsWith('<!', index)) return null;
+      const end = xmlTagEnd(xml, index);
+      if (end === null) return null;
+      prepared += xml.slice(copiedUntil, end);
+      index = end;
+      copiedUntil = index;
+      continue;
     }
-    if (xml[index] !== '&') continue;
-    XML_REFERENCE_AT_POSITION.lastIndex = index;
-    const match = XML_REFERENCE_AT_POSITION.exec(xml);
-    if (!match || decodeXmlReference(match[0]) === null) return false;
-    index += match[0].length - 1;
+    if (xml[index] === '&') {
+      const end = xmlReferenceEnd(xml, index);
+      if (end === null) return null;
+      index = end;
+      continue;
+    }
+    index += 1;
   }
-  return true;
+  return prepared + xml.slice(copiedUntil);
 }
 
 function decodeXmlReferences(value: string, maxLength: number): string | null {
@@ -123,30 +198,19 @@ function decodeXmlReferences(value: string, maxLength: number): string | null {
   return valid && decoded.length <= maxLength ? decoded : null;
 }
 
-type ParsedXmlText = { text: string; literal: boolean };
-
-function cdataText(value: unknown): string | null {
-  if (typeof value === 'string') return value;
-  if (!Array.isArray(value) || value.some((section) => typeof section !== 'string')) return null;
-  return value.join('');
-}
+type ParsedXmlText = { text: string };
 
 function parsedXmlText(value: unknown): ParsedXmlText | null {
-  if (typeof value === 'string') return { text: value, literal: false };
+  if (typeof value === 'string') return { text: value };
   const record = asRecord(value);
-  if (!record || Object.keys(record).some((key) => key !== '#text' && key !== CDATA_PROP_NAME && !key.startsWith('@'))) return null;
-  if (Object.hasOwn(record, CDATA_PROP_NAME)) {
-    if (Object.hasOwn(record, '#text')) return null;
-    const text = cdataText(record[CDATA_PROP_NAME]);
-    return text === null ? null : { text, literal: true };
-  }
-  return typeof record['#text'] === 'string' ? { text: record['#text'], literal: false } : null;
+  if (!record || Object.keys(record).some((key) => key !== '#text' && !key.startsWith('@'))) return null;
+  return typeof record['#text'] === 'string' ? { text: record['#text'] } : null;
 }
 
 function normalizedMetadata(value: unknown, maxLength: number): string | null {
   const parsed = parsedXmlText(value);
   if (!parsed || parsed.text.length > maxLength || UNSAFE_CONTROL_CHARACTER.test(parsed.text)) return null;
-  const decoded = parsed.literal ? parsed.text : decodeXmlReferences(parsed.text, maxLength);
+  const decoded = decodeXmlReferences(parsed.text, maxLength);
   if (decoded === null) return null;
   const normalized = decoded.normalize('NFKC');
   if (UNSAFE_CONTROL_CHARACTER.test(normalized) || FORMAT_CONTROL.test(normalized) || XML_MARKUP.test(normalized)) return null;
@@ -154,17 +218,10 @@ function normalizedMetadata(value: unknown, maxLength: number): string | null {
   return plainText.length > 0 && plainText.length <= maxLength ? plainText : null;
 }
 
-function titleValue(value: unknown, maxLength: number): string | null {
-  if (typeof value === 'string') return normalizedMetadata(value, maxLength);
-  const record = asRecord(value);
-  if (!record || Object.keys(record).some((key) => key !== '#text' && key !== CDATA_PROP_NAME && !key.startsWith('@'))) return null;
-  return normalizedMetadata(value, maxLength);
-}
-
 function canonicalUrl(value: unknown): string | null {
   const parsed = parsedXmlText(value);
   if (!parsed || parsed.text.length > MAX_URL_LENGTH) return null;
-  const decoded = parsed.literal ? parsed.text : decodeXmlReferences(parsed.text, MAX_URL_LENGTH);
+  const decoded = decodeXmlReferences(parsed.text, MAX_URL_LENGTH);
   if (decoded === null || CONTROL_CHARACTER.test(decoded) || INVALID_URL_CHARACTER.test(decoded)) return null;
   try {
     const url = new URL(decoded);
@@ -193,7 +250,7 @@ function normalizedTitleKey(value: string): string {
 function normalizedExcerpt(value: unknown): string {
   const parsed = parsedXmlText(value);
   if (!parsed || UNSAFE_CONTROL_CHARACTER.test(parsed.text)) return '';
-  const decoded = parsed.literal ? parsed.text : decodeXmlReferences(parsed.text, MAX_FEED_BYTES);
+  const decoded = decodeXmlReferences(parsed.text, MAX_FEED_BYTES);
   if (decoded === null) return '';
   const normalized = decoded.normalize('NFKC');
   if (UNSAFE_CONTROL_CHARACTER.test(normalized) || FORMAT_CONTROL.test(normalized)) return '';
@@ -348,8 +405,6 @@ async function fetchFeedXml(initialValue: string, fetchImpl: typeof fetch): Prom
 
 function alternateLink(item: Record<string, unknown>): unknown {
   if (typeof item.link === 'string') return item.link;
-  const direct = asRecord(item.link);
-  if (direct && Object.hasOwn(direct, CDATA_PROP_NAME)) return item.link;
   for (const value of asArray(item.link)) {
     const link = asRecord(value);
     if (!link || typeof link['@href'] !== 'string') continue;
@@ -359,15 +414,16 @@ function alternateLink(item: Record<string, unknown>): unknown {
 }
 
 function parseFeed(xml: string, source: AllowlistSource, retrievedAt: string): ParsedFeed | null {
-  if (!xml || !validateXml(xml) || XMLValidator.validate(xml) !== true) return null;
+  if (!xml) return null;
+  const preparedXml = prepareXml(xml);
+  if (preparedXml === null || XMLValidator.validate(preparedXml) !== true) return null;
   const parsed = new XMLParser({
     processEntities: false,
     parseTagValue: false,
     ignoreAttributes: false,
     attributeNamePrefix: '@',
     removeNSPrefix: true,
-    cdataPropName: CDATA_PROP_NAME,
-  }).parse(xml) as unknown;
+  }).parse(preparedXml) as unknown;
   const root = asRecord(parsed);
   if (!root) return null;
 
@@ -389,7 +445,7 @@ function parseFeed(xml: string, source: AllowlistSource, retrievedAt: string): P
   for (const entry of entries.slice(0, 100)) {
     const item = asRecord(entry);
     if (!item) continue;
-    const title = titleValue(item.title, MAX_TITLE_LENGTH);
+    const title = normalizedMetadata(item.title, MAX_TITLE_LENGTH);
     const url = canonicalUrl(alternateLink(item));
     if (!title || !url) continue;
     const excerpt = normalizedExcerpt(item.description ?? item.summary);

@@ -732,6 +732,50 @@ describe('allowlisted ingestion', () => {
     expect(result.sources.map((item) => item.sourceId)).toEqual(['beta']);
   });
 
+  it('rejects a DOCTYPE hidden after a comment opener inside a quoted attribute', async () => {
+    setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
+    const hostile = `<rss x="<!--"><!DOCTYPE rss [<!ENTITY x "safe">]><!-- --><channel>${rssItem()}</channel></rss>`;
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) return new Response(hostile, { status: 200 });
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources.map((item) => item.sourceId)).toEqual(['beta']);
+    expect(cacheInputs()).toEqual(result);
+  });
+
+  it.each([
+    ['literal less-than in a double-quoted attribute', `<rss note="a<b"><channel>${rssItem()}</channel></rss>`],
+    ['literal less-than in a single-quoted attribute', `<rss note='a<b'><channel>${rssItem()}</channel></rss>`],
+    ['unclosed tag', `<rss><channel>${rssItem()}`],
+    ['unclosed attribute quote', `<rss note="unterminated><channel>${rssItem()}</channel></rss>`],
+  ])('rejects %s without suppressing a healthy sibling', async (_label, hostile) => {
+    setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) return new Response(hostile, { status: 200 });
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources.map((item) => item.sourceId)).toEqual(['beta']);
+  });
+
+  it('rejects an undefined entity reference inside an attribute', async () => {
+    setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
+    const hostile = `<rss note="&foo;"><channel>${rssItem()}</channel></rss>`;
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) return new Response(hostile, { status: 200 });
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources.map((item) => item.sourceId)).toEqual(['beta']);
+  });
+
   it.each([
     ['title', '<title>Juros &foo; e inflação</title>', ARTICLE],
     ['link', '<title>Juros e inflação</title>', `${ARTICLE}?a=1&foo;=2`],
@@ -853,6 +897,45 @@ describe('allowlisted ingestion', () => {
     });
   });
 
+  it('preserves interleaved CDATA and text in source order with one-pass decoding', async () => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(rss([
+          '<item><title>Juros <![CDATA[&amp;amp;]]> inflação</title><link>https://news.example.test/interleaved-cdata</link><description>Resumo <![CDATA[&amp;amp;]]> e <![CDATA[&#38;]]> inflação</description></item>',
+        ]), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources[0]).toMatchObject({
+      title: 'Juros &amp;amp; inflação',
+      excerpt: 'Resumo &amp;amp; e &#38; inflação',
+    });
+    expect(cacheInputs().sources[0]).toMatchObject({
+      title: 'Juros &amp;amp; inflação',
+      excerpt: 'Resumo &amp;amp; e &#38; inflação',
+    });
+  });
+
+  it('escapes literal ampersands and less-than signs from CDATA before parsing', async () => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(rss([
+          '<item><title>Comparação</title><link>https://news.example.test/literal-cdata</link><description><![CDATA[Resumo 1 < 2 &amp; &]]></description></item>',
+        ]), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources[0]?.excerpt).toBe('Resumo 1 < 2 &amp; &');
+  });
+
   it('accepts processing instructions containing literal ampersands', async () => {
     setSources([source('alpha', ALPHA_FEED)]);
     const xml = rss([rssItem()]).replace(
@@ -861,6 +944,47 @@ describe('allowlisted ingestion', () => {
     );
     const fetchMock = mockFetch((input) => {
       if (String(input) === ALPHA_FEED) return new Response(xml, { status: 200 });
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources.map((item) => item.sourceId)).toEqual(['alpha']);
+  });
+
+  it.each([
+    ['an ampersand in the PI target', '<?foo&bar?>', 'start'],
+    ['a literal ampersand in the XML declaration', '<?xml version="1.0" &?>', 'start'],
+    ['an XML declaration without a version', '<?xml encoding="UTF-8"?>', 'start'],
+    ['an unsupported XML version', '<?xml version="1.1"?>', 'start'],
+    ['a differently-cased reserved XML target', '<?XML version="1.0"?>', 'start'],
+    ['an invalid standalone declaration', '<?xml version="1.0" standalone="maybe"?>', 'start'],
+    ['an XML declaration after the document start', '<?xml version="1.0"?>', 'nested'],
+  ])('rejects %s without suppressing a healthy sibling', async (_label, instruction, position) => {
+    setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
+    const feed = rss([rssItem()]).replace('<?xml version="1.0" encoding="UTF-8"?>', '');
+    const hostile = position === 'nested'
+      ? feed.replace('<channel>', `<channel>${instruction}`)
+      : `${instruction}${feed}`;
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) return new Response(hostile, { status: 200 });
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources.map((item) => item.sourceId)).toEqual(['beta']);
+  });
+
+  it.each([
+    ['minimal', '', '<?xml version="1.0"?>'],
+    ['complete with XML whitespace', '', "<?xml version = '1.0' encoding = 'UTF-8' standalone = 'no'?>"],
+    ['after a UTF-8 BOM', '\uFEFF', '<?xml version="1.0"?>'],
+  ])('accepts the %s XML declaration at the document start', async (_label, prefix, declaration) => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const feed = rss([rssItem()]).replace('<?xml version="1.0" encoding="UTF-8"?>', declaration);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) return new Response(`${prefix}${feed}`, { status: 200 });
       return defaultHandler(input);
     });
 
