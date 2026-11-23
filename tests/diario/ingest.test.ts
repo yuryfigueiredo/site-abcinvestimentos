@@ -717,6 +717,22 @@ describe('allowlisted ingestion', () => {
   });
 
   it.each([
+    ['DOCTYPE', '<!DOCTYPE rss>'],
+    ['ENTITY', '<!DOCTYPE rss [<!ENTITY x "safe">]>'],
+  ])('rejects %s declarations even when no entity is referenced', async (_label, declaration) => {
+    setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
+    const hostile = rss([rssItem()]).replace('?>', `?>${declaration}`);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) return new Response(hostile, { status: 200 });
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources.map((item) => item.sourceId)).toEqual(['beta']);
+  });
+
+  it.each([
     ['title', '<title>Juros &foo; e inflação</title>', ARTICLE],
     ['link', '<title>Juros e inflação</title>', `${ARTICLE}?a=1&foo;=2`],
   ])('rejects undefined XML entity references in %s', async (_field, metadata, link) => {
@@ -797,6 +813,79 @@ describe('allowlisted ingestion', () => {
     expect(result.sources[0]).toMatchObject({ title: 'Juros & inflação', excerpt: literal });
     expect(cached).not.toContain('COMMENT_SENTINEL');
     expect(cached).not.toContain('CDATA_SENTINEL');
+  });
+
+  it('preserves literal entity-like text in CDATA titles and excerpts', async () => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const title = 'Juros &amp; inflação &#38; câmbio &#0;';
+    const excerpt = 'Resumo &amp; &#38; &#0; sem decodificação.';
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(rss([
+          `<item><title xml:lang="pt-BR"><![CDATA[${title}]]></title><link>${ARTICLE}</link><description><![CDATA[${excerpt}]]></description></item>`,
+        ]), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources[0]).toMatchObject({ title, excerpt });
+    expect(cacheInputs().sources[0]).toMatchObject({ title, excerpt });
+  });
+
+  it('preserves adjacent CDATA sections as literal title and excerpt text', async () => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(rss([
+          '<item><title><![CDATA[Juros &amp;]]><![CDATA[ inflação &#0;]]></title><link>https://news.example.test/adjacent-cdata</link><description><![CDATA[Resumo &#38;]]><![CDATA[ &#0; literal]]></description></item>',
+        ]), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources[0]).toMatchObject({
+      title: 'Juros &amp; inflação &#0;',
+      excerpt: 'Resumo &#38; &#0; literal',
+    });
+  });
+
+  it('accepts processing instructions containing literal ampersands', async () => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const xml = rss([rssItem()]).replace(
+      '?>',
+      '?><?xml-stylesheet type="text/xsl" href="style.xsl?a=1&b=2"?>',
+    );
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) return new Response(xml, { status: 200 });
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources.map((item) => item.sourceId)).toEqual(['alpha']);
+  });
+
+  it('ignores declaration-like text in comments, CDATA and processing instructions', async () => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const title = 'Juros <!DOCTYPE e <!ENTITY';
+    const xml = rss([
+      `<item><title><![CDATA[${title}]]></title><link>${ARTICLE}</link></item>`,
+    ]).replace(
+      '?>',
+      '?><?xml-stylesheet href="style.xsl?decl=<!DOCTYPE&entity=<!ENTITY"?><!-- <!DOCTYPE rss> <!ENTITY xxe SYSTEM "file:///etc/passwd"> -->',
+    );
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) return new Response(xml, { status: 200 });
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources[0]).toMatchObject({ sourceId: 'alpha', title });
   });
 
   it('decodes predefined and numeric XML references once in safe metadata', async () => {

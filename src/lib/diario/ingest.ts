@@ -29,7 +29,8 @@ const CONTROL_OR_SPACE = /[\u0000-\u0020\u007F-\u009F]/u;
 const INVALID_URL_CHARACTER = /[<>"\\]/u;
 const HOSTNAME = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/u;
 const TRACKING_PARAMETERS = /^(?:utm_.*|fbclid|gclid|dclid|mc_cid|mc_eid|igshid|ref|referrer)$/iu;
-const XML_ENTITIES = /<!\s*(?:DOCTYPE|ENTITY)\b/iu;
+const CDATA_PROP_NAME = '#cdata';
+const XML_DECLARATION_AT_POSITION = /<!\s*(?:DOCTYPE|ENTITY)\b/iy;
 const XML_CHARACTER_REFERENCE = /&(?:amp|lt|gt|apos|quot|#(?:\d+|x[\da-fA-F]+));/gu;
 const XML_REFERENCE_AT_POSITION = /&(?:amp|lt|gt|apos|quot|#(?:\d+|x[\da-fA-F]+));/yu;
 const XML_PREDEFINED_ENTITIES: Readonly<Record<string, string>> = {
@@ -75,7 +76,7 @@ function decodeXmlReference(reference: string): string | null {
   return isValidXmlCodePoint(codePoint) ? String.fromCodePoint(codePoint) : null;
 }
 
-function validateXmlReferences(xml: string): boolean {
+function validateXml(xml: string): boolean {
   for (let index = 0; index < xml.length; index += 1) {
     if (xml.startsWith('<!--', index)) {
       const end = xml.indexOf('-->', index + 4);
@@ -88,6 +89,16 @@ function validateXmlReferences(xml: string): boolean {
       if (end === -1) return false;
       index = end + 2;
       continue;
+    }
+    if (xml.startsWith('<?', index)) {
+      const end = xml.indexOf('?>', index + 2);
+      if (end === -1) return false;
+      index = end + 1;
+      continue;
+    }
+    if (xml[index] === '<') {
+      XML_DECLARATION_AT_POSITION.lastIndex = index;
+      if (XML_DECLARATION_AT_POSITION.test(xml)) return false;
     }
     if (xml[index] !== '&') continue;
     XML_REFERENCE_AT_POSITION.lastIndex = index;
@@ -112,9 +123,30 @@ function decodeXmlReferences(value: string, maxLength: number): string | null {
   return valid && decoded.length <= maxLength ? decoded : null;
 }
 
+type ParsedXmlText = { text: string; literal: boolean };
+
+function cdataText(value: unknown): string | null {
+  if (typeof value === 'string') return value;
+  if (!Array.isArray(value) || value.some((section) => typeof section !== 'string')) return null;
+  return value.join('');
+}
+
+function parsedXmlText(value: unknown): ParsedXmlText | null {
+  if (typeof value === 'string') return { text: value, literal: false };
+  const record = asRecord(value);
+  if (!record || Object.keys(record).some((key) => key !== '#text' && key !== CDATA_PROP_NAME && !key.startsWith('@'))) return null;
+  if (Object.hasOwn(record, CDATA_PROP_NAME)) {
+    if (Object.hasOwn(record, '#text')) return null;
+    const text = cdataText(record[CDATA_PROP_NAME]);
+    return text === null ? null : { text, literal: true };
+  }
+  return typeof record['#text'] === 'string' ? { text: record['#text'], literal: false } : null;
+}
+
 function normalizedMetadata(value: unknown, maxLength: number): string | null {
-  if (typeof value !== 'string' || value.length > maxLength || UNSAFE_CONTROL_CHARACTER.test(value)) return null;
-  const decoded = decodeXmlReferences(value, maxLength);
+  const parsed = parsedXmlText(value);
+  if (!parsed || parsed.text.length > maxLength || UNSAFE_CONTROL_CHARACTER.test(parsed.text)) return null;
+  const decoded = parsed.literal ? parsed.text : decodeXmlReferences(parsed.text, maxLength);
   if (decoded === null) return null;
   const normalized = decoded.normalize('NFKC');
   if (UNSAFE_CONTROL_CHARACTER.test(normalized) || FORMAT_CONTROL.test(normalized) || XML_MARKUP.test(normalized)) return null;
@@ -122,22 +154,17 @@ function normalizedMetadata(value: unknown, maxLength: number): string | null {
   return plainText.length > 0 && plainText.length <= maxLength ? plainText : null;
 }
 
-function metadataValue(value: unknown, maxLength: number): string | null {
-  if (typeof value === 'string') return normalizedMetadata(value, maxLength);
-  const record = asRecord(value);
-  return record ? normalizedMetadata(record['#text'], maxLength) : null;
-}
-
 function titleValue(value: unknown, maxLength: number): string | null {
   if (typeof value === 'string') return normalizedMetadata(value, maxLength);
   const record = asRecord(value);
-  if (!record || Object.keys(record).some((key) => key !== '#text' && !key.startsWith('@'))) return null;
-  return normalizedMetadata(record['#text'], maxLength);
+  if (!record || Object.keys(record).some((key) => key !== '#text' && key !== CDATA_PROP_NAME && !key.startsWith('@'))) return null;
+  return normalizedMetadata(value, maxLength);
 }
 
 function canonicalUrl(value: unknown): string | null {
-  if (typeof value !== 'string' || value.length > MAX_URL_LENGTH) return null;
-  const decoded = decodeXmlReferences(value, MAX_URL_LENGTH);
+  const parsed = parsedXmlText(value);
+  if (!parsed || parsed.text.length > MAX_URL_LENGTH) return null;
+  const decoded = parsed.literal ? parsed.text : decodeXmlReferences(parsed.text, MAX_URL_LENGTH);
   if (decoded === null || CONTROL_CHARACTER.test(decoded) || INVALID_URL_CHARACTER.test(decoded)) return null;
   try {
     const url = new URL(decoded);
@@ -164,8 +191,9 @@ function normalizedTitleKey(value: string): string {
 }
 
 function normalizedExcerpt(value: unknown): string {
-  if (typeof value !== 'string' || UNSAFE_CONTROL_CHARACTER.test(value)) return '';
-  const decoded = decodeXmlReferences(value, MAX_FEED_BYTES);
+  const parsed = parsedXmlText(value);
+  if (!parsed || UNSAFE_CONTROL_CHARACTER.test(parsed.text)) return '';
+  const decoded = parsed.literal ? parsed.text : decodeXmlReferences(parsed.text, MAX_FEED_BYTES);
   if (decoded === null) return '';
   const normalized = decoded.normalize('NFKC');
   if (UNSAFE_CONTROL_CHARACTER.test(normalized) || FORMAT_CONTROL.test(normalized)) return '';
@@ -208,7 +236,7 @@ function zonedTimestamp(
 }
 
 function normalizedTimestamp(value: unknown): string | null {
-  const text = metadataValue(value, 128);
+  const text = normalizedMetadata(value, 128);
   if (!text) return null;
 
   const iso = ISO_TIMESTAMP.exec(text);
@@ -318,8 +346,10 @@ async function fetchFeedXml(initialValue: string, fetchImpl: typeof fetch): Prom
   }
 }
 
-function alternateLink(item: Record<string, unknown>): string | null {
+function alternateLink(item: Record<string, unknown>): unknown {
   if (typeof item.link === 'string') return item.link;
+  const direct = asRecord(item.link);
+  if (direct && Object.hasOwn(direct, CDATA_PROP_NAME)) return item.link;
   for (const value of asArray(item.link)) {
     const link = asRecord(value);
     if (!link || typeof link['@href'] !== 'string') continue;
@@ -329,13 +359,14 @@ function alternateLink(item: Record<string, unknown>): string | null {
 }
 
 function parseFeed(xml: string, source: AllowlistSource, retrievedAt: string): ParsedFeed | null {
-  if (!xml || XML_ENTITIES.test(xml) || !validateXmlReferences(xml) || XMLValidator.validate(xml) !== true) return null;
+  if (!xml || !validateXml(xml) || XMLValidator.validate(xml) !== true) return null;
   const parsed = new XMLParser({
     processEntities: false,
     parseTagValue: false,
     ignoreAttributes: false,
     attributeNamePrefix: '@',
     removeNSPrefix: true,
+    cdataPropName: CDATA_PROP_NAME,
   }).parse(xml) as unknown;
   const root = asRecord(parsed);
   if (!root) return null;

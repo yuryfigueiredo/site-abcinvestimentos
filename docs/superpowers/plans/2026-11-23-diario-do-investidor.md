@@ -277,6 +277,15 @@ git add package.json package-lock.json .gitignore src/lib/bcb.ts src/lib/indicat
 git commit -m "feat(diario): coleta BCB e RSS allowlisted fora do build"
 ```
 
+#### Review fix round 3
+
+- **RED:** `npx vitest run tests/diario/ingest.test.ts` → 4 falhas novas e 118 passes (122 testes): CDATA único/adjacente, PI com `&` literal e textos semelhantes a declarações em comentário/CDATA/PI.
+- **GREEN focal:** o mesmo comando → 124/124 passes, incluindo duas guardas novas para `DOCTYPE`/`ENTITY` sem referência usada.
+- **Implementação:** `fast-xml-parser@5.12.1` usa `cdataPropName: '#cdata'`, com valor `string` ou `string[]`; esse conteúdo é marcado como literal e nunca passa por decodificação de entidades. O scanner XML único pula comentário, CDATA e PI antes de validar referências ou detectar declarações.
+- **Mutação:** desligar `cdataPropName` derrubou os 2 testes de literal CDATA; retirar o salto de PI derrubou os 2 testes de PI; desligar a detecção de declarações derrubou as 2 guardas `DOCTYPE`/`ENTITY`. As mutações foram restauradas antes do GREEN final.
+- **Verificação:** `npm test` → 299/299; `npm run build` → 87 páginas; `npx tsc --noEmit --types vite/client` → exit 0; `git diff --check` → limpo.
+- **Auto-revisão:** diff completo inspecionado; nenhuma edição no cofre/configuração de fontes e nenhum push. Referências válidas continuam decodificadas uma vez, contextos literais não decodificam, títulos aninhados e declarações reais seguem rejeitados, e os testes de redirect/cancelamento/limites/outage continuam verdes.
+
 ### Task 3: Curadoria determinística, gate de qualidade e edição-seed
 
 **Files:**
