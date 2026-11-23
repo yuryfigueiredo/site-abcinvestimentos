@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { parseEdition } from '../../src/lib/diario/schema';
-import type { Edition, Lesson } from '../../src/lib/diario/types';
+import { parseAllowlist, parseEdition } from '../../src/lib/diario/schema';
+import type { AllowlistSource, Edition, Lesson } from '../../src/lib/diario/types';
 
 const lesson: Lesson = {
   id: 'licao-juro-real',
@@ -80,6 +80,56 @@ describe('parseEdition', () => {
   it('accepts an approved lesson with a valid guide slug', () => {
     const value = { ...materialEdition(), lesson };
     expect(parseEdition(value)).toEqual(value);
+  });
+
+  it('rejects duplicate NewsItem.id with the conflicting path and identifier', () => {
+    const value = materialEdition();
+    value.items.push({ ...value.items[0] });
+
+    expect(() => parseEdition(value)).toThrow(/edition\.items\[1\]\.id.*duplicate.*noticia-copom/i);
+  });
+
+  it('rejects duplicate SourceRef.id with the conflicting path and identifier', () => {
+    const value = materialEdition();
+    value.sources.push({ ...value.sources[0] });
+
+    expect(() => parseEdition(value)).toThrow(/edition\.sources\[1\]\.id.*duplicate.*fonte-copom/i);
+  });
+
+  it('rejects a NewsItem.sourceIds reference to an unknown SourceRef.id', () => {
+    const value = materialEdition();
+    value.items[0].sourceIds = ['fonte-inexistente'];
+
+    expect(() => parseEdition(value)).toThrow(
+      /edition\.items\[0\]\.sourceIds\[0\].*SourceRef\.id.*fonte-inexistente/i,
+    );
+  });
+
+  it('rejects a non-semver edition allowlistVersion', () => {
+    const value = materialEdition();
+    value.policy.allowlistVersion = 'latest';
+
+    expect(() => parseEdition(value)).toThrow(/allowlistVersion.*semver/i);
+  });
+
+  it('accepts a valid hostname at the DNS maximum length', () => {
+    const label = 'a'.repeat(63);
+    const hostname = `${label}.${label}.${label}.${'a'.repeat(61)}`;
+    const value = materialEdition();
+    value.policy.allowedHosts = [hostname];
+
+    expect(hostname).toHaveLength(253);
+    expect(parseEdition(value).policy.allowedHosts).toEqual([hostname]);
+  });
+
+  it('rejects a hostname above the DNS maximum length', () => {
+    const label = 'a'.repeat(63);
+    const hostname = `${label}.${label}.${label}.${'a'.repeat(62)}`;
+    const value = materialEdition();
+    value.policy.allowedHosts = [hostname];
+
+    expect(hostname).toHaveLength(254);
+    expect(() => parseEdition(value)).toThrow(/253|hostname/i);
   });
 
   const proseMutations: { field: string; value: unknown }[] = [
@@ -230,5 +280,30 @@ describe('parseEdition', () => {
       sources: [{ ...materialEdition().sources[0], excerpt: 'Corpo copiado da matéria.' }],
     };
     expect(() => parseEdition(value)).toThrow(/excerpt|unknown field|extra/i);
+  });
+});
+
+describe('parseAllowlist', () => {
+  const source: AllowlistSource = {
+    id: 'bcb',
+    publisher: 'Banco Central do Brasil',
+    kind: 'official',
+    feeds: [],
+    enabled: false,
+  };
+
+  it('exposes the semver as allowlistVersion and keeps allowlist as the source array', () => {
+    expect(parseAllowlist({ version: '1.2.3', sources: [source] })).toEqual({
+      allowlistVersion: '1.2.3',
+      allowlist: [source],
+    });
+  });
+
+  it('requires an allowlist version', () => {
+    expect(() => parseAllowlist({ sources: [source] })).toThrow(/allowlist\.version.*required/i);
+  });
+
+  it.each(['1.2', 'latest', '01.2.3', '1.2.3-01'])('rejects the invalid semver %s', (version) => {
+    expect(() => parseAllowlist({ version, sources: [source] })).toThrow(/allowlist\.version.*semver/i);
   });
 });

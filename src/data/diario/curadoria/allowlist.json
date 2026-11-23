@@ -1,51 +1,54 @@
-[
-  {
-    "id": "bcb",
-    "publisher": "Banco Central do Brasil",
-    "kind": "official",
-    "feeds": [],
-    "enabled": false
-  },
-  {
-    "id": "ibge",
-    "publisher": "Instituto Brasileiro de Geografia e Estatística",
-    "kind": "official",
-    "feeds": [],
-    "enabled": false
-  },
-  {
-    "id": "cvm",
-    "publisher": "Comissão de Valores Mobiliários",
-    "kind": "official",
-    "feeds": [],
-    "enabled": false
-  },
-  {
-    "id": "tesouro-nacional",
-    "publisher": "Tesouro Nacional",
-    "kind": "official",
-    "feeds": [],
-    "enabled": false
-  },
-  {
-    "id": "governo-federal",
-    "publisher": "Governo Federal",
-    "kind": "official",
-    "feeds": [],
-    "enabled": false
-  },
-  {
-    "id": "valor-investe",
-    "publisher": "Valor Investe",
-    "kind": "media",
-    "feeds": [],
-    "enabled": false
-  },
-  {
-    "id": "infomoney",
-    "publisher": "InfoMoney",
-    "kind": "media",
-    "feeds": [],
-    "enabled": false
-  }
-]
+{
+  "version": "1.0.0",
+  "sources": [
+    {
+      "id": "bcb",
+      "publisher": "Banco Central do Brasil",
+      "kind": "official",
+      "feeds": [],
+      "enabled": false
+    },
+    {
+      "id": "ibge",
+      "publisher": "Instituto Brasileiro de Geografia e Estatística",
+      "kind": "official",
+      "feeds": [],
+      "enabled": false
+    },
+    {
+      "id": "cvm",
+      "publisher": "Comissão de Valores Mobiliários",
+      "kind": "official",
+      "feeds": [],
+      "enabled": false
+    },
+    {
+      "id": "tesouro-nacional",
+      "publisher": "Tesouro Nacional",
+      "kind": "official",
+      "feeds": [],
+      "enabled": false
+    },
+    {
+      "id": "governo-federal",
+      "publisher": "Governo Federal",
+      "kind": "official",
+      "feeds": [],
+      "enabled": false
+    },
+    {
+      "id": "valor-investe",
+      "publisher": "Valor Investe",
+      "kind": "media",
+      "feeds": [],
+      "enabled": false
+    },
+    {
+      "id": "infomoney",
+      "publisher": "InfoMoney",
+      "kind": "media",
+      "feeds": [],
+      "enabled": false
+    }
+  ]
+}

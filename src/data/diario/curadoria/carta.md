@@ -1,6 +1,6 @@
 # Diário do Investidor — Carta da Curadoria
 
-Versão da carta: 1.0.0
+Versão da carta: 1.0.1
 
 ## Nome e propósito
 

@@ -15,6 +15,7 @@ import type {
   SourceRef,
   Thresholds,
   Topic,
+  Vault,
 } from './types';
 
 const CONTROL_CHARACTER = /[\u0000-\u001F\u007F-\u009F]/u;
@@ -22,6 +23,8 @@ const DECIMAL_NUMBER = /\p{N}/u;
 const HTML_MARKUP = /<|>|&(?:#\d+|#x[\da-f]+|[a-z][a-z\d]+);/iu;
 const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const VERSION = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+const SEMVER =
+  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const HOSTNAME = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 const SHA256 = /^[a-f0-9]{64}$/;
@@ -100,6 +103,12 @@ function identifier(value: unknown, path: string): string {
 function version(value: unknown, path: string): string {
   const result = text(value, path, 1, 64);
   if (!VERSION.test(result)) throw new Error(`${path} has an invalid version format`);
+  return result;
+}
+
+function semver(value: unknown, path: string): string {
+  const result = text(value, path, 1, 64);
+  if (!SEMVER.test(result)) throw new Error(`${path} must be a valid semantic version (semver)`);
   return result;
 }
 
@@ -183,6 +192,23 @@ function parseHostname(value: unknown, path: string): string {
     throw new Error(`${path} must be a lowercase exact hostname`);
   }
   return result;
+}
+
+function parseHostnameList(value: unknown, path: string): string[] {
+  const entries = arrayValue(value, path, 100);
+  const result = entries.map((entry, index) => parseHostname(entry, `${path}[${index}]`));
+  if (new Set(result).size !== result.length) throw new Error(`${path} must not contain duplicate hostnames`);
+  return result;
+}
+
+function rejectDuplicateIds(entries: readonly { id: string }[], path: string, kind: 'NewsItem' | 'SourceRef'): void {
+  const ids = new Set<string>();
+  for (const [index, entry] of entries.entries()) {
+    if (ids.has(entry.id)) {
+      throw new Error(`${path}[${index}].id duplicates ${kind}.id "${entry.id}"; IDs must be unique`);
+    }
+    ids.add(entry.id);
+  }
 }
 
 function parseTopics(value: unknown, path: string, min = 0): Topic[] {
@@ -304,14 +330,12 @@ function parsePolicy(value: unknown, path: string) {
   checkKeys(fields, ['charterVersion', 'allowlistVersion', 'thresholdsVersion', 'sourceIds', 'allowedHosts'], path);
   return {
     charterVersion: version(required(fields, 'charterVersion', path), `${path}.charterVersion`),
-    allowlistVersion: version(required(fields, 'allowlistVersion', path), `${path}.allowlistVersion`),
+    allowlistVersion: semver(required(fields, 'allowlistVersion', path), `${path}.allowlistVersion`),
     thresholdsVersion: version(required(fields, 'thresholdsVersion', path), `${path}.thresholdsVersion`),
     sourceIds: uniqueStrings(required(fields, 'sourceIds', path), `${path}.sourceIds`, 100).map((entry, index) =>
       identifier(entry, `${path}.sourceIds[${index}]`),
     ),
-    allowedHosts: uniqueStrings(required(fields, 'allowedHosts', path), `${path}.allowedHosts`, 100).map((entry, index) =>
-      parseHostname(entry, `${path}.allowedHosts[${index}]`),
-    ),
+    allowedHosts: parseHostnameList(required(fields, 'allowedHosts', path), `${path}.allowedHosts`),
   };
 }
 
@@ -363,6 +387,19 @@ export function parseEdition(value: unknown): Edition {
   );
   const lesson = fields.has('lesson') ? parseLesson(fields.get('lesson'), 'edition.lesson') : undefined;
 
+  rejectDuplicateIds(items, 'edition.items', 'NewsItem');
+  rejectDuplicateIds(sources, 'edition.sources', 'SourceRef');
+  const sourceRefIds = new Set(sources.map((source) => source.id));
+  for (const [itemIndex, item] of items.entries()) {
+    for (const [sourceIndex, sourceId] of item.sourceIds.entries()) {
+      if (!sourceRefIds.has(sourceId)) {
+        throw new Error(
+          `edition.items[${itemIndex}].sourceIds[${sourceIndex}] references unknown SourceRef.id "${sourceId}"`,
+        );
+      }
+    }
+  }
+
   return {
     schemaVersion: 1,
     id: identifier(required(fields, 'id', 'edition'), 'edition.id'),
@@ -390,12 +427,15 @@ function parseAllowlistFeed(value: unknown, path: string): AllowlistFeed {
   };
 }
 
-export function parseAllowlist(value: unknown): AllowlistSource[] {
-  const entries = arrayValue(value, 'allowlist', 100);
+export function parseAllowlist(value: unknown): Pick<Vault, 'allowlistVersion' | 'allowlist'> {
+  const fields = objectFields(value, 'allowlist');
+  checkKeys(fields, ['version', 'sources'], 'allowlist');
+  const allowlistVersion = semver(required(fields, 'version', 'allowlist'), 'allowlist.version');
+  const entries = arrayValue(required(fields, 'sources', 'allowlist'), 'allowlist.sources', 100);
   const ids = new Set<string>();
   const urls = new Set<string>();
-  return entries.map((entry, index) => {
-    const path = `allowlist[${index}]`;
+  const allowlist = entries.map((entry, index) => {
+    const path = `allowlist.sources[${index}]`;
     const fields = objectFields(entry, path);
     checkKeys(fields, ['id', 'publisher', 'kind', 'feeds', 'enabled', 'termsUrl'], path);
     const id = identifier(required(fields, 'id', path), `${path}.id`);
@@ -421,6 +461,7 @@ export function parseAllowlist(value: unknown): AllowlistSource[] {
       ...(termsUrl === undefined ? {} : { termsUrl }),
     };
   });
+  return { allowlistVersion, allowlist };
 }
 
 export function parseThresholds(value: unknown): Thresholds {

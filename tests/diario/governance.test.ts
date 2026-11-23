@@ -16,6 +16,11 @@ type ThresholdFile = {
   topics: string[];
 };
 
+type AllowlistFile = {
+  version: string;
+  sources: Array<Record<string, unknown>>;
+};
+
 let root: string;
 let vault: string;
 
@@ -90,14 +95,14 @@ describe('verifyGovernance', () => {
     const approval = readJson<Approval>('approval.json');
     if (record === 'charter') {
       const charter = readFileSync(join(vault, 'carta.md'), 'utf8').replace(
-        'Versão da carta: 1.0.0',
+        'Versão da carta: 1.0.1',
         'Versão da carta: 2.0.0',
       );
       writeFileSync(join(vault, 'carta.md'), charter, 'utf8');
       approval.charterVersion = '2.0.0';
       writeJson('approval.json', approval);
     } else {
-      const changelog = readFileSync(join(vault, 'changelog.md'), 'utf8').replace('## 1.0.0', '## 2.0.0');
+      const changelog = readFileSync(join(vault, 'changelog.md'), 'utf8').replace('## 1.0.1', '## 2.0.0');
       writeFileSync(join(vault, 'changelog.md'), changelog, 'utf8');
     }
     refreshApprovalHash();
@@ -174,8 +179,8 @@ describe('verifyGovernance', () => {
   });
 
   it('rejects an insecure or credentialled allowlist feed URL', () => {
-    const allowlist = readJson<Array<Record<string, unknown>>>('allowlist.json');
-    allowlist[0].feeds = [{ url: 'https://user:secret@example.com/feed', topics: ['juros'] }];
+    const allowlist = readJson<AllowlistFile>('allowlist.json');
+    allowlist.sources[0].feeds = [{ url: 'https://user:secret@example.com/feed', topics: ['juros'] }];
     writeJson('allowlist.json', allowlist);
 
     expect(() => verifyGovernance(root)).toThrow(/allowlist|feed|URL|credentials/i);
@@ -214,5 +219,21 @@ describe('safe vault seed', () => {
       expect(item.title).not.toMatch(/<|>/);
       expect(item.body).not.toMatch(/<|>/);
     }
+  });
+
+  it('keeps the savings anniversary and CDB IOF rules in separate sentences', () => {
+    const lessons = readJson<Lesson[]>('licoes.json');
+    const redemptionLesson = lessons.find((item) => item.id === 'licao-regras-resgate');
+    expect(redemptionLesson).toBeDefined();
+    if (redemptionLesson === undefined) return;
+
+    const sentences = redemptionLesson.body
+      .split(/[.!?]+(?:\s+|$)/u)
+      .map((sentence) => sentence.trim())
+      .filter((sentence) => sentence.length > 0);
+    expect(sentences.some((sentence) => /poupança/iu.test(sentence) && /IOF/iu.test(sentence))).toBe(false);
+    expect(redemptionLesson.body).toMatch(/poupança.*aniversário/isu);
+    expect(redemptionLesson.body).toMatch(/CDB.*trinta dias.*IOF/isu);
+    expect(redemptionLesson.body).not.toMatch(/\p{N}/u);
   });
 });

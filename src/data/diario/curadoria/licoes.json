@@ -50,7 +50,7 @@
   {
     "id": "licao-regras-resgate",
     "title": "Considere liquidez e imposto na comparação",
-    "body": "A comparação entre poupança e CDB envolve rendimento, imposto de renda e regras de resgate. A poupança pode fazer sentido para saques antes do dia de aniversário, quando o CDB sofre impacto do IOF regressivo.",
+    "body": "A comparação entre poupança e CDB envolve rendimento, imposto de renda e regras de resgate. Na poupança, sacar antes do dia de aniversário pode fazer perder o rendimento do período. No CDB, o resgate antes de trinta dias pode ter incidência de IOF regressivo.",
     "guideSlug": "poupanca-vs-cdb-qual-melhor"
   },
   {

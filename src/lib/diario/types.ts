@@ -158,6 +158,7 @@ export interface Approval {
 
 export interface Vault {
   charterVersion: string;
+  allowlistVersion: string;
   allowlist: AllowlistSource[];
   thresholds: Thresholds;
   calendar: CalendarEvent[];

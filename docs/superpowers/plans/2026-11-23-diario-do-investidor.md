@@ -122,7 +122,7 @@ interface Approval {
   approvedBy: string; instructionRef: string;
 }
 interface Vault {
-  charterVersion: string; allowlist: AllowlistSource[]; thresholds: Thresholds;
+  charterVersion: string; allowlistVersion: string; allowlist: AllowlistSource[]; thresholds: Thresholds;
   calendar: CalendarEvent[]; lessons: Lesson[]; bundleSha256: string; approval: Approval;
 }
 interface CollectedInputs {

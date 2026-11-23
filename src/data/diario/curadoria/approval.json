@@ -1,7 +1,7 @@
 {
-  "bundleSha256": "d0ee94b7f49ea1c50e250ab28c59993b135b408d6931674f70a8ac227400bf86",
-  "charterVersion": "1.0.0",
-  "approvedAt": "2026-11-23T16:59:52Z",
+  "bundleSha256": "005efa5dc3414c549403703f7cc39686b4ee08b940a4510b8e031cad8184e542",
+  "charterVersion": "1.0.1",
+  "approvedAt": "2026-11-23T17:12:50Z",
   "approvedBy": "Yury Figueiredo",
   "instructionRef": "docs/superpowers/plans/2026-11-23-diario-do-investidor.md"
 }
