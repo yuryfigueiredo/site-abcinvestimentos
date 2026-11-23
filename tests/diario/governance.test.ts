@@ -1,4 +1,5 @@
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import fs, { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -73,6 +74,48 @@ describe('curation bundle hash', () => {
 describe('verifyGovernance', () => {
   it('accepts the approved vault', () => {
     expect(() => verifyGovernance(root)).not.toThrow();
+  });
+
+  it('returns one verified vault snapshot instead of making consumers reread files', () => {
+    const snapshot = verifyGovernance(root);
+
+    expect(snapshot).toMatchObject({
+      charterVersion: '1.0.1',
+      allowlistVersion: '1.0.0',
+      bundleSha256: readJson<Approval>('approval.json').bundleSha256,
+      calendar: [],
+    });
+    expect(snapshot.allowlist).toHaveLength(readJson<AllowlistFile>('allowlist.json').sources.length);
+    expect(snapshot.allowlist.every((item) => item.enabled === false)).toBe(true);
+    expect(snapshot.lessons).toHaveLength(12);
+    expect(snapshot.thresholds.timezone).toBe('America/Sao_Paulo');
+
+    const allowlist = readJson<AllowlistFile>('allowlist.json');
+    allowlist.sources[0].enabled = true;
+    writeJson('allowlist.json', allowlist);
+    expect(snapshot.allowlist.every((item) => item.enabled === false)).toBe(true);
+  });
+
+  it('reads each vault file once so parsing and hashing share one snapshot', () => {
+    const originalReadFileSync = fs.readFileSync;
+    const reads = new Map<string, number>();
+    fs.readFileSync = ((...args: Parameters<typeof fs.readFileSync>) => {
+      const file = String(args[0]);
+      reads.set(file, (reads.get(file) ?? 0) + 1);
+      return originalReadFileSync(...args);
+    }) as typeof fs.readFileSync;
+    syncBuiltinESMExports();
+
+    try {
+      verifyGovernance(root);
+    } finally {
+      fs.readFileSync = originalReadFileSync;
+      syncBuiltinESMExports();
+    }
+
+    for (const file of [...BUNDLE_FILES, 'approval.json']) {
+      expect(reads.get(join(vault, file)), file).toBe(1);
+    }
   });
 
   it('fails when dollarAbsChangePct changes without a new bundle hash', () => {

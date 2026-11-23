@@ -1,11 +1,11 @@
 import { createHash } from 'node:crypto';
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { mkdirSync, renameSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { XMLParser, XMLValidator } from 'fast-xml-parser';
 import { fetchBcbLastValue, fetchBcbRecentValues } from '../bcb';
+import { cancelResponseBody, readBoundedText } from '../http';
 import { verifyGovernance } from './governance';
-import { parseAllowlist, parseCalendar, parseLessons } from './schema';
-import { parseCalendarDate } from './time';
+import { isCalendarDate, parseCalendarDate } from './time';
 import type {
   AllowlistSource,
   BcbObservation,
@@ -23,12 +23,27 @@ const MAX_URL_LENGTH = 2048;
 const MAX_EXCERPT_LENGTH = 600;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 const CONTROL_CHARACTER = /[\u0000-\u001F\u007F-\u009F]/u;
+const UNSAFE_CONTROL_CHARACTER = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/u;
+const FORMAT_CONTROL = /\p{Cf}/u;
 const CONTROL_OR_SPACE = /[\u0000-\u0020\u007F-\u009F]/u;
 const INVALID_URL_CHARACTER = /[<>"\\]/u;
 const HOSTNAME = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/u;
 const TRACKING_PARAMETERS = /^(?:utm_.*|fbclid|gclid|dclid|mc_cid|mc_eid|igshid|ref|referrer)$/iu;
 const XML_ENTITIES = /<!\s*(?:DOCTYPE|ENTITY)\b/iu;
+const XML_CHARACTER_REFERENCE = /&(?:amp|lt|gt|apos|quot|#(?:\d+|x[\da-fA-F]+));/gu;
+const XML_PREDEFINED_ENTITIES: Readonly<Record<string, string>> = {
+  '&amp;': '&',
+  '&lt;': '<',
+  '&gt;': '>',
+  '&apos;': "'",
+  '&quot;': '"',
+};
+const XML_MARKUP = /<(?:\/?[a-z][^>]*|![^>]*|\?[^>]*)>/iu;
 const XML_TYPES = new Set(['application/xml', 'text/xml', 'text/plain', 'application/rss+xml', 'application/atom+xml']);
+const ISO_TIMESTAMP = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?(Z|[+-]\d{2}:\d{2})$/u;
+const RFC822_TIMESTAMP = /^(?:(Mon|Tue|Wed|Thu|Fri|Sat|Sun),\s+)?(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{4})\s+(\d{2}):(\d{2}):(\d{2})\s+(GMT|UTC|[+-]\d{4})$/iu;
+const RFC822_MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+const RFC822_WEEKDAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) return null;
@@ -41,10 +56,38 @@ function asArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [value];
 }
 
+function decodeXmlReferences(value: string, maxLength: number): string | null {
+  if (value.length > maxLength) return null;
+  let valid = true;
+  const decoded = value.replace(XML_CHARACTER_REFERENCE, (reference) => {
+    if (!reference.startsWith('&#')) {
+      return XML_PREDEFINED_ENTITIES[reference] ?? reference;
+    }
+    const hexadecimal = reference[2] === 'x';
+    const codePoint = Number.parseInt(reference.slice(hexadecimal ? 3 : 2, -1), hexadecimal ? 16 : 10);
+    if (
+      !Number.isSafeInteger(codePoint) ||
+      codePoint === 0 ||
+      codePoint > 0x10ffff ||
+      (codePoint >= 0xd800 && codePoint <= 0xdfff) ||
+      (codePoint < 0x20 && codePoint !== 9 && codePoint !== 10 && codePoint !== 13)
+    ) {
+      valid = false;
+      return '\uFFFD';
+    }
+    return String.fromCodePoint(codePoint);
+  });
+  return valid && decoded.length <= maxLength ? decoded : null;
+}
+
 function normalizedMetadata(value: unknown, maxLength: number): string | null {
-  if (typeof value !== 'string' || value.length > maxLength || CONTROL_CHARACTER.test(value)) return null;
-  const normalized = value.normalize('NFKC').replace(/\s+/gu, ' ').trim();
-  return normalized.length > 0 && normalized.length <= maxLength ? normalized : null;
+  if (typeof value !== 'string' || value.length > maxLength || UNSAFE_CONTROL_CHARACTER.test(value)) return null;
+  const decoded = decodeXmlReferences(value, maxLength);
+  if (decoded === null) return null;
+  const normalized = decoded.normalize('NFKC');
+  if (UNSAFE_CONTROL_CHARACTER.test(normalized) || FORMAT_CONTROL.test(normalized) || XML_MARKUP.test(normalized)) return null;
+  const plainText = normalized.replace(/\s+/gu, ' ').trim();
+  return plainText.length > 0 && plainText.length <= maxLength ? plainText : null;
 }
 
 function metadataValue(value: unknown, maxLength: number): string | null {
@@ -55,12 +98,10 @@ function metadataValue(value: unknown, maxLength: number): string | null {
 
 function canonicalUrl(value: unknown): string | null {
   if (typeof value !== 'string' || value.length > MAX_URL_LENGTH) return null;
-  if (CONTROL_CHARACTER.test(value) || INVALID_URL_CHARACTER.test(value)) return null;
-  // RSS serializa separadores de query como &amp;; o parser XML continua sem
-  // expandir entidades, então somente essa forma segura é normalizada na URL.
-  const decodedSeparator = value.replaceAll('&amp;', '&');
+  const decoded = decodeXmlReferences(value, MAX_URL_LENGTH);
+  if (decoded === null || CONTROL_CHARACTER.test(decoded) || INVALID_URL_CHARACTER.test(decoded)) return null;
   try {
-    const url = new URL(decodedSeparator);
+    const url = new URL(decoded);
     if (url.protocol !== 'https:' || url.username || url.password || !HOSTNAME.test(url.hostname)) return null;
     url.hash = '';
     for (const key of [...url.searchParams.keys()]) {
@@ -84,9 +125,12 @@ function normalizedTitleKey(value: string): string {
 }
 
 function normalizedExcerpt(value: unknown): string {
-  if (typeof value !== 'string' || CONTROL_CHARACTER.test(value)) return '';
-  return value
-    .normalize('NFKC')
+  if (typeof value !== 'string' || UNSAFE_CONTROL_CHARACTER.test(value)) return '';
+  const decoded = decodeXmlReferences(value, MAX_FEED_BYTES);
+  if (decoded === null) return '';
+  const normalized = decoded.normalize('NFKC');
+  if (UNSAFE_CONTROL_CHARACTER.test(normalized) || FORMAT_CONTROL.test(normalized)) return '';
+  return normalized
     .replace(/<[^>]*>/gu, ' ')
     .replace(/\s+/gu, ' ')
     .trim()
@@ -94,11 +138,61 @@ function normalizedExcerpt(value: unknown): string {
     .trim();
 }
 
+function zonedTimestamp(
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+  second: number,
+  millisecond: number,
+  zone: string,
+  weekday?: string,
+): string | null {
+  const date = `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  if (!isCalendarDate(date) || hour > 23 || minute > 59 || second > 59) return null;
+
+  const local = new Date(0);
+  local.setUTCFullYear(year, month - 1, day);
+  local.setUTCHours(hour, minute, second, millisecond);
+  if (weekday && RFC822_WEEKDAYS[local.getUTCDay()] !== weekday.toUpperCase()) return null;
+
+  let offsetMinutes = 0;
+  if (zone !== 'Z' && zone.toUpperCase() !== 'GMT' && zone.toUpperCase() !== 'UTC') {
+    const compact = zone.replace(':', '');
+    const offsetHour = Number(compact.slice(1, 3));
+    const offsetMinute = Number(compact.slice(3, 5));
+    if (offsetHour > 23 || offsetMinute > 59) return null;
+    offsetMinutes = (offsetHour * 60 + offsetMinute) * (compact[0] === '-' ? -1 : 1);
+  }
+  return new Date(local.getTime() - offsetMinutes * 60_000).toISOString();
+}
+
 function normalizedTimestamp(value: unknown): string | null {
   const text = metadataValue(value, 128);
   if (!text) return null;
-  const timestamp = Date.parse(text);
-  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : null;
+
+  const iso = ISO_TIMESTAMP.exec(text);
+  if (iso) {
+    const millisecond = Number((iso[7] ?? '').slice(0, 3).padEnd(3, '0'));
+    return zonedTimestamp(Number(iso[1]), Number(iso[2]), Number(iso[3]), Number(iso[4]), Number(iso[5]), Number(iso[6]), millisecond, iso[8]);
+  }
+
+  const rfc822 = RFC822_TIMESTAMP.exec(text);
+  if (!rfc822) return null;
+  const month = RFC822_MONTHS.indexOf(rfc822[3].toUpperCase()) + 1;
+  if (month === 0) return null;
+  return zonedTimestamp(
+    Number(rfc822[4]),
+    month,
+    Number(rfc822[2]),
+    Number(rfc822[5]),
+    Number(rfc822[6]),
+    Number(rfc822[7]),
+    0,
+    rfc822[8],
+    rfc822[1],
+  );
 }
 
 function feedUrl(value: string): URL | null {
@@ -122,35 +216,6 @@ function isAllowedFeedUrl(value: URL, allowedHost: string, allowedPort: string):
   );
 }
 
-async function readBoundedFeed(response: Response): Promise<string> {
-  const declaredLength = Number(response.headers.get('content-length'));
-  if (Number.isFinite(declaredLength) && declaredLength > MAX_FEED_BYTES) {
-    throw new Error('Feed exceeds the maximum response size');
-  }
-  if (!response.body) return '';
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder('utf-8', { fatal: true });
-  const chunks: string[] = [];
-  let bytes = 0;
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      bytes += value.byteLength;
-      if (bytes > MAX_FEED_BYTES) {
-        await reader.cancel();
-        throw new Error('Feed exceeds the maximum response size');
-      }
-      chunks.push(decoder.decode(value, { stream: true }));
-    }
-    chunks.push(decoder.decode());
-  } finally {
-    reader.releaseLock();
-  }
-  return chunks.join('');
-}
-
 async function fetchFeedXml(initialValue: string, fetchImpl: typeof fetch): Promise<string | null> {
   let url = feedUrl(initialValue);
   if (!url) return null;
@@ -168,29 +233,33 @@ async function fetchFeedXml(initialValue: string, fetchImpl: typeof fetch): Prom
         headers: { Accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml' },
         redirect: 'manual',
       });
-      if (REDIRECT_STATUSES.has(response.status)) {
-        if (hops >= MAX_REDIRECTS) return null;
-        const location = response.headers.get('location');
-        if (!location || location.length > MAX_URL_LENGTH || CONTROL_OR_SPACE.test(location) || INVALID_URL_CHARACTER.test(location)) {
-          return null;
+      try {
+        if (REDIRECT_STATUSES.has(response.status)) {
+          if (hops >= MAX_REDIRECTS) return null;
+          const location = response.headers.get('location');
+          if (!location || location.length > MAX_URL_LENGTH || CONTROL_OR_SPACE.test(location) || INVALID_URL_CHARACTER.test(location)) {
+            return null;
+          }
+          let target: URL;
+          try {
+            target = new URL(location, url);
+          } catch {
+            return null;
+          }
+          if (!isAllowedFeedUrl(target, allowedHost, allowedPort)) return null;
+          target.hash = '';
+          if (visited.has(target.href)) return null;
+          visited.add(target.href);
+          url = target;
+          continue;
         }
-        let target: URL;
-        try {
-          target = new URL(location, url);
-        } catch {
-          return null;
-        }
-        if (!isAllowedFeedUrl(target, allowedHost, allowedPort)) return null;
-        target.hash = '';
-        if (visited.has(target.href)) return null;
-        visited.add(target.href);
-        url = target;
-        continue;
+        if (!response.ok || response.status === 401 || response.status === 402 || response.status === 403) return null;
+        const contentType = response.headers.get('content-type')?.split(';', 1)[0].trim().toLowerCase() ?? '';
+        if (contentType && !XML_TYPES.has(contentType) && !contentType.endsWith('+xml')) return null;
+        return await readBoundedText(response, MAX_FEED_BYTES, 'Feed');
+      } finally {
+        await cancelResponseBody(response);
       }
-      if (!response.ok || response.status === 401 || response.status === 402 || response.status === 403) return null;
-      const contentType = response.headers.get('content-type')?.split(';', 1)[0].trim().toLowerCase() ?? '';
-      if (contentType && !XML_TYPES.has(contentType) && !contentType.endsWith('+xml')) return null;
-      return await readBoundedFeed(response);
     }
   } catch {
     return null;
@@ -209,8 +278,8 @@ function alternateLink(item: Record<string, unknown>): string | null {
   return null;
 }
 
-function parseFeed(xml: string, source: AllowlistSource, retrievedAt: string): SourceCandidate[] {
-  if (!xml || XML_ENTITIES.test(xml) || XMLValidator.validate(xml) !== true) return [];
+function parseFeed(xml: string, source: AllowlistSource, retrievedAt: string): SourceCandidate[] | null {
+  if (!xml || XML_ENTITIES.test(xml) || XMLValidator.validate(xml) !== true) return null;
   const parsed = new XMLParser({
     processEntities: false,
     parseTagValue: false,
@@ -219,16 +288,19 @@ function parseFeed(xml: string, source: AllowlistSource, retrievedAt: string): S
     removeNSPrefix: true,
   }).parse(xml) as unknown;
   const root = asRecord(parsed);
-  if (!root) return [];
+  if (!root) return null;
 
   let entries: unknown[];
   if (root.rss !== undefined) {
     const channel = asRecord(asRecord(root.rss)?.channel);
-    entries = channel ? asArray(channel.item) : [];
+    if (!channel) return null;
+    entries = asArray(channel.item);
   } else if (root.feed !== undefined) {
-    entries = asArray(asRecord(root.feed)?.entry);
+    const feed = asRecord(root.feed);
+    if (!feed) return null;
+    entries = asArray(feed.entry);
   } else {
-    return [];
+    return null;
   }
 
   const candidates: SourceCandidate[] = [];
@@ -260,21 +332,22 @@ async function collectSource(
   source: AllowlistSource,
   retrievedAt: string,
   fetchImpl: typeof fetch,
-): Promise<SourceCandidate[]> {
+): Promise<{ candidates: SourceCandidate[]; successfulFeeds: number }> {
   const candidates: SourceCandidate[] = [];
+  let successfulFeeds = 0;
   for (const feed of source.feeds) {
     try {
       const xml = await fetchFeedXml(feed.url, fetchImpl);
-      if (xml !== null) candidates.push(...parseFeed(xml, source, retrievedAt));
+      if (xml === null) continue;
+      const parsed = parseFeed(xml, source, retrievedAt);
+      if (parsed === null) continue;
+      successfulFeeds += 1;
+      candidates.push(...parsed);
     } catch {
       // Limites do parser XML também encerram somente este feed.
     }
   }
-  return candidates;
-}
-
-function readVaultJson(root: string, name: string): unknown {
-  return JSON.parse(readFileSync(join(root, 'src', 'data', 'diario', 'curadoria', name), 'utf8')) as unknown;
+  return { candidates, successfulFeeds };
 }
 
 function persistInputs(root: string, inputs: CollectedInputs): void {
@@ -294,10 +367,8 @@ export async function collectInputs(date: string, options: CollectOptions = {}):
   const fetchImpl = options.fetch ?? fetch;
   const retrievedAt = now.toISOString();
 
-  verifyGovernance(root);
-  const { allowlist } = parseAllowlist(readVaultJson(root, 'allowlist.json'));
-  const events = parseCalendar(readVaultJson(root, 'calendario.json'));
-  const lessons = parseLessons(readVaultJson(root, 'licoes.json'));
+  const vault = verifyGovernance(root);
+  const { allowlist, calendar: events, lessons } = vault;
 
   const [selic, cdi, ipca12m, dolar] = await Promise.all([
     fetchBcbLastValue(432, fetchImpl),
@@ -315,17 +386,25 @@ export async function collectInputs(date: string, options: CollectOptions = {}):
   const sources: SourceCandidate[] = [];
   const seenUrls = new Set<string>();
   const seenTitles = new Map<string, Set<string>>();
+  let enabledFeeds = 0;
+  let successfulFeeds = 0;
   for (const source of allowlist) {
     if (!source.enabled) continue;
+    enabledFeeds += source.feeds.length;
     const publisherTitles = seenTitles.get(source.id) ?? new Set<string>();
     seenTitles.set(source.id, publisherTitles);
-    for (const candidate of await collectSource(source, retrievedAt, fetchImpl)) {
+    const collected = await collectSource(source, retrievedAt, fetchImpl);
+    successfulFeeds += collected.successfulFeeds;
+    for (const candidate of collected.candidates) {
       const titleKey = normalizedTitleKey(candidate.title);
       if (seenUrls.has(candidate.canonicalUrl) || publisherTitles.has(titleKey)) continue;
       seenUrls.add(candidate.canonicalUrl);
       publisherTitles.add(titleKey);
       sources.push(candidate);
     }
+  }
+  if (enabledFeeds > 0 && successfulFeeds === 0) {
+    throw new Error(`RSS collection unavailable: every enabled feed failed to fetch or parse (${enabledFeeds} feeds)`);
   }
 
   const inputs: CollectedInputs = {

@@ -1,5 +1,6 @@
 import { isCalendarDate } from './diario/time';
 import type { BcbObservation } from './diario/types';
+import { cancelResponseBody, readBoundedText } from './http';
 
 export type { BcbObservation } from './diario/types';
 
@@ -31,35 +32,6 @@ function isTrustedBcbUrl(value: string): URL | null {
   }
 }
 
-async function readBoundedText(response: Response): Promise<string> {
-  const declaredLength = Number(response.headers.get('content-length'));
-  if (Number.isFinite(declaredLength) && declaredLength > MAX_RESPONSE_BYTES) {
-    throw new Error('BCB response exceeds the maximum size');
-  }
-  if (!response.body) return '';
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder('utf-8', { fatal: true });
-  const chunks: string[] = [];
-  let bytes = 0;
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      bytes += value.byteLength;
-      if (bytes > MAX_RESPONSE_BYTES) {
-        await reader.cancel();
-        throw new Error('BCB response exceeds the maximum size');
-      }
-      chunks.push(decoder.decode(value, { stream: true }));
-    }
-    chunks.push(decoder.decode());
-  } finally {
-    reader.releaseLock();
-  }
-  return chunks.join('');
-}
-
 async function fetchBcbJson(serieCode: number, count: number, fetchImpl: typeof fetch): Promise<unknown> {
   if (!Number.isInteger(serieCode) || serieCode < 1) throw new Error('BCB series code must be a positive integer');
   if (!Number.isInteger(count) || count < 1 || count > 100) throw new Error('BCB observation count must be between 1 and 100');
@@ -78,25 +50,39 @@ async function fetchBcbJson(serieCode: number, count: number, fetchImpl: typeof 
         headers: { Accept: 'application/json' },
         redirect: 'manual',
       });
-      if (REDIRECT_STATUSES.has(response.status)) {
-        if (hops >= MAX_REDIRECTS) return null;
-        const location = response.headers.get('location');
-        if (!location || location.length > 2048 || CONTROL_OR_SPACE.test(location) || INVALID_URL_CHARACTER.test(location)) {
+      try {
+        if (REDIRECT_STATUSES.has(response.status)) {
+          if (hops >= MAX_REDIRECTS) return null;
+          const location = response.headers.get('location');
+          if (!location || location.length > 2048 || CONTROL_OR_SPACE.test(location) || INVALID_URL_CHARACTER.test(location)) {
+            return null;
+          }
+          let target: URL;
+          try {
+            target = new URL(location, url);
+          } catch {
+            return null;
+          }
+          if (!isTrustedBcbUrl(target.href) || visited.has(target.href)) return null;
+          visited.add(target.href);
+          url = target;
+          continue;
+        }
+        if (!response.ok) return null;
+        const contentType = response.headers.get('content-type')?.split(';', 1)[0].trim().toLowerCase() ?? '';
+        if (
+          contentType &&
+          contentType !== 'application/json' &&
+          contentType !== 'text/json' &&
+          contentType !== 'text/plain' &&
+          !contentType.endsWith('+json')
+        ) {
           return null;
         }
-        let target: URL;
-        try {
-          target = new URL(location, url);
-        } catch {
-          return null;
-        }
-        if (!isTrustedBcbUrl(target.href) || visited.has(target.href)) return null;
-        visited.add(target.href);
-        url = target;
-        continue;
+        return JSON.parse(await readBoundedText(response, MAX_RESPONSE_BYTES, 'BCB response')) as unknown;
+      } finally {
+        await cancelResponseBody(response);
       }
-      if (!response.ok) return null;
-      return JSON.parse(await readBoundedText(response)) as unknown;
     }
   } catch {
     return null;

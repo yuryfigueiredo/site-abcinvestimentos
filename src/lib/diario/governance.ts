@@ -10,7 +10,10 @@ import {
   parseThresholds,
 } from './schema';
 import { isCalendarDate } from './time';
-import type { Thresholds } from './types';
+import type { Thresholds, Vault } from './types';
+
+type VaultFile = (typeof CONTENT_FILES)[number] | 'approval.json';
+type CapturedVaultFiles = Record<VaultFile, Buffer>;
 
 const CONTENT_FILES = ['carta.md', 'allowlist.json', 'thresholds.json', 'calendario.json', 'licoes.json', 'changelog.md'] as const;
 const MAX_TEXT_BYTES = 1_000_000;
@@ -45,13 +48,17 @@ const PINNED_THRESHOLDS: Pick<
   events: ['copom', 'ipca', 'igp-m', 'payroll', 'fomc'],
 };
 
-function vaultPath(root: string, file: (typeof CONTENT_FILES)[number] | 'approval.json'): string {
+function vaultPath(root: string, file: VaultFile): string {
   return join(resolve(root), 'src', 'data', 'diario', 'curadoria', file);
 }
 
-function readVaultText(root: string, file: (typeof CONTENT_FILES)[number] | 'approval.json'): string {
+function readVaultBytes(root: string, file: VaultFile): Buffer {
   const bytes = readFileSync(vaultPath(root, file));
   if (bytes.length > MAX_TEXT_BYTES) throw new Error(`${file} exceeds the maximum vault file size`);
+  return bytes;
+}
+
+function decodeVaultText(bytes: Buffer, file: VaultFile): string {
   try {
     const text = utf8Decoder.decode(bytes);
     if (text.includes('\u0000')) throw new Error(`${file} contains a null character`);
@@ -62,9 +69,9 @@ function readVaultText(root: string, file: (typeof CONTENT_FILES)[number] | 'app
   }
 }
 
-function readVaultJson(root: string, file: (typeof CONTENT_FILES)[number] | 'approval.json'): unknown {
+function parseVaultJson(bytes: Buffer, file: VaultFile): unknown {
   try {
-    return JSON.parse(readVaultText(root, file));
+    return JSON.parse(decodeVaultText(bytes, file));
   } catch (error) {
     if (error instanceof Error && /valid UTF-8|maximum vault file size|null character/.test(error.message)) throw error;
     throw new Error(`${file} must contain valid JSON`);
@@ -87,8 +94,8 @@ function unfencedMarkdownLines(markdown: string): string[] {
   return lines;
 }
 
-function charterVersion(root: string): string {
-  const matches = unfencedMarkdownLines(readVaultText(root, 'carta.md'))
+function charterVersion(markdown: string): string {
+  const matches = unfencedMarkdownLines(markdown)
     .map((line) => /^Versão da carta:\s*(\S+)\s*$/u.exec(line)?.[1])
     .filter((value): value is string => value !== undefined);
   if (matches.length !== 1 || !VERSION.test(matches[0])) {
@@ -97,9 +104,9 @@ function charterVersion(root: string): string {
   return matches[0];
 }
 
-function latestChangelogVersion(root: string): string {
+function latestChangelogVersion(markdown: string): string {
   let latest: string | undefined;
-  for (const line of unfencedMarkdownLines(readVaultText(root, 'changelog.md'))) {
+  for (const line of unfencedMarkdownLines(markdown)) {
     const match = /^##\s+([A-Za-z0-9][A-Za-z0-9._-]{0,63})(?:\s+—\s+(\d{4}-\d{2}-\d{2}))?\s*$/u.exec(line);
     if (!match) continue;
     if (match[2] && !isCalendarDate(match[2])) throw new Error('changelog.md contains an invalid entry date');
@@ -129,33 +136,43 @@ function assertPinnedThresholds(thresholds: Thresholds): void {
   assertPinned('events', thresholds.events, PINNED_THRESHOLDS.events);
 }
 
-export function computeCurationBundleHash(root: string = process.cwd()): string {
-  const hash = createHash('sha256');
+function updateCurationBundleHash(hash: ReturnType<typeof createHash>, files: CapturedVaultFiles): void {
   for (const file of CONTENT_FILES) {
     hash.update(file, 'utf8');
     hash.update(Buffer.from([0]));
-    hash.update(readFileSync(vaultPath(root, file)));
+    hash.update(files[file]);
     hash.update(Buffer.from([0]));
   }
+}
+
+export function computeCurationBundleHash(root: string = process.cwd()): string {
+  const hash = createHash('sha256');
+  const files = Object.fromEntries(CONTENT_FILES.map((file) => [file, readFileSync(vaultPath(root, file))])) as CapturedVaultFiles;
+  updateCurationBundleHash(hash, files);
   return hash.digest('hex');
 }
 
-export function verifyGovernance(root: string = process.cwd()): void {
-  const declaredCharterVersion = charterVersion(root);
-  const declaredChangelogVersion = latestChangelogVersion(root);
+export function verifyGovernance(root: string = process.cwd()): Vault {
+  const files = Object.fromEntries(
+    ([...CONTENT_FILES, 'approval.json'] as const).map((file) => [file, readVaultBytes(root, file)]),
+  ) as CapturedVaultFiles;
+  const declaredCharterVersion = charterVersion(decodeVaultText(files['carta.md'], 'carta.md'));
+  const declaredChangelogVersion = latestChangelogVersion(decodeVaultText(files['changelog.md'], 'changelog.md'));
 
-  parseAllowlist(readVaultJson(root, 'allowlist.json'));
-  const thresholds = parseThresholds(readVaultJson(root, 'thresholds.json'));
-  parseCalendar(readVaultJson(root, 'calendario.json'));
-  const lessons = parseLessons(readVaultJson(root, 'licoes.json'));
-  const approval = parseApproval(readVaultJson(root, 'approval.json'));
+  const { allowlistVersion, allowlist } = parseAllowlist(parseVaultJson(files['allowlist.json'], 'allowlist.json'));
+  const thresholds = parseThresholds(parseVaultJson(files['thresholds.json'], 'thresholds.json'));
+  const calendar = parseCalendar(parseVaultJson(files['calendario.json'], 'calendario.json'));
+  const lessons = parseLessons(parseVaultJson(files['licoes.json'], 'licoes.json'));
+  const approval = parseApproval(parseVaultJson(files['approval.json'], 'approval.json'));
 
   if (declaredCharterVersion !== declaredChangelogVersion || approval.charterVersion !== declaredCharterVersion) {
     throw new Error('approval.charterVersion must match both carta.md and the latest changelog.md entry');
   }
 
-  const computedHash = computeCurationBundleHash(root);
-  if (approval.bundleSha256 !== computedHash) {
+  const hash = createHash('sha256');
+  updateCurationBundleHash(hash, files);
+  const bundleSha256 = hash.digest('hex');
+  if (approval.bundleSha256 !== bundleSha256) {
     throw new Error('approval.bundleSha256 does not match the six-file curation bundle');
   }
 
@@ -164,4 +181,15 @@ export function verifyGovernance(root: string = process.cwd()): void {
   for (const lesson of lessons) {
     if (!guideSlugs.has(lesson.guideSlug)) throw new Error(`lesson ${lesson.id} references an unknown guideSlug`);
   }
+
+  return {
+    charterVersion: declaredCharterVersion,
+    allowlistVersion,
+    allowlist,
+    thresholds,
+    calendar,
+    lessons,
+    bundleSha256,
+    approval,
+  };
 }

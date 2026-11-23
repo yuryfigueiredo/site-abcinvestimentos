@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -108,6 +108,23 @@ function defaultHandler(input: string | URL | Request): Response {
 
 function mockFetch(handler: (input: string | URL | Request, init?: RequestInit) => Response | Promise<Response> = defaultHandler): FetchMock {
   return vi.fn(async (input: string | URL | Request, init?: RequestInit) => handler(input, init));
+}
+
+function trackedResponse(
+  chunks: Array<string | Uint8Array>,
+  init: ResponseInit = {},
+  close = true,
+): { response: Response; cancel: ReturnType<typeof vi.fn> } {
+  const cancel = vi.fn();
+  const encoder = new TextEncoder();
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const chunk of chunks) controller.enqueue(typeof chunk === 'string' ? encoder.encode(chunk) : chunk);
+      if (close) controller.close();
+    },
+    cancel,
+  });
+  return { response: new Response(body, init), cancel };
 }
 
 async function collect(fetchMock: FetchMock): Promise<CollectedInputs> {
@@ -220,6 +237,126 @@ describe('BCB transport', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     for (const [, init] of fetchMock.mock.calls) expect(init?.redirect).toBe('manual');
   });
+
+  it('reads BCB JSON from streamed chunks', async () => {
+    const payload = JSON.stringify([{ data: '23/11/2026', valor: '13.75' }]);
+    const bytes = new TextEncoder().encode(payload);
+    const split = Math.floor(bytes.length / 2);
+    const { response } = trackedResponse([bytes.slice(0, split), bytes.slice(split)]);
+    const fetchMock = mockFetch(() => response);
+
+    await expect(fetchBcbLastValue(432, fetchMock as unknown as typeof fetch)).resolves.toEqual({
+      value: 13.75,
+      date: '2026-11-23',
+    });
+  });
+
+  it('cancels an unread BCB body when the declared size exceeds the cap', async () => {
+    const { response, cancel } = trackedResponse(['{}'], { headers: { 'content-length': '1000001' } }, false);
+    const fetchMock = mockFetch(() => response);
+
+    await expect(fetchBcbLastValue(432, fetchMock as unknown as typeof fetch)).resolves.toBeNull();
+    expect(cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('enforces the BCB byte cap while streaming and cancels the remainder', async () => {
+    const { response, cancel } = trackedResponse(['x'.repeat(600_000), 'x'.repeat(600_000)], {}, false);
+    const fetchMock = mockFetch(() => response);
+
+    await expect(fetchBcbLastValue(432, fetchMock as unknown as typeof fetch)).resolves.toBeNull();
+    expect(cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects invalid UTF-8 and cancels the unread BCB remainder', async () => {
+    const { response, cancel } = trackedResponse([new Uint8Array([0xff]), '{"data":"23/11/2026","valor":"13.75"}'], {}, false);
+    const fetchMock = mockFetch(() => response);
+
+    await expect(fetchBcbLastValue(432, fetchMock as unknown as typeof fetch)).resolves.toBeNull();
+    expect(cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a non-JSON BCB response and cancels its unread body', async () => {
+    const { response, cancel } = trackedResponse(['[{"data":"23/11/2026","valor":"13.75"}]'], {
+      headers: { 'content-type': 'text/html' },
+    }, false);
+    const fetchMock = mockFetch(() => response);
+
+    await expect(fetchBcbLastValue(432, fetchMock as unknown as typeof fetch)).resolves.toBeNull();
+    expect(cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([401, 402, 403])('cancels an unread BCB body on HTTP %i', async (status) => {
+    const { response, cancel } = trackedResponse(['offline'], { status }, false);
+    const fetchMock = mockFetch(() => response);
+
+    await expect(fetchBcbLastValue(432, fetchMock as unknown as typeof fetch)).resolves.toBeNull();
+    expect(cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['malformed Location', 'http://['],
+    ['forbidden redirect target', 'https://api.bcb.gov.br.evil.test/serie'],
+    ['redirect loop', '/dados/serie/bcdata.sgs.432/dados/ultimos/1?formato=json'],
+  ])('cancels an unread BCB redirect body on %s', async (_label, location) => {
+    const { response, cancel } = trackedResponse(['redirect'], { status: 302, headers: { location } }, false);
+    const fetchMock = mockFetch(() => response);
+
+    await expect(fetchBcbLastValue(432, fetchMock as unknown as typeof fetch)).resolves.toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('cancels every unread BCB redirect body at the hop limit', async () => {
+    const responses: Array<ReturnType<typeof trackedResponse>> = [];
+    const fetchMock = mockFetch(() => {
+      const tracked = trackedResponse(['redirect'], {
+        status: 302,
+        headers: { location: `/dados/serie/hop-${responses.length + 1}?formato=json` },
+      }, false);
+      responses.push(tracked);
+      return tracked.response;
+    });
+
+    await expect(fetchBcbLastValue(432, fetchMock as unknown as typeof fetch)).resolves.toBeNull();
+    expect(responses).toHaveLength(4);
+    for (const { cancel } of responses) expect(cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('aborts a stalled BCB request on timeout', async () => {
+    vi.useFakeTimers();
+    let signal: AbortSignal | undefined;
+    const fetchMock = mockFetch((_input, init) => new Promise<Response>((_resolve, reject) => {
+      signal = init?.signal ?? undefined;
+      init?.signal?.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+    }));
+
+    const pending = fetchBcbLastValue(432, fetchMock as unknown as typeof fetch);
+    await vi.advanceTimersByTimeAsync(3_501);
+    await expect(pending).resolves.toBeNull();
+    expect(signal?.aborted).toBe(true);
+  });
+
+  it('aborts and cleans up a BCB body that stalls after headers', async () => {
+    vi.useFakeTimers();
+    let signal: AbortSignal | undefined;
+    const fetchMock = mockFetch((_input, init) => {
+      signal = init?.signal ?? undefined;
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          init?.signal?.addEventListener('abort', () => controller.error(new Error('aborted')), { once: true });
+        },
+        pull() {
+          return new Promise<void>(() => {});
+        },
+      });
+      return new Response(body, { status: 200 });
+    });
+
+    const pending = fetchBcbLastValue(432, fetchMock as unknown as typeof fetch);
+    await vi.advanceTimersByTimeAsync(3_501);
+    await expect(pending).resolves.toBeNull();
+    expect(signal?.aborted).toBe(true);
+  });
 });
 
 describe('allowlisted ingestion', () => {
@@ -287,6 +424,58 @@ describe('allowlisted ingestion', () => {
     expect(result.sources).toHaveLength(1);
   });
 
+  it.each(['fetch', 'parse'])('throws collection-unavailable when every enabled feed fails to %s and persists nothing', async (failure) => {
+    setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      const url = String(input);
+      if (url === ALPHA_FEED || url === BETA_FEED) {
+        return failure === 'fetch' ? new Response('offline', { status: 503 }) : new Response('<rss><channel>', { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    await expect(collect(fetchMock)).rejects.toThrow(/collection unavailable.*every enabled feed/i);
+    expect(existsSync(join(root, '.cache/diario', DATE, 'inputs.json'))).toBe(false);
+  });
+
+  it('keeps per-feed failures isolated when another enabled feed succeeds', async () => {
+    setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) return new Response('<rss><channel>', { status: 200 });
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources.map((item) => item.sourceId)).toEqual(['beta']);
+    expect(cacheInputs()).toEqual(result);
+  });
+
+  it('treats one successfully parsed empty feed as quiet evidence despite another feed failure', async () => {
+    setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) return new Response(rss([]), { status: 200 });
+      if (String(input) === BETA_FEED) return new Response('offline', { status: 503 });
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources).toEqual([]);
+    expect(cacheInputs()).toEqual(result);
+  });
+
+  it('keeps zero enabled feeds as an explicit configuration state without throwing', async () => {
+    setSources([source('alpha', ALPHA_FEED, false), source('beta', BETA_FEED, false)]);
+    const fetchMock = mockFetch();
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources).toEqual([]);
+    expect(requestedUrls(fetchMock).some((url) => url.includes('feeds.example.test'))).toBe(false);
+    expect(cacheInputs()).toEqual(result);
+  });
+
   it.each([
     ['http scheme', 'http://feeds.example.test/evil'],
     ['deceptive host', 'https://feeds.example.test.evil.test/rss'],
@@ -295,9 +484,10 @@ describe('allowlisted ingestion', () => {
     ['oversized resolved target', `/${'x'.repeat(2030)}`],
   ])('never requests forbidden redirect target: %s', async (_label, location) => {
     setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
+    const tracked = trackedResponse(['redirect'], { status: 302, headers: { Location: location } }, false);
     const fetchMock = mockFetch((input) => {
       const url = String(input);
-      if (url === ALPHA_FEED) return new Response(null, { status: 302, headers: { Location: location } });
+      if (url === ALPHA_FEED) return tracked.response;
       return defaultHandler(input);
     });
 
@@ -305,29 +495,34 @@ describe('allowlisted ingestion', () => {
 
     expect(result.sources.map((item) => item.sourceId)).toEqual(['beta']);
     expect(requestedUrls(fetchMock).filter((url) => url.includes('feeds.example.test'))).toEqual([ALPHA_FEED, BETA_FEED]);
+    expect(tracked.cancel).toHaveBeenCalledTimes(1);
   });
 
-  it('malformed and loop redirects skip only that source', async () => {
+  it('malformed and loop redirects skip only that source and cancel unread bodies', async () => {
     setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
+    const malformedResponse = trackedResponse(['redirect'], { status: 302, headers: { Location: 'http://[' } }, false);
     const fetchMock = mockFetch((input) => {
       const url = String(input);
-      if (url === ALPHA_FEED) return new Response(null, { status: 302, headers: { Location: 'http://[' } });
+      if (url === ALPHA_FEED) return malformedResponse.response;
       if (url === `${ALPHA_FEED}/loop`) return new Response(null, { status: 302, headers: { Location: `${ALPHA_FEED}/loop` } });
       return defaultHandler(input);
     });
 
     const malformed = await collect(fetchMock);
     expect(malformed.sources.map((item) => item.sourceId)).toEqual(['beta']);
+    expect(malformedResponse.cancel).toHaveBeenCalledTimes(1);
 
     setSources([source('alpha', `${ALPHA_FEED}/loop`), source('beta', BETA_FEED)]);
+    const loopResponse = trackedResponse(['redirect'], { status: 302, headers: { Location: `${ALPHA_FEED}/loop` } }, false);
     const loopMock = mockFetch((input) => {
       const url = String(input);
-      if (url === `${ALPHA_FEED}/loop`) return new Response(null, { status: 302, headers: { Location: url } });
+      if (url === `${ALPHA_FEED}/loop`) return loopResponse.response;
       return defaultHandler(input);
     });
     const loop = await collect(loopMock);
     expect(loop.sources.map((item) => item.sourceId)).toEqual(['beta']);
     expect(requestedUrls(loopMock).filter((url) => url.includes('/loop'))).toEqual([`${ALPHA_FEED}/loop`]);
+    expect(loopResponse.cancel).toHaveBeenCalledTimes(1);
   });
 
   it('allows three validated redirect hops', async () => {
@@ -347,14 +542,17 @@ describe('allowlisted ingestion', () => {
     for (const [, init] of fetchMock.mock.calls) expect(init?.redirect).toBe('manual');
   });
 
-  it('the fourth hop fails closed for only that source', async () => {
+  it('the fourth hop fails closed for only that source and cancels every redirect body', async () => {
     const feed = 'https://feeds.example.test/hop/0';
     setSources([source('alpha', feed), source('beta', BETA_FEED)]);
+    const redirects: Array<ReturnType<typeof trackedResponse>> = [];
     const fetchMock = mockFetch((input) => {
       const url = String(input);
       if (url.includes('/hop/')) {
         const hop = Number(/\/hop\/(\d+)/.exec(url)?.[1]);
-        return new Response(null, { status: 302, headers: { Location: `/hop/${hop + 1}` } });
+        const tracked = trackedResponse(['redirect'], { status: 302, headers: { Location: `/hop/${hop + 1}` } }, false);
+        redirects.push(tracked);
+        return tracked.response;
       }
       return defaultHandler(input);
     });
@@ -368,30 +566,37 @@ describe('allowlisted ingestion', () => {
       'https://feeds.example.test/hop/2',
       'https://feeds.example.test/hop/3',
     ]);
+    for (const { cancel } of redirects) expect(cancel).toHaveBeenCalledTimes(1);
   });
 
-  it.each([401, 402, 403])('HTTP %i interrupts only that source', async (status) => {
+  it.each([401, 402, 403])('HTTP %i interrupts only that source and cancels its unread body', async (status) => {
     setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
+    const tracked = trackedResponse(['paywalled'], { status }, false);
     const fetchMock = mockFetch((input) => {
-      if (String(input) === ALPHA_FEED) return new Response('paywalled', { status });
+      if (String(input) === ALPHA_FEED) return tracked.response;
       return defaultHandler(input);
     });
 
     const result = await collect(fetchMock);
 
     expect(result.sources.map((item) => item.sourceId)).toEqual(['beta']);
+    expect(tracked.cancel).toHaveBeenCalledTimes(1);
   });
 
-  it('a paywalled HTML response skips only that source', async () => {
+  it('a paywalled HTML response skips only that source and cancels its unread body', async () => {
     setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
+    const tracked = trackedResponse(['<html><body>Assine para ler</body></html>'], {
+      headers: { 'content-type': 'text/html' },
+    }, false);
     const fetchMock = mockFetch((input) => {
-      if (String(input) === ALPHA_FEED) return new Response('<html><body>Assine para ler</body></html>', { status: 200 });
+      if (String(input) === ALPHA_FEED) return tracked.response;
       return defaultHandler(input);
     });
 
     const result = await collect(fetchMock);
 
     expect(result.sources.map((item) => item.sourceId)).toEqual(['beta']);
+    expect(tracked.cancel).toHaveBeenCalledTimes(1);
   });
 
   it('RSS malformado pula só aquela fonte', async () => {
@@ -433,36 +638,157 @@ describe('allowlisted ingestion', () => {
     expect(JSON.stringify(cacheInputs())).not.toContain('root:');
   });
 
-  it('the XML parser leaves entity references unexpanded', async () => {
+  it('decodes predefined and numeric XML references once in safe metadata', async () => {
     setSources([source('alpha', ALPHA_FEED)]);
-    const literalEntityFeed = `<?xml version="1.0"?><rss><channel>${rssItem({ title: 'Juros &amp; inflação' }).replace('Juros &amp;amp; inflação', 'Juros &amp; inflação')}</channel></rss>`;
+    const entityFeed = `<?xml version="1.0"?><rss><channel><item><title>  Juros &#38; infla&#231;&#227;o &amp; c&#xE2;mbio  </title><link>${ARTICLE}?a=1&amp;b=2</link><description>Resumo &amp; contexto.</description><pubDate>Mon, 23 Nov 2026 18:00:00 +0000</pubDate></item><item><title>Juros &amp;lt; inflação &amp;amp; câmbio</title><link>https://news.example.test/single-pass</link></item></channel></rss>`;
     const fetchMock = mockFetch((input) => {
-      if (String(input) === ALPHA_FEED) return new Response(literalEntityFeed, { status: 200 });
+      if (String(input) === ALPHA_FEED) return new Response(entityFeed, { status: 200 });
       return defaultHandler(input);
     });
 
     const result = await collect(fetchMock);
 
-    expect(result.sources[0]?.title).toBe('Juros &amp; inflação');
+    expect(result.sources[0]).toMatchObject({
+      title: 'Juros & inflação & câmbio',
+      canonicalUrl: `${ARTICLE}?a=1&b=2`,
+      excerpt: 'Resumo & contexto.',
+    });
+    expect(result.sources[1]?.title).toBe('Juros &lt; inflação &amp; câmbio');
+  });
+
+  it('normalizes safe XML whitespace in stored plain-text titles', async () => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(rss([rssItem({ title: 'Juros\t e\ninflação' })]), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources[0]?.title).toBe('Juros e inflação');
+  });
+
+  it('deduplicates titles after single-pass XML reference decoding', async () => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(
+          rss([
+            '<item><title>Juros &amp; inflação</title><link>https://news.example.test/one</link></item>',
+            '<item><title>Juros &#38; inflação</title><link>https://news.example.test/two</link></item>',
+          ]),
+          { status: 200 },
+        );
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources.map((item) => item.canonicalUrl)).toEqual(['https://news.example.test/one']);
+  });
+
+  it.each([
+    ['CDATA markup', '<![CDATA[<b>Juros</b> e inflação]]>'],
+    ['predefined markup', '&lt;b&gt;Juros&lt;/b&gt; e inflação'],
+    ['numeric markup', '&#60;script&#62;Juros&#60;/script&#62;'],
+  ])('rejects title markup instead of persisting it: %s', async (_label, titleXml) => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(
+          `<?xml version="1.0"?><rss><channel><item><title>${titleXml}</title><link>${ARTICLE}</link></item></channel></rss>`,
+          { status: 200 },
+        );
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources).toEqual([]);
+  });
+
+  it.each(['Juros\u200B e inflação', 'Juros\u202E e inflação'])('rejects unsafe Unicode format controls in titles: %j', async (title) => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) return new Response(rss([rssItem({ title })]), { status: 200 });
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources).toEqual([]);
+  });
+
+  it('revalidates decoded article URLs before canonicalization', async () => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(
+          rss([
+            '<item><title>Consulta decodificada</title><link>https://news.example.test/story&#x3F;a=1&amp;b=2</link></item>',
+            '<item><title>Controle decodificado</title><link>https://news.example.test/story&#x09;?a=1</link></item>',
+            '<item><title>Credencial decodificada</title><link>https://user&#58;secret@news.example.test/story</link></item>',
+          ]),
+          { status: 200 },
+        );
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources.map((item) => item.canonicalUrl)).toEqual(['https://news.example.test/story?a=1&b=2']);
+  });
+
+  it('reads RSS from streamed chunks across a UTF-8 character boundary', async () => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const bytes = new TextEncoder().encode(rss([rssItem()]));
+    const accent = bytes.indexOf(0xc3) + 1;
+    const split = accent > 0 ? accent : Math.floor(bytes.length / 2);
+    const { response } = trackedResponse([bytes.slice(0, split), bytes.slice(split)]);
+    const fetchMock = mockFetch((input) => String(input) === ALPHA_FEED ? response : defaultHandler(input));
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources[0]?.title).toBe('Juros e inflação');
+  });
+
+  it('cancels an unread RSS body when the declared size exceeds the cap', async () => {
+    setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
+    const tracked = trackedResponse(['<rss/>'], { headers: { 'content-length': '1000001' } }, false);
+    const fetchMock = mockFetch((input) => String(input) === ALPHA_FEED ? tracked.response : defaultHandler(input));
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources.map((item) => item.sourceId)).toEqual(['beta']);
+    expect(tracked.cancel).toHaveBeenCalledTimes(1);
   });
 
   it('caps response bytes and skips only the oversized source', async () => {
     setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
+    const tracked = trackedResponse(['x'.repeat(600_000), 'x'.repeat(600_000)], {}, false);
     const fetchMock = mockFetch((input) => {
-      if (String(input) === ALPHA_FEED) return new Response(rss([rssItem({ description: 'x'.repeat(1_000_001) })]), { status: 200 });
+      if (String(input) === ALPHA_FEED) return tracked.response;
       return defaultHandler(input);
     });
 
     const result = await collect(fetchMock);
 
     expect(result.sources.map((item) => item.sourceId)).toEqual(['beta']);
+    expect(tracked.cancel).toHaveBeenCalledTimes(1);
   });
 
   it('times out a stalled source without stopping healthy sources', async () => {
     vi.useFakeTimers();
     setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
+    let signal: AbortSignal | undefined;
     const fetchMock = mockFetch((input, init) => {
       if (String(input) === ALPHA_FEED) {
+        signal = init?.signal ?? undefined;
         return new Promise<Response>((_resolve, reject) => {
           init?.signal?.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
         });
@@ -475,13 +801,14 @@ describe('allowlisted ingestion', () => {
     const result = await pending;
 
     expect(result.sources.map((item) => item.sourceId)).toEqual(['beta']);
+    expect(signal?.aborted).toBe(true);
   });
 
   it.each([
     ['non-HTTPS article URL', { link: 'http://news.example.test/story' }],
     ['credentialled article URL', { link: 'https://user:secret@news.example.test/story' }],
     ['unsafe title length', { title: 'x'.repeat(501) }],
-    ['control character in title', { title: 'Juros\ttema inflação' }],
+    ['control character in title', { title: 'Juros\u009F e inflação' }],
     ['unsafe URL length', { link: `https://news.example.test/${'x'.repeat(2_100)}` }],
   ])('rejects unsafe metadata: %s', async (_label, options) => {
     setSources([source('alpha', ALPHA_FEED)]);
@@ -541,6 +868,47 @@ describe('allowlisted ingestion', () => {
     expect(result.sources[0]?.excerptSha256).toBe(
       createHash('sha256').update('Resumo curto da notícia.', 'utf8').digest('hex'),
     );
+  });
+
+  it.each([
+    ['2026-11-23T18:00:00Z', '2026-11-23T18:00:00.000Z'],
+    ['2026-11-23T18:00:00.123456789-03:00', '2026-11-23T21:00:00.123Z'],
+    ['Mon, 23 Nov 2026 18:00:00 GMT', '2026-11-23T18:00:00.000Z'],
+    ['Mon, 23 Nov 2026 18:00:00 UTC', '2026-11-23T18:00:00.000Z'],
+    ['Mon, 23 Nov 2026 18:00:00 -0330', '2026-11-23T21:30:00.000Z'],
+    ['23 Nov 2026 18:00:00 +0000', '2026-11-23T18:00:00.000Z'],
+  ])('normalizes supported timestamp with an explicit zone: %s', async (published, expected) => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) return new Response(rss([rssItem({ published })]), { status: 200 });
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources[0]?.publishedAt).toBe(expected);
+  });
+
+  it.each([
+    ['impossible ISO date', '2026-02-30T18:00:00Z'],
+    ['impossible RFC 822 date', 'Mon, 31 Feb 2026 18:00:00 +0000'],
+    ['timezone-less ISO timestamp', '2026-11-23T18:00:00'],
+    ['timezone-less RFC 822 timestamp', 'Mon, 23 Nov 2026 18:00:00'],
+    ['unsupported named zone', 'Mon, 23 Nov 2026 18:00:00 EST'],
+    ['impossible ISO time', '2026-11-23T24:00:00Z'],
+    ['impossible ISO offset', '2026-11-23T18:00:00+25:00'],
+    ['impossible RFC 822 offset', 'Mon, 23 Nov 2026 18:00:00 +2460'],
+    ['mismatched RFC 822 weekday', 'Tue, 23 Nov 2026 18:00:00 +0000'],
+  ])('rejects %s instead of relying on Date.parse', async (_label, published) => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) return new Response(rss([rssItem({ published })]), { status: 200 });
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources[0]?.publishedAt).toBeNull();
   });
 
   it('cache excludes article body and never fetches the article URL', async () => {
