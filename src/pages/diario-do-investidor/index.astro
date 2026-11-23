@@ -1,0 +1,329 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ArchiveList from '../../components/diario/ArchiveList.astro';
+import DiarioByline from '../../components/diario/DiarioByline.astro';
+import EditionBody from '../../components/diario/EditionBody.astro';
+import IndicatorGrid from '../../components/diario/IndicatorGrid.astro';
+import { getIndicators } from '../../lib/indicators';
+import { absUrl } from '../../lib/seo';
+import { latestEdition, materialEditions, readEditions } from '../../lib/diario/store';
+import type { MeasuredKey } from '../../lib/diario/types';
+import { SITE_CONFIG } from '../../config/site';
+
+const editions = readEditions();
+const latest = latestEdition(editions);
+const archive = materialEditions(editions);
+const indicators = await getIndicators();
+const indicatorKeys: MeasuredKey[] = ['selic', 'cdi', 'ipca12m', 'dolar'];
+const indicatorRows = indicatorKeys.map((key) => ({
+  key,
+  value: indicators[key],
+  observedOn: indicators.updatedAt,
+  origin: indicators.origins[key] === 'bcb-sgs' ? 'bcb-sgs' as const : 'config-fallback' as const,
+}));
+const editionDate = new Date(`${latest.date}T12:00:00`).toLocaleDateString('pt-BR', {
+  day: '2-digit',
+  month: 'long',
+  year: 'numeric',
+});
+const collectionJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'CollectionPage',
+  name: 'Diário do Investidor',
+  description: 'Leitura diária do mercado financeiro com indicadores do Banco Central e curadoria de fontes verificadas.',
+  url: absUrl('/diario-do-investidor'),
+  inLanguage: 'pt-BR',
+  isPartOf: { '@type': 'WebSite', '@id': `${SITE_CONFIG.url}/#website` },
+  publisher: { '@id': `${SITE_CONFIG.url}/#organization` },
+};
+---
+
+<BaseLayout
+  title="Diário do Investidor — leitura diária do mercado"
+  description="Acompanhe a leitura diária do mercado, indicadores do Banco Central e notícias financeiras com fontes verificadas, sem recomendação de investimento."
+  canonical="/diario-do-investidor"
+>
+  <script type="application/ld+json" set:html={JSON.stringify(collectionJsonLd)} />
+
+  <section class="diario-hub">
+    <div class="container">
+      <header class="diario-hero">
+        <div class="diario-hero__copy">
+          <span class="badge-pill">Curadoria diária · YMYL</span>
+          <h1>Diário do Investidor</h1>
+          <p>
+            O que mudou, o que não mudou e por que isso importa. Uma leitura enxuta do mercado,
+            lastreada em dados oficiais e fontes verificadas.
+          </p>
+          <div class="diario-hero__links">
+            <a href="#leitura-do-dia">Ler a edição de hoje</a>
+            <a href="/diario-do-investidor/metodologia/">Conhecer a metodologia</a>
+          </div>
+        </div>
+        <div class="diario-date-stamp">
+          <span>Última leitura registrada</span>
+          <time datetime={latest.date}>{editionDate}</time>
+          <strong>{latest.decision.status === 'material' ? 'Edição material' : 'Dia sem alteração relevante'}</strong>
+          <p>{latest.decision.status === 'material' ? 'Há substância nova para arquivar.' : 'O hub mantém a leitura do dia sem criar página fina.'}</p>
+        </div>
+      </header>
+
+      <div class="diario-grid">
+        <article class="abc-card edition-card" id="leitura-do-dia">
+          <header class="edition-card__header">
+            <div class="edition-card__meta">
+              <time datetime={latest.date}>{editionDate}</time>
+              <span class="edition-card__status" data-status={latest.decision.status}>
+                {latest.decision.status === 'material' ? 'Material' : 'Morno'}
+              </span>
+            </div>
+            <h2>{latest.title}</h2>
+            <DiarioByline />
+            {latest.decision.status === 'material' && (
+              <a class="edition-card__permalink" href={`/diario-do-investidor/${latest.date}/`}>Abrir esta edição no arquivo →</a>
+            )}
+          </header>
+          <EditionBody edition={latest} />
+        </article>
+
+        <aside class="diario-aside">
+          <IndicatorGrid
+            title="Indicadores ao vivo"
+            rows={indicatorRows}
+            note="O hub usa a coleta viva do BCB. O arquivo datado preserva o snapshot próprio da edição."
+          />
+          <div class="diario-aside__rule">
+            <span class="diario-aside__rule-mark" aria-hidden="true"></span>
+            <p><strong>Página datada só com substância.</strong> Dias sem novidade relevante continuam aqui, sem multiplicar URLs finas.</p>
+          </div>
+        </aside>
+      </div>
+
+      <ArchiveList editions={archive} />
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .diario-hub {
+    padding-block: 2.75rem 4rem;
+  }
+
+  .diario-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.65fr);
+    gap: clamp(2rem, 5vw, 4.5rem);
+    align-items: end;
+    margin-block-end: 2.5rem;
+  }
+
+  .diario-hero__copy h1 {
+    max-inline-size: 720px;
+    margin-block: 0.75rem 0.9rem;
+    font-size: clamp(2.25rem, 5.4vw, 4.25rem);
+    line-height: 0.98;
+    letter-spacing: -0.065em;
+  }
+
+  .diario-hero__copy > p {
+    max-inline-size: 680px;
+    color: var(--text-secondary);
+    font-size: 1.05rem;
+    line-height: 1.8;
+  }
+
+  .diario-hero__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem 1.25rem;
+    margin-block-start: 1.2rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+  }
+
+  .diario-hero__links a {
+    text-underline-offset: 0.25em;
+  }
+
+  .diario-date-stamp {
+    position: relative;
+    padding: 1.25rem 1.25rem 1.25rem 1.5rem;
+    border: 1px solid var(--border-card);
+    background: var(--bg-surface);
+  }
+
+  .diario-date-stamp::before {
+    position: absolute;
+    inset-block: 1rem;
+    inset-inline-start: 0;
+    inline-size: 3px;
+    background: var(--brand-blue);
+    content: '';
+  }
+
+  .diario-date-stamp > span {
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.64rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .diario-date-stamp time {
+    display: block;
+    margin-block: 0.65rem 0.45rem;
+    font-family: var(--font-mono);
+    font-size: clamp(1.1rem, 2.2vw, 1.45rem);
+    font-weight: 700;
+    letter-spacing: -0.05em;
+    text-transform: capitalize;
+  }
+
+  .diario-date-stamp strong {
+    color: var(--brand-positive);
+    font-size: 0.84rem;
+  }
+
+  .diario-date-stamp p {
+    margin-block-start: 0.55rem;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    line-height: 1.6;
+  }
+
+  .diario-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+    gap: 1.5rem;
+    align-items: start;
+  }
+
+  .edition-card {
+    min-inline-size: 0;
+    padding: clamp(1.25rem, 3vw, 2rem);
+    border-inline-start: 3px solid var(--brand-blue);
+  }
+
+  .edition-card__header {
+    padding-block-end: 1.4rem;
+    border-block-end: 1px solid var(--border-subtle);
+  }
+
+  .edition-card__meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+  }
+
+  .edition-card__status {
+    padding: 0.2rem 0.45rem;
+    border: 1px solid var(--border-hover);
+    color: var(--text-secondary);
+    font-size: 0.62rem;
+  }
+
+  .edition-card__status[data-status='material'] {
+    border-color: color-mix(in srgb, var(--brand-positive) 45%, var(--border-card));
+    color: var(--brand-positive);
+  }
+
+  .edition-card__header h2 {
+    margin-block: 0.75rem 0.85rem;
+    font-size: clamp(1.55rem, 3vw, 2.25rem);
+    line-height: 1.18;
+    letter-spacing: -0.045em;
+  }
+
+  .edition-card__permalink {
+    display: inline-block;
+    margin-block-start: 1rem;
+    color: var(--brand-blue);
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-underline-offset: 0.2em;
+  }
+
+  .edition-card :global(.edition-body) {
+    margin-block-start: 1.4rem;
+  }
+
+  .diario-aside {
+    display: grid;
+    gap: 1rem;
+    position: sticky;
+    top: 6.5rem;
+  }
+
+  .diario-aside__rule {
+    display: flex;
+    gap: 0.8rem;
+    padding: 1rem;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-surface);
+  }
+
+  .diario-aside__rule-mark {
+    inline-size: 0.5rem;
+    block-size: 0.5rem;
+    flex: none;
+    margin-block-start: 0.35rem;
+    border-radius: 50%;
+    background: var(--brand-blue);
+  }
+
+  .diario-aside__rule p {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    line-height: 1.65;
+  }
+
+  .diario-aside__rule strong {
+    color: var(--text-secondary);
+  }
+
+  @media (max-width: 900px) {
+    .diario-hero {
+      grid-template-columns: 1fr;
+      align-items: start;
+    }
+
+    .diario-date-stamp {
+      max-inline-size: 440px;
+    }
+
+    .diario-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .diario-aside {
+      position: static;
+      grid-row: 1;
+    }
+  }
+
+  @media (max-width: 520px) {
+    .diario-hub {
+      padding-block-start: 1.75rem;
+    }
+
+    .diario-hero__copy h1 {
+      letter-spacing: -0.055em;
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .edition-card__permalink,
+    .diario-hero__links a {
+      transition: color 0.15s ease;
+    }
+
+    .edition-card__permalink:hover,
+    .diario-hero__links a:hover {
+      color: var(--brand-hover);
+    }
+  }
+</style>

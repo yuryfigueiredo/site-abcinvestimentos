@@ -1,0 +1,130 @@
+---
+import { formatDateBr } from '../../lib/finance';
+import type { Edition } from '../../lib/diario/types';
+
+interface Props {
+  editions: Edition[];
+}
+
+const { editions } = Astro.props;
+---
+
+<section class="archive-list" aria-labelledby="arquivo-do-diario">
+  <div class="archive-list__head">
+    <div>
+      <span class="archive-list__eyebrow">Memória editorial</span>
+      <h2 id="arquivo-do-diario">Edições que justificaram uma página própria</h2>
+    </div>
+    <span class="archive-list__count">{editions.length} {editions.length === 1 ? 'edição' : 'edições'}</span>
+  </div>
+  {editions.length > 0 ? (
+    <ol>
+      {editions.map((edition) => (
+        <li>
+          <time datetime={edition.date}>{formatDateBr(edition.date)}</time>
+          <a href={`/diario-do-investidor/${edition.date}/`}>
+            <strong>{edition.title}</strong>
+            <span>{edition.summary}</span>
+          </a>
+        </li>
+      ))}
+    </ol>
+  ) : (
+    <p class="archive-list__empty">Ainda não há uma edição material. O hub continua sendo atualizado todos os dias.</p>
+  )}
+</section>
+
+<style>
+  .archive-list {
+    margin-block-start: 3rem;
+  }
+
+  .archive-list__head {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-block-end: 1rem;
+  }
+
+  .archive-list__eyebrow {
+    color: var(--brand-blue);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .archive-list h2 {
+    max-inline-size: 640px;
+    margin-block-start: 0.35rem;
+    font-size: clamp(1.2rem, 2vw, 1.55rem);
+  }
+
+  .archive-list__count {
+    flex: none;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+  }
+
+  .archive-list ol {
+    list-style: none;
+    border-block-start: 1px solid var(--border-card);
+  }
+
+  .archive-list li {
+    display: grid;
+    grid-template-columns: 7.5rem minmax(0, 1fr);
+    gap: 1.25rem;
+    padding-block: 1.1rem;
+    border-block-end: 1px solid var(--border-card);
+  }
+
+  .archive-list li time {
+    padding-block-start: 0.15rem;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+  }
+
+  .archive-list li a {
+    display: grid;
+    gap: 0.35rem;
+    text-decoration: none;
+  }
+
+  .archive-list li a:hover strong {
+    color: var(--brand-blue);
+  }
+
+  .archive-list li strong {
+    font-size: 1rem;
+  }
+
+  .archive-list li a span {
+    color: var(--text-secondary);
+    font-size: 0.86rem;
+    line-height: 1.6;
+  }
+
+  .archive-list__empty {
+    padding: 1.2rem;
+    border: 1px dashed var(--border-card);
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  @media (max-width: 640px) {
+    .archive-list__head {
+      align-items: start;
+      flex-direction: column;
+    }
+
+    .archive-list li {
+      grid-template-columns: 1fr;
+      gap: 0.5rem;
+    }
+  }
+</style>

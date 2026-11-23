@@ -1,0 +1,132 @@
+---
+import CalcDisclaimer from '../CalcDisclaimer.astro';
+import SourceList from './SourceList.astro';
+import type { Edition } from '../../lib/diario/types';
+
+interface Props {
+  edition: Edition;
+}
+
+const { edition } = Astro.props;
+---
+
+<div class="edition-body">
+  <p class="edition-body__lead">{edition.summary}</p>
+
+  {edition.items.length > 0 && (
+    <div class="edition-body__news">
+      {edition.items.map((item) => (
+        <section class="edition-body__item">
+          <span class="edition-body__topic">{item.topic.replaceAll('-', ' ')}</span>
+          <h2>{item.headline}</h2>
+          <p>{item.summary}</p>
+          <p class="edition-body__why"><strong>Por que importa:</strong> {item.whyItMatters}</p>
+        </section>
+      ))}
+    </div>
+  )}
+
+  {edition.lesson && (
+    <section class="edition-body__lesson">
+      <span class="edition-body__topic">Lição da semana</span>
+      <h2>{edition.lesson.title}</h2>
+      <p>{edition.lesson.body}</p>
+      <a href={`/guia/${edition.lesson.guideSlug}/`}>Aprofundar no guia →</a>
+    </section>
+  )}
+
+  <SourceList sources={edition.sources} />
+
+  <div class="edition-body__footer">
+    <CalcDisclaimer />
+    <a class="btn btn-secondary" href={`/calculadoras/${edition.relatedCalculatorSlug}/`}>Usar a calculadora relacionada →</a>
+  </div>
+</div>
+
+<style>
+  .edition-body__lead {
+    color: var(--text-secondary);
+    font-size: 1.04rem;
+    line-height: 1.8;
+  }
+
+  .edition-body__news {
+    display: grid;
+    gap: 1.35rem;
+    margin-block-start: 1.75rem;
+  }
+
+  .edition-body__item,
+  .edition-body__lesson {
+    padding: 1.25rem;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-surface);
+  }
+
+  .edition-body__topic {
+    color: var(--brand-blue);
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .edition-body__item h2,
+  .edition-body__lesson h2 {
+    margin-block: 0.45rem 0.7rem;
+    font-size: 1.2rem;
+    line-height: 1.4;
+  }
+
+  .edition-body__item p,
+  .edition-body__lesson p {
+    color: var(--text-secondary);
+    line-height: 1.75;
+  }
+
+  .edition-body__why {
+    margin-block-start: 0.8rem;
+    font-size: 0.9rem;
+  }
+
+  .edition-body__why strong {
+    color: var(--text-primary);
+  }
+
+  .edition-body__lesson {
+    border-inline-start: 3px solid var(--brand-positive);
+  }
+
+  .edition-body__lesson a {
+    display: inline-block;
+    margin-block-start: 1rem;
+    color: var(--brand-blue);
+    font-weight: 700;
+    text-underline-offset: 0.2em;
+  }
+
+  .edition-body__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-block-start: 1.5rem;
+  }
+
+  .edition-body__footer :global(.abc-text-sm) {
+    max-inline-size: 560px;
+    margin: 0;
+  }
+
+  .edition-body__footer .btn {
+    flex: none;
+  }
+
+  @media (max-width: 720px) {
+    .edition-body__footer {
+      align-items: stretch;
+      flex-direction: column;
+    }
+  }
+</style>

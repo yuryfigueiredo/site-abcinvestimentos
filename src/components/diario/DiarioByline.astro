@@ -1,0 +1,32 @@
+---
+const methodologyUrl = '/diario-do-investidor/metodologia/';
+---
+
+<p class="diario-byline">
+  <span class="diario-byline__mark" aria-hidden="true"></span>
+  <a href={methodologyUrl}>Diário do Investidor · curadoria automática com fontes verificadas</a>
+</p>
+
+<style>
+  .diario-byline {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    line-height: 1.5;
+  }
+
+  .diario-byline__mark {
+    inline-size: 0.45rem;
+    block-size: 0.45rem;
+    flex: none;
+    border-radius: 50%;
+    background: var(--brand-positive);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-positive) 12%, transparent);
+  }
+
+  .diario-byline a {
+    text-underline-offset: 0.2em;
+  }
+</style>

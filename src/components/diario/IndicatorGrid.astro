@@ -1,0 +1,168 @@
+---
+import { formatBRL, formatPct } from '../../lib/finance';
+import type { MeasuredKey } from '../../lib/diario/types';
+
+interface Props {
+  title: string;
+  rows: {
+    key: MeasuredKey;
+    value: number;
+    observedOn: string;
+    origin: 'bcb-sgs' | 'stale' | 'unavailable' | 'config-fallback';
+  }[];
+  note?: string;
+}
+
+const { title, rows, note } = Astro.props;
+const labels: Record<MeasuredKey, string> = {
+  selic: 'Selic',
+  cdi: 'CDI',
+  ipca12m: 'IPCA acumulado',
+  dolar: 'Dólar / PTAX',
+};
+const originLabels = {
+  'bcb-sgs': 'BCB · medição',
+  stale: 'BCB · dado anterior',
+  unavailable: 'Indisponível',
+  'config-fallback': 'Referência de configuração',
+};
+
+function formatValue(key: MeasuredKey, value: number): string {
+  return key === 'dolar' ? formatBRL(value, 4) : formatPct(value);
+}
+
+function isIsoDate(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+---
+
+<section class="indicator-panel" aria-label={title}>
+  <header class="indicator-panel__head">
+    <span class="indicator-panel__eyebrow">Painel factual</span>
+    <h2>{title}</h2>
+  </header>
+  {rows.length > 0 ? (
+    <dl class="indicator-list">
+      {rows.map((row) => (
+        <div class="indicator-row" data-origin={row.origin}>
+          <dt>
+            <span class="indicator-row__label">{labels[row.key]}</span>
+            <span class="indicator-row__origin">{originLabels[row.origin]}</span>
+          </dt>
+          <dd>
+            <strong>{formatValue(row.key, row.value)}</strong>
+            {isIsoDate(row.observedOn) ? (
+              <time datetime={row.observedOn}>Observado em {new Date(`${row.observedOn}T12:00:00`).toLocaleDateString('pt-BR')}</time>
+            ) : (
+              <span>{row.observedOn}</span>
+            )}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  ) : (
+    <p class="indicator-panel__empty">Os indicadores desta edição estão indisponíveis.</p>
+  )}
+  {note && <p class="indicator-panel__note">{note}</p>}
+</section>
+
+<style>
+  .indicator-panel {
+    padding: 1.35rem;
+    border: 1px solid var(--border-card);
+    border-radius: 1rem;
+    background: linear-gradient(145deg, var(--bg-elevated), var(--bg-surface));
+    box-shadow: var(--card-shadow);
+  }
+
+  .indicator-panel__head {
+    padding-block-end: 1rem;
+    border-block-end: 1px solid var(--border-subtle);
+  }
+
+  .indicator-panel__eyebrow {
+    color: var(--brand-blue);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .indicator-panel h2 {
+    margin-block-start: 0.35rem;
+    font-size: 1.05rem;
+  }
+
+  .indicator-list {
+    display: grid;
+  }
+
+  .indicator-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 1rem;
+    padding-block: 1rem;
+    border-block-end: 1px solid var(--border-subtle);
+  }
+
+  .indicator-row:last-child {
+    border-block-end: 0;
+  }
+
+  .indicator-row dt,
+  .indicator-row dd {
+    display: grid;
+    gap: 0.28rem;
+  }
+
+  .indicator-row dd {
+    text-align: right;
+  }
+
+  .indicator-row__label {
+    font-size: 0.9rem;
+    font-weight: 700;
+  }
+
+  .indicator-row__origin,
+  .indicator-row dd span,
+  .indicator-row dd time {
+    color: var(--text-muted);
+    font-size: 0.7rem;
+  }
+
+  .indicator-row dd strong {
+    font-family: var(--font-mono);
+    font-size: 1.08rem;
+    letter-spacing: -0.04em;
+  }
+
+  .indicator-row[data-origin='stale'] dd strong,
+  .indicator-row[data-origin='config-fallback'] dd strong {
+    color: var(--text-secondary);
+  }
+
+  .indicator-panel__empty,
+  .indicator-panel__note {
+    margin-block-start: 1rem;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    line-height: 1.6;
+  }
+
+  @media (max-width: 480px) {
+    .indicator-panel {
+      padding: 1.1rem;
+    }
+
+    .indicator-row {
+      gap: 0.65rem;
+    }
+
+    .indicator-row dd strong {
+      font-size: 0.96rem;
+    }
+  }
+</style>
