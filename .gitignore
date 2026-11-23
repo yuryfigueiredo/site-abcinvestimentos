@@ -7,3 +7,6 @@ dist/
 
 .vercel
 vibe_images/
+
+.cache/
+.cache/diario/**/draft.json

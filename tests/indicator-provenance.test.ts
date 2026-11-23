@@ -35,14 +35,17 @@ type IndicatorsModule = typeof import('../src/lib/indicators');
 async function collect(values: Record<number, string>): Promise<{
   ind: Awaited<ReturnType<IndicatorsModule['getIndicators']>>;
   calls: number[];
+  requests: RequestInit[];
   mod: IndicatorsModule;
 }> {
   const calls: number[] = [];
+  const requests: RequestInit[] = [];
   vi.stubGlobal(
     'fetch',
-    vi.fn(async (url: string | URL | Request) => {
+    vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
       const code = Number(/bcdata\.sgs\.(\d+)/.exec(String(url))?.[1]);
       calls.push(code);
+      requests.push(init ?? {});
       const valor = values[code];
       if (valor === undefined) return new Response('offline', { status: 503 });
       return new Response(JSON.stringify([{ data: REALIZED, valor }]), { status: 200 });
@@ -52,7 +55,7 @@ async function collect(values: Record<number, string>): Promise<{
   // getIndicators memoiza por módulo; sem reset o 2º teste veria a coleta do 1º.
   vi.resetModules();
   const mod = await import('../src/lib/indicators');
-  return { ind: await mod.getIndicators(), calls, mod };
+  return { ind: await mod.getIndicators(), calls, requests, mod };
 }
 
 const ALL_LIVE = { 432: '13.75', 4389: '13.65', 13522: '4.58', 1: '5.42' };
@@ -113,6 +116,22 @@ describe('proveniência dos indicadores publicados', () => {
 
   it('coleta continua quatro series do bcb', async () => {
     const { calls } = await collect(ALL_LIVE);
+
+    expect(calls).toEqual([432, 4389, 13522, 1]);
+  });
+
+  it('nenhuma requisicao do indicador segue redirect implicitamente', async () => {
+    const { requests } = await collect(ALL_LIVE);
+
+    expect(requests).toHaveLength(4);
+    for (const request of requests) expect(request.redirect).toBe('manual');
+  });
+
+  it('memoizacao preserva uma unica coleta das quatro series', async () => {
+    const { calls, mod } = await collect(ALL_LIVE);
+
+    await mod.getIndicators();
+    await mod.getIndicators();
 
     expect(calls).toEqual([432, 4389, 13522, 1]);
   });

@@ -10,6 +10,10 @@
     "build": "astro build",
     "preview": "astro preview",
     "build:planilha": "node scripts/build-planilha-abc.mjs",
+    "diario:collect": "tsx scripts/diario/collect.ts",
+    "diario:validate": "tsx scripts/diario/validate.ts",
+    "diario:verify-build": "tsx scripts/diario/verify-build.ts",
+    "verify": "npm test && npm run build && npm run diario:verify-build",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -21,6 +25,8 @@
   "devDependencies": {
     "@types/node": "^22.10.0",
     "exceljs": "^4.4.0",
+    "fast-xml-parser": "^5.12.1",
+    "tsx": "^4.23.15",
     "typescript": "^5.7.2",
     "vitest": "^3.0.5"
   }
