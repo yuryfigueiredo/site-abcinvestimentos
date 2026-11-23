@@ -1007,6 +1007,36 @@ describe('allowlisted ingestion', () => {
     expect(result.sources[0]?.canonicalUrl).toBe(ARTICLE);
   });
 
+  it('ignores non-alternate Atom links before selecting alternate text', async () => {
+    setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(atomFeed([
+          `<entry><title>Link Atom alternativo</title><link href="https://news.example.test/self" rel="self">https://news.example.test/self</link><link rel="alternate">${ARTICLE}</link><summary>Resumo.</summary></entry>`,
+        ]), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources.map((item) => item.sourceId)).toEqual(['alpha', 'beta']);
+    expect(result.sources[0]?.canonicalUrl).toBe(ARTICLE);
+  });
+
+  it('rejects an overlong decoded URL even when tracking removal would shorten it', async () => {
+    setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
+    const link = `${ARTICLE}?utm_source=${'x'.repeat(2_100)}`;
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) return new Response(rss([rssItem({ link })]), { status: 200 });
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources.map((item) => item.sourceId)).toEqual(['beta']);
+  });
+
   it('accepts processing instructions containing literal ampersands', async () => {
     setSources([source('alpha', ALPHA_FEED)]);
     const xml = rss([rssItem()]).replace(
