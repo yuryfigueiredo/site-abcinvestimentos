@@ -1,10 +1,13 @@
-import { isCalendarDate, parseCalendarDate } from './time';
+import { createHash } from 'node:crypto';
+import { currentDateBrt, isCalendarDate, parseCalendarDate } from './time';
 import type {
   AllowlistFeed,
   AllowlistSource,
   Approval,
+  BcbObservation,
   BcbSnapshot,
   CalendarEvent,
+  CollectedInputs,
   CurationDecision,
   Edition,
   Lesson,
@@ -12,6 +15,9 @@ import type {
   MeasuredValue,
   NewsItem,
   ReasonCode,
+  SelectedSourceEvidence,
+  Selection,
+  SourceCandidate,
   SourceRef,
   Thresholds,
   Topic,
@@ -241,6 +247,29 @@ function parseSourceRef(value: unknown, path: string): SourceRef {
   };
 }
 
+function normalizedEvidenceExcerpt(value: unknown, path: string): string {
+  const result = text(value, path, 1, 600).normalize('NFKC').replace(/\s+/gu, ' ').trim();
+  if (result.length === 0) throw new Error(`${path} must not be empty after normalization`);
+  return result;
+}
+
+export function parseSourceCandidate(value: unknown, path = 'source'): SourceCandidate {
+  const fields = objectFields(value, path);
+  checkKeys(fields, [
+    'id', 'sourceId', 'kind', 'publisher', 'title', 'canonicalUrl', 'publishedAt', 'retrievedAt',
+    'author', 'licenseUrl', 'excerpt', 'excerptSha256',
+  ], path);
+  const reference = Object.fromEntries([...fields].filter(([key]) => key !== 'excerpt' && key !== 'excerptSha256'));
+  const excerpt = normalizedEvidenceExcerpt(required(fields, 'excerpt', path), `${path}.excerpt`);
+  const excerptSha256 = required(fields, 'excerptSha256', path);
+  if (typeof excerptSha256 !== 'string' || !SHA256.test(excerptSha256)) {
+    throw new Error(`${path}.excerptSha256 must be 64 lowercase hexadecimal characters`);
+  }
+  const actualHash = createHash('sha256').update(excerpt, 'utf8').digest('hex');
+  if (excerptSha256 !== actualHash) throw new Error(`${path}.excerptSha256 does not match the normalized excerpt`);
+  return { ...parseSourceRef(reference, path), excerpt, excerptSha256 };
+}
+
 function parseLesson(value: unknown, path: string): Lesson {
   const fields = objectFields(value, path);
   checkKeys(fields, ['id', 'title', 'body', 'guideSlug'], path);
@@ -326,6 +355,85 @@ function parseCurationDecision(value: unknown, path: string): CurationDecision {
     status: oneOf(required(fields, 'status', path), ['material', 'morno'] as const, `${path}.status`),
     reasonCodes,
     newsClusterIds,
+    ...(eventId === undefined ? {} : { eventId }),
+    ...(lessonId === undefined ? {} : { lessonId }),
+  };
+}
+
+export function parseSelection(value: unknown): Selection {
+  const fields = objectFields(value, 'selection');
+  checkKeys(fields, ['date', 'decision', 'clusters', 'selectedSources', 'eventId', 'lessonId'], 'selection');
+  const date = parseCalendarDate(required(fields, 'date', 'selection'), 'selection.date');
+  const decision = parseCurationDecision(required(fields, 'decision', 'selection'), 'selection.decision');
+  const eventId = fields.has('eventId')
+    ? identifier(fields.get('eventId'), 'selection.eventId')
+    : undefined;
+  const lessonId = fields.has('lessonId')
+    ? identifier(fields.get('lessonId'), 'selection.lessonId')
+    : undefined;
+  if ((eventId !== undefined && eventId !== decision.eventId) || (lessonId !== undefined && lessonId !== decision.lessonId)) {
+    throw new Error('selection.eventId and selection.lessonId must match selection.decision');
+  }
+
+  const clusters = arrayValue(required(fields, 'clusters', 'selection'), 'selection.clusters', 3).map((entry, index) => {
+    const path = `selection.clusters[${index}]`;
+    const clusterFields = objectFields(entry, path);
+    checkKeys(clusterFields, ['id', 'topic', 'sourceIds'], path);
+    return {
+      id: identifier(required(clusterFields, 'id', path), `${path}.id`),
+      topic: oneOf(required(clusterFields, 'topic', path), TOPICS, `${path}.topic`),
+      sourceIds: uniqueStrings(required(clusterFields, 'sourceIds', path), `${path}.sourceIds`, 100, 1).map(
+        (sourceId, sourceIndex) => identifier(sourceId, `${path}.sourceIds[${sourceIndex}]`),
+      ),
+    };
+  });
+  const clusterIds = new Set<string>();
+  for (const [index, cluster] of clusters.entries()) {
+    if (clusterIds.has(cluster.id)) throw new Error(`selection.clusters[${index}].id duplicates a cluster`);
+    clusterIds.add(cluster.id);
+  }
+  if (JSON.stringify(clusters.map((cluster) => cluster.id)) !== JSON.stringify(decision.newsClusterIds)) {
+    throw new Error('selection.clusters must exactly match selection.decision.newsClusterIds');
+  }
+
+  const selectedSources = arrayValue(required(fields, 'selectedSources', 'selection'), 'selection.selectedSources', 300).map(
+    (entry, index) => {
+      const path = `selection.selectedSources[${index}]`;
+      const selectedFields = objectFields(entry, path);
+      checkKeys(selectedFields, [
+        'id', 'sourceId', 'kind', 'publisher', 'title', 'canonicalUrl', 'publishedAt', 'retrievedAt',
+        'author', 'licenseUrl', 'excerpt', 'excerptSha256', 'clusterId', 'topic',
+      ], path);
+      const reference = Object.fromEntries(
+        [...selectedFields].filter(([key]) => key !== 'excerpt' && key !== 'excerptSha256' && key !== 'clusterId' && key !== 'topic'),
+      );
+      return {
+        ...parseSourceCandidate({ ...reference, excerpt: selectedFields.get('excerpt'), excerptSha256: selectedFields.get('excerptSha256') }, path),
+        clusterId: identifier(required(selectedFields, 'clusterId', path), `${path}.clusterId`),
+        topic: oneOf(required(selectedFields, 'topic', path), TOPICS, `${path}.topic`),
+      } satisfies SelectedSourceEvidence;
+    },
+  );
+  const sourceIds = new Set<string>();
+  for (const [index, selected] of selectedSources.entries()) {
+    if (sourceIds.has(selected.id)) throw new Error(`selection.selectedSources[${index}].id duplicates a selected source`);
+    sourceIds.add(selected.id);
+    const cluster = clusters.find((candidate) => candidate.id === selected.clusterId);
+    if (!cluster) throw new Error(`selection.selectedSources[${index}].clusterId references an unknown cluster`);
+    if (!cluster.sourceIds.includes(selected.id)) throw new Error(`selection.selectedSources[${index}].id is missing from its cluster`);
+    if (cluster.topic !== selected.topic) throw new Error(`selection.selectedSources[${index}].topic differs from its cluster`);
+  }
+  for (const [clusterIndex, cluster] of clusters.entries()) {
+    for (const sourceId of cluster.sourceIds) {
+      if (!sourceIds.has(sourceId)) throw new Error(`selection.clusters[${clusterIndex}] references unselected source ${sourceId}`);
+    }
+  }
+
+  return {
+    date,
+    decision,
+    clusters,
+    selectedSources,
     ...(eventId === undefined ? {} : { eventId }),
     ...(lessonId === undefined ? {} : { lessonId }),
   };
@@ -422,6 +530,54 @@ export function parseEdition(value: unknown): Edition {
     policy: parsePolicy(required(fields, 'policy', 'edition'), 'edition.policy'),
     provenance: parseProvenance(required(fields, 'provenance', 'edition'), 'edition.provenance'),
   };
+}
+
+export function parseCollectedInputs(value: unknown): CollectedInputs {
+  const fields = objectFields(value, 'inputs');
+  checkKeys(fields, ['date', 'retrievedAt', 'bcb', 'sources', 'events', 'lessons', 'previousEditions'], 'inputs');
+  const date = parseCalendarDate(required(fields, 'date', 'inputs'), 'inputs.date');
+  const retrievedAt = parseIsoTimestamp(required(fields, 'retrievedAt', 'inputs'), 'inputs.retrievedAt');
+  if (date !== currentDateBrt(new Date(retrievedAt))) {
+    throw new Error('inputs.date must match the America/Sao_Paulo date of inputs.retrievedAt');
+  }
+  const bcbFields = objectFields(required(fields, 'bcb', 'inputs'), 'inputs.bcb');
+  const bcb: Partial<Record<MeasuredKey, BcbObservation[]>> = {};
+  for (const key of MEASURED_KEYS) {
+    if (!bcbFields.has(key)) continue;
+    const observations = arrayValue(bcbFields.get(key), `inputs.bcb.${key}`, 1000);
+    bcb[key] = observations.map((entry, index) => {
+      const path = `inputs.bcb.${key}[${index}]`;
+      const observationFields = objectFields(entry, path);
+      checkKeys(observationFields, ['value', 'date'], path);
+      return {
+        value: finiteNumber(required(observationFields, 'value', path), `${path}.value`),
+        date: parseCalendarDate(required(observationFields, 'date', path), `${path}.date`),
+      };
+    });
+  }
+  for (const key of bcbFields.keys()) {
+    if (!MEASURED_KEYS.includes(key as MeasuredKey)) throw new Error(`inputs.bcb has unsupported key ${key}`);
+  }
+
+  const sources = arrayValue(required(fields, 'sources', 'inputs'), 'inputs.sources', 1000).map((entry, index) =>
+    parseSourceCandidate(entry, `inputs.sources[${index}]`),
+  );
+  const events = arrayValue(required(fields, 'events', 'inputs'), 'inputs.events', 100).map((entry, index) => {
+    const path = `inputs.events[${index}]`;
+    const eventFields = objectFields(entry, path);
+    checkKeys(eventFields, ['id', 'date', 'title', 'sourceUrl'], path);
+    return {
+      id: identifier(required(eventFields, 'id', path), `${path}.id`),
+      date: parseCalendarDate(required(eventFields, 'date', path), `${path}.date`),
+      title: text(required(eventFields, 'title', path), `${path}.title`, 1, 240),
+      sourceUrl: parseHttpsUrl(required(eventFields, 'sourceUrl', path), `${path}.sourceUrl`),
+    };
+  });
+  const lessons = parseLessons(required(fields, 'lessons', 'inputs'));
+  const previousEditions = arrayValue(required(fields, 'previousEditions', 'inputs'), 'inputs.previousEditions', 1000).map(
+    (entry) => parseEdition(entry),
+  );
+  return { date, retrievedAt, bcb, sources, events, lessons, previousEditions };
 }
 
 function parseAllowlistFeed(value: unknown, path: string): AllowlistFeed {

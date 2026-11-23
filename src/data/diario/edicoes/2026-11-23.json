@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "id": "diario-2026-11-23",
+  "date": "2026-11-23",
+  "generatedAt": "2026-11-23T21:45:44.140Z",
+  "title": "Dólar apresenta movimento relevante no fechamento",
+  "summary": "O fechamento cambial registrou variação suficiente para justificar uma leitura própria do dia. O bloco factual preserva valores e datas observados; o contexto é educacional e não indica recomendação.",
+  "snapshot": {
+    "status": "unavailable",
+    "measured": {
+      "cdi": {
+        "value": 13.65,
+        "observedOn": "2026-11-19",
+        "origin": "bcb-sgs"
+      },
+      "ipca12m": {
+        "value": 4.63,
+        "observedOn": "2026-10-01",
+        "origin": "bcb-sgs"
+      },
+      "dolar": {
+        "value": 5.9708,
+        "observedOn": "2026-11-23",
+        "origin": "bcb-sgs"
+      }
+    },
+    "staleFields": [],
+    "dollarChangePct": 1.390752092920581
+  },
+  "decision": {
+    "status": "material",
+    "reasonCodes": [
+      "dollar-trigger"
+    ],
+    "newsClusterIds": []
+  },
+  "items": [],
+  "sources": [],
+  "relatedCalculatorSlug": "renda-fixa",
+  "policy": {
+    "charterVersion": "1.0.2",
+    "allowlistVersion": "1.1.0",
+    "thresholdsVersion": "1.0.0",
+    "sourceIds": [
+      "bcb",
+      "the-conversation-brasil"
+    ],
+    "allowedHosts": [
+      "theconversation.com",
+      "www.bcb.gov.br"
+    ]
+  },
+  "provenance": {
+    "generator": "qoder-diario",
+    "promptVersion": "diario-2026-11-23",
+    "disclaimerKey": "educacional-nao-e-recomendacao"
+  }
+}

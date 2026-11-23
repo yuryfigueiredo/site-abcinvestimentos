@@ -186,6 +186,7 @@ export interface ValidationContext {
   evidence: SourceCandidate[];
   collected: CollectedInputs;
   previousEditions: Edition[];
+  historyUnavailable?: boolean;
   root?: string;
 }
 

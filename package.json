@@ -11,6 +11,7 @@
     "preview": "astro preview",
     "build:planilha": "node scripts/build-planilha-abc.mjs",
     "diario:collect": "tsx scripts/diario/collect.ts",
+    "diario:curate": "tsx scripts/diario/curate.ts",
     "diario:validate": "tsx scripts/diario/validate.ts",
     "diario:verify-build": "tsx scripts/diario/verify-build.ts",
     "verify": "npm test && npm run build && npm run diario:verify-build",
