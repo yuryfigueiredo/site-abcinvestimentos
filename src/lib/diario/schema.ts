@@ -221,8 +221,12 @@ function parseTopics(value: unknown, path: string, min = 0): Topic[] {
 
 function parseSourceRef(value: unknown, path: string): SourceRef {
   const fields = objectFields(value, path);
-  checkKeys(fields, ['id', 'sourceId', 'kind', 'publisher', 'title', 'canonicalUrl', 'publishedAt', 'retrievedAt'], path);
+  checkKeys(fields, ['id', 'sourceId', 'kind', 'publisher', 'title', 'canonicalUrl', 'publishedAt', 'retrievedAt', 'author', 'licenseUrl'], path);
   const publishedAt = required(fields, 'publishedAt', path);
+  const author = fields.has('author') ? text(fields.get('author'), `${path}.author`, 1, 500) : undefined;
+  const licenseUrl = fields.has('licenseUrl')
+    ? parseHttpsUrl(fields.get('licenseUrl'), `${path}.licenseUrl`)
+    : undefined;
   return {
     id: identifier(required(fields, 'id', path), `${path}.id`),
     sourceId: identifier(required(fields, 'sourceId', path), `${path}.sourceId`),
@@ -232,6 +236,8 @@ function parseSourceRef(value: unknown, path: string): SourceRef {
     canonicalUrl: parseHttpsUrl(required(fields, 'canonicalUrl', path), `${path}.canonicalUrl`),
     publishedAt: publishedAt === null ? null : parseIsoTimestamp(publishedAt, `${path}.publishedAt`),
     retrievedAt: parseIsoTimestamp(required(fields, 'retrievedAt', path), `${path}.retrievedAt`),
+    ...(author === undefined ? {} : { author }),
+    ...(licenseUrl === undefined ? {} : { licenseUrl }),
   };
 }
 
@@ -437,7 +443,7 @@ export function parseAllowlist(value: unknown): Pick<Vault, 'allowlistVersion' |
   const allowlist = entries.map((entry, index) => {
     const path = `allowlist.sources[${index}]`;
     const fields = objectFields(entry, path);
-    checkKeys(fields, ['id', 'publisher', 'kind', 'feeds', 'enabled', 'termsUrl'], path);
+    checkKeys(fields, ['id', 'publisher', 'kind', 'feeds', 'enabled', 'termsUrl', 'licenseUrl'], path);
     const id = identifier(required(fields, 'id', path), `${path}.id`);
     if (ids.has(id)) throw new Error(`${path}.id duplicates an allowlist source`);
     ids.add(id);
@@ -451,6 +457,9 @@ export function parseAllowlist(value: unknown): Pick<Vault, 'allowlistVersion' |
     const termsUrl = fields.has('termsUrl')
       ? parseHttpsUrl(fields.get('termsUrl'), `${path}.termsUrl`)
       : undefined;
+    const licenseUrl = fields.has('licenseUrl')
+      ? parseHttpsUrl(fields.get('licenseUrl'), `${path}.licenseUrl`)
+      : undefined;
 
     return {
       id,
@@ -459,6 +468,7 @@ export function parseAllowlist(value: unknown): Pick<Vault, 'allowlistVersion' |
       feeds,
       enabled: booleanValue(required(fields, 'enabled', path), `${path}.enabled`),
       ...(termsUrl === undefined ? {} : { termsUrl }),
+      ...(licenseUrl === undefined ? {} : { licenseUrl }),
     };
   });
   return { allowlistVersion, allowlist };

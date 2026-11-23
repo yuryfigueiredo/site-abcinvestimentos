@@ -70,12 +70,13 @@ function rssItem(options: {
   return `<item><title>${xmlEscape(title)}</title><link>${xmlEscape(link)}</link><description>${xmlEscape(description)}</description><pubDate>${xmlEscape(published)}</pubDate>${options.extra ?? ''}</item>`;
 }
 
-function rss(items: string[]): string {
-  return `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>Feed</title><link>https://feeds.example.test/</link><description>Feed</description>${items.join('')}</channel></rss>`;
+function rss(items: string[], rootAttributes = ''): string {
+  return `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"${rootAttributes}><channel><title>Feed</title><link>https://feeds.example.test/</link><description>Feed</description>${items.join('')}</channel></rss>`;
 }
 
-function atomItem(): string {
-  return `<entry><title>Juros e inflação</title><link href="${ARTICLE}" rel="alternate" type="text/html"/><summary>Resumo curto da notícia.</summary><published>2026-11-23T18:00:00Z</published></entry>`;
+function atomItem(options: { summary?: string; content?: string; author?: string } = {}): string {
+  const summary = options.summary === undefined ? '<summary>Resumo curto da notícia.</summary>' : options.summary;
+  return `<entry><title>Juros e inflação</title><link href="${ARTICLE}" rel="alternate" type="text/html"/>${summary}${options.content ?? ''}${options.author ?? ''}<published>2026-11-23T18:00:00Z</published></entry>`;
 }
 
 function atomFeed(entries: string[]): string {
@@ -385,6 +386,32 @@ describe('allowlisted ingestion', () => {
     expect(requestedUrls(fetchMock).some((url) => url === BETA_FEED)).toBe(false);
     expect(fetchMock.mock.calls.filter(([input]) => String(input).includes('api.bcb.gov.br'))).toHaveLength(4);
     for (const [, init] of fetchMock.mock.calls) expect(init?.redirect).toBe('manual');
+  });
+
+  it('sends the transparent collector User-Agent and Accept on initial and redirected feed requests', async () => {
+    const initialFeed = 'https://feeds.example.test/alpha/identified';
+    const redirectedFeed = `${initialFeed}/atom`;
+    setSources([source('alpha', initialFeed)]);
+    const fetchMock = mockFetch((input) => {
+      const url = String(input);
+      if (url === initialFeed) return new Response(null, { status: 302, headers: { Location: redirectedFeed } });
+      if (url === redirectedFeed) return new Response(rss([rssItem()]), { status: 200 });
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources).toHaveLength(1);
+    const feedCalls = fetchMock.mock.calls.filter(([input]) => String(input).startsWith(initialFeed));
+    expect(feedCalls).toHaveLength(2);
+    for (const [, init] of feedCalls) {
+      const headers = new Headers(init?.headers);
+      expect(headers.get('user-agent')).toBe(
+        'ABCInvestimentosDiario/1.0 (+https://www.abcinvestimentos.com.br/diario-do-investidor/)',
+      );
+      expect(headers.get('accept')).toBe('application/rss+xml, application/atom+xml, application/xml, text/xml');
+      expect(init?.redirect).toBe('manual');
+    }
   });
 
   it('persists normalized inputs and the exact four SGS series', async () => {
@@ -1409,6 +1436,331 @@ describe('allowlisted ingestion', () => {
     expect(result.sources[0]?.excerptSha256).toBe(
       createHash('sha256').update('Resumo curto da notícia.', 'utf8').digest('hex'),
     );
+  });
+
+  it('falls back to Atom content when summary is absent and normalizes its text', async () => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const content = '<content type="html">&lt;p&gt;Conte&#250;do &amp;amp; &lt;strong&gt;literal&lt;/strong&gt; do BCB.&lt;/p&gt;</content>';
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(atomFeed([atomItem({ summary: '', content })]), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources[0]?.excerpt).toBe('Conteúdo & literal do BCB.');
+    expect(result.sources[0]?.excerptSha256).toBe(
+      createHash('sha256').update('Conteúdo & literal do BCB.', 'utf8').digest('hex'),
+    );
+    expect(requestedUrls(fetchMock)).not.toContain(ARTICLE);
+  });
+
+  it('removes zero-width spacing from Atom content while keeping titles strict', async () => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const content = '<content type="html"><![CDATA[<p>\u200BConteúdo &amp; literal do BCB.</p>]]></content>';
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(atomFeed([atomItem({ summary: '', content })]), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources[0]?.excerpt).toBe('Conteúdo & literal do BCB.');
+  });
+
+  it('limits Atom content fallback to the existing excerpt ceiling', async () => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const content = `<content type="html"><![CDATA[<p>${'texto '.repeat(200)}</p>]]></content>`;
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(atomFeed([atomItem({ summary: '', content })]), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources[0]?.excerpt).toBe(`${'texto '.repeat(99)}texto`);
+    expect(result.sources[0]?.excerpt).toHaveLength(599);
+    expect(result.sources[0]?.excerpt.length).toBeLessThanOrEqual(600);
+  });
+
+  it('keeps Atom text content single-decoded', async () => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const content = '<content type="text">&amp;amp;</content>';
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(atomFeed([atomItem({ summary: '', content })]), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources[0]?.excerpt).toBe('&amp;');
+  });
+
+  it('decodes named HTML entities in Atom HTML content', async () => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const content = '<content type="html">&amp;nbsp;Conte&amp;uacute;do&amp;nbsp;BCB.&amp;nbsp;</content>';
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(atomFeed([atomItem({ summary: '', content })]), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources[0]?.excerpt).toBe('Conteúdo BCB.');
+  });
+
+  it('keeps Atom content without a type single-decoded as text', async () => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const content = '<content>&amp;amp;</content>';
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(atomFeed([atomItem({ summary: '', content })]), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources[0]?.excerpt).toBe('&amp;');
+  });
+
+  it('rejects unknown Atom content types instead of using their body', async () => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const content = '<content type="application/octet-stream">UNSUPPORTED_CONTENT_SENTINEL</content>';
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(atomFeed([atomItem({ summary: '', content })]), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources[0]?.excerpt).toBe('');
+  });
+
+  it.each([
+    '<content type="application/xhtml+xml">&amp;amp;</content>',
+    '<content type="application/xhtml+xml"><div xmlns="http://www.w3.org/1999/xhtml"><p>XHTML_SENTINEL</p></div></content>',
+  ])('rejects Atom XHTML content instead of extracting lossy text: %s', async (content) => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(atomFeed([atomItem({ summary: '', content })]), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources[0]?.excerpt).toBe('');
+  });
+
+  it('rejects inherited object names used as HTML entities', async () => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const content = '<content type="html">&amp;constructor;</content>';
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(atomFeed([atomItem({ summary: '', content })]), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources[0]?.excerpt).toBe('');
+  });
+
+  it('keeps Atom summary precedence over content fallback', async () => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(atomFeed([atomItem({ content: '<content type="html">CONTEUDO_NAO_USADO</content>' })]), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources[0]?.excerpt).toBe('Resumo curto da notícia.');
+  });
+
+  it('does not treat RSS content:encoded as an Atom content fallback', async () => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(rss([rssItem({
+          description: '',
+          extra: '<content:encoded xmlns:content="http://purl.org/rss/1.0/modules/content/"><![CDATA[CONTENT_ENCODED_SENTINEL]]></content:encoded>',
+        })]), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+    const cached = readFileSync(join(root, '.cache/diario', DATE, 'inputs.json'), 'utf8');
+
+    expect(result.sources[0]?.excerpt).toBe('');
+    expect(cached).not.toContain('CONTENT_ENCODED_SENTINEL');
+  });
+
+  it('extracts and normalizes an Atom author name', async () => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(atomFeed([atomItem({ author: '<author><name>  Ana   &amp; Silva  </name></author>' })]), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources[0]?.author).toBe('Ana & Silva');
+  });
+
+  it('preserves multiple Atom authors in feed order', async () => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const author = '<author><name>Ana Silva</name></author><author><name>Bruno Costa</name></author>';
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(atomFeed([atomItem({ author })]), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources[0]?.author).toBe('Ana Silva; Bruno Costa');
+  });
+
+  it('extracts an RSS dc:creator as author', async () => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(rss([rssItem({
+          extra: '<dc:creator xmlns:dc="http://purl.org/dc/elements/1.1/">Ana &amp; Silva</dc:creator>',
+        })]), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources[0]?.author).toBe('Ana & Silva');
+  });
+
+  it('rejects an RSS dc:creator bound to a non-Dublin-Core namespace', async () => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(rss([rssItem({
+          extra: '<dc:creator>Autoria falsa</dc:creator>',
+        })], ' xmlns:dc="https://evil.test/"'), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources[0]).not.toHaveProperty('author');
+  });
+
+  it('rejects an unbound RSS dc:creator prefix', async () => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(rss([rssItem({
+          extra: '<dc:creator>Autoria sem namespace</dc:creator>',
+        })]), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources[0]).not.toHaveProperty('author');
+  });
+
+  it('rejects an RSS dc:creator that shadows a canonical namespace', async () => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(rss([rssItem({
+          extra: '<dc:creator xmlns:dc="https://evil.test/">Autoria falsa</dc:creator>',
+        })], ' xmlns:dc="http://purl.org/dc/elements/1.1/"'), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources[0]).not.toHaveProperty('author');
+  });
+
+  it('omits overlong Atom author attribution instead of truncating names', async () => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const author = `<author><name>${'a'.repeat(260)}</name></author><author><name>${'b'.repeat(260)}</name></author>`;
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(atomFeed([atomItem({ author })]), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources[0]).not.toHaveProperty('author');
+  });
+
+  it('omits Atom attribution entirely when any author is invalid', async () => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const author = `<author><name>Ana Silva</name></author><author><name>${'a'.repeat(501)}</name></author>`;
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(atomFeed([atomItem({ author })]), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources[0]).not.toHaveProperty('author');
+  });
+
+  it('does not treat a non-Dublin-Core creator as author', async () => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(rss([rssItem({
+          extra: '<x:creator xmlns:x="https://example.test/other">Autoria indevida</x:creator>',
+        })]), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources[0]).not.toHaveProperty('author');
+  });
+
+  it('propagates allowlist licenseUrl to candidates and persisted evidence', async () => {
+    const licenseUrl = 'https://creativecommons.org/licenses/by-nd/4.0/';
+    setSources([{ ...source('alpha', ALPHA_FEED), licenseUrl }]);
+
+    const result = await collect(mockFetch());
+
+    expect(result.sources[0]?.licenseUrl).toBe(licenseUrl);
+    expect(cacheInputs().sources[0]?.licenseUrl).toBe(licenseUrl);
   });
 
   it.each([

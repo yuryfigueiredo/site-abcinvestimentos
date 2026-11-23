@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { GUIDES } from '../../src/data/guides';
 import { computeCurationBundleHash, verifyGovernance } from '../../src/lib/diario/governance';
-import type { Approval, Lesson } from '../../src/lib/diario/types';
+import type { AllowlistSource, Approval, Lesson } from '../../src/lib/diario/types';
 
 const VAULT_DIR = join(process.cwd(), 'src/data/diario/curadoria');
 const BUNDLE_FILES = ['carta.md', 'allowlist.json', 'thresholds.json', 'calendario.json', 'licoes.json', 'changelog.md'];
@@ -19,8 +19,10 @@ type ThresholdFile = {
 
 type AllowlistFile = {
   version: string;
-  sources: Array<Record<string, unknown>>;
+  sources: AllowlistSource[];
 };
+
+const VERIFIED_TOPICS = ['renda-fixa', 'juros', 'inflacao', 'cambio', 'bolsa-fiis', 'regulacao'];
 
 let root: string;
 let vault: string;
@@ -80,20 +82,23 @@ describe('verifyGovernance', () => {
     const snapshot = verifyGovernance(root);
 
     expect(snapshot).toMatchObject({
-      charterVersion: '1.0.1',
-      allowlistVersion: '1.0.0',
+      charterVersion: '1.0.2',
+      allowlistVersion: '1.1.0',
       bundleSha256: readJson<Approval>('approval.json').bundleSha256,
       calendar: [],
     });
     expect(snapshot.allowlist).toHaveLength(readJson<AllowlistFile>('allowlist.json').sources.length);
-    expect(snapshot.allowlist.every((item) => item.enabled === false)).toBe(true);
+    expect(snapshot.allowlist.filter((item) => item.enabled).map((item) => item.id)).toEqual([
+      'bcb',
+      'the-conversation-brasil',
+    ]);
     expect(snapshot.lessons).toHaveLength(12);
     expect(snapshot.thresholds.timezone).toBe('America/Sao_Paulo');
 
     const allowlist = readJson<AllowlistFile>('allowlist.json');
-    allowlist.sources[0].enabled = true;
+    allowlist.sources[0].enabled = false;
     writeJson('allowlist.json', allowlist);
-    expect(snapshot.allowlist.every((item) => item.enabled === false)).toBe(true);
+    expect(snapshot.allowlist.find((item) => item.id === 'bcb')?.enabled).toBe(true);
   });
 
   it('reads each vault file once so parsing and hashing share one snapshot', () => {
@@ -138,14 +143,14 @@ describe('verifyGovernance', () => {
     const approval = readJson<Approval>('approval.json');
     if (record === 'charter') {
       const charter = readFileSync(join(vault, 'carta.md'), 'utf8').replace(
-        'Versão da carta: 1.0.1',
+        'Versão da carta: 1.0.2',
         'Versão da carta: 2.0.0',
       );
       writeFileSync(join(vault, 'carta.md'), charter, 'utf8');
       approval.charterVersion = '2.0.0';
       writeJson('approval.json', approval);
     } else {
-      const changelog = readFileSync(join(vault, 'changelog.md'), 'utf8').replace('## 1.0.1', '## 2.0.0');
+      const changelog = readFileSync(join(vault, 'changelog.md'), 'utf8').replace('## 1.0.2', '## 2.0.0');
       writeFileSync(join(vault, 'changelog.md'), changelog, 'utf8');
     }
     refreshApprovalHash();
@@ -245,6 +250,70 @@ describe('verifyGovernance', () => {
 });
 
 describe('safe vault seed', () => {
+  it('enables exactly the verified BCB and The Conversation feeds with their terms and license', () => {
+    const allowlist = readJson<AllowlistFile>('allowlist.json');
+    expect(allowlist.version).toBe('1.1.0');
+    expect(allowlist.sources.map((item) => item.id)).toEqual([
+      'bcb',
+      'ibge',
+      'cvm',
+      'tesouro-nacional',
+      'governo-federal',
+      'valor-investe',
+      'infomoney',
+      'the-conversation-brasil',
+    ]);
+    expect(allowlist.sources.filter((item) => item.enabled).map((item) => item.id)).toEqual([
+      'bcb',
+      'the-conversation-brasil',
+    ]);
+    expect(allowlist.sources.find((item) => item.id === 'bcb')).toEqual({
+      id: 'bcb',
+      publisher: 'Banco Central do Brasil',
+      kind: 'official',
+      termsUrl: 'https://www.bcb.gov.br/acessoinformacao/politicaprivacidade',
+      enabled: true,
+      feeds: [
+        {
+          url: 'https://www.bcb.gov.br/api/feed/sitebcb/sitefeeds/noticias?ano=2024',
+          topics: VERIFIED_TOPICS,
+        },
+        {
+          url: 'https://www.bcb.gov.br/api/feed/sitebcb/sitefeeds/notasImprensa?ano=2021',
+          topics: VERIFIED_TOPICS,
+        },
+        {
+          url: 'https://www.bcb.gov.br/api/feed/sitebcb/sitefeeds/comunicadoscopom',
+          topics: ['renda-fixa', 'juros'],
+        },
+      ],
+    });
+    expect(allowlist.sources.find((item) => item.id === 'the-conversation-brasil')).toEqual({
+      id: 'the-conversation-brasil',
+      publisher: 'The Conversation Brasil',
+      kind: 'media',
+      termsUrl: 'https://theconversation.com/br/republishing-guidelines',
+      licenseUrl: 'https://creativecommons.org/licenses/by-nd/4.0/',
+      enabled: true,
+      feeds: [{
+        url: 'https://theconversation.com/br/home-page.atom',
+        topics: VERIFIED_TOPICS,
+      }],
+    });
+    for (const id of ['ibge', 'cvm', 'tesouro-nacional', 'governo-federal', 'valor-investe', 'infomoney']) {
+      expect(allowlist.sources.find((item) => item.id === id)).toMatchObject({ enabled: false, feeds: [] });
+    }
+  });
+
+  it('records the owner and committed plan on the activation approval', () => {
+    expect(readJson<Approval>('approval.json')).toMatchObject({
+      charterVersion: '1.0.2',
+      approvedBy: 'Yury Figueiredo',
+      instructionRef: 'docs/superpowers/plans/2026-11-23-diario-do-investidor.md',
+    });
+    expect(readJson<Approval>('approval.json').approvedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/u);
+  });
+
   it('keeps the calendar empty because no macro date was officially verified', () => {
     expect(readJson<unknown>('calendario.json')).toEqual([]);
   });

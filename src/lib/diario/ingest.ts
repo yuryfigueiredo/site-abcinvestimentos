@@ -21,6 +21,10 @@ const FEED_TIMEOUT_MS = 5000;
 const MAX_TITLE_LENGTH = 500;
 const MAX_URL_LENGTH = 2048;
 const MAX_EXCERPT_LENGTH = 600;
+const MAX_AUTHOR_LENGTH = 500;
+const DC_CREATOR_NAMESPACE = 'http://purl.org/dc/elements/1.1/';
+const FEED_ACCEPT = 'application/rss+xml, application/atom+xml, application/xml, text/xml';
+const FEED_USER_AGENT = 'ABCInvestimentosDiario/1.0 (+https://www.abcinvestimentos.com.br/diario-do-investidor/)';
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 const CONTROL_CHARACTER = /[\u0000-\u001F\u007F-\u009F]/u;
 const UNSAFE_CONTROL_CHARACTER = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/u;
@@ -39,6 +43,18 @@ const XML_PREDEFINED_ENTITIES: Readonly<Record<string, string>> = {
   '&gt;': '>',
   '&apos;': "'",
   '&quot;': '"',
+};
+const HTML_NAMED_ENTITIES: Readonly<Record<string, string>> = {
+  amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: '\u00A0',
+  copy: '©', reg: '®', trade: '™', euro: '€', pound: '£', yen: '¥', cent: '¢',
+  ndash: '–', mdash: '—', hellip: '…', middot: '·', bull: '•',
+  lsquo: '‘', rsquo: '’', ldquo: '“', rdquo: '”', laquo: '«', raquo: '»',
+  deg: '°', plusmn: '±', times: '×', divide: '÷',
+  aacute: 'á', Aacute: 'Á', acirc: 'â', Acirc: 'Â', atilde: 'ã', Atilde: 'Ã',
+  ccedil: 'ç', Ccedil: 'Ç', eacute: 'é', Eacute: 'É', ecirc: 'ê', Ecirc: 'Ê',
+  iacute: 'í', Iacute: 'Í', icirc: 'î', Icirc: 'Î', oacute: 'ó', Oacute: 'Ó',
+  ocirc: 'ô', Ocirc: 'Ô', otilde: 'õ', Otilde: 'Õ', uacute: 'ú', Uacute: 'Ú',
+  ucirc: 'û', Ucirc: 'Û',
 };
 const XML_MARKUP = /<(?:\/?[a-z][^>]*|![^>]*|\?[^>]*)>/iu;
 const XML_TYPES = new Set(['application/xml', 'text/xml', 'text/plain', 'application/rss+xml', 'application/atom+xml']);
@@ -198,6 +214,22 @@ function decodeXmlReferences(value: string, maxLength: number): string | null {
   return valid && decoded.length <= maxLength ? decoded : null;
 }
 
+function decodeHtmlReferences(value: string, maxLength: number): string | null {
+  if (value.length > maxLength) return null;
+  let valid = true;
+  const decoded = value.replace(/&(?:([A-Za-z][A-Za-z0-9]+)|#(?:\d+|x[\da-fA-F]+));/gu, (reference, name?: string) => {
+    const decodedReference = name === undefined
+      ? decodeXmlReference(reference)
+      : Object.hasOwn(HTML_NAMED_ENTITIES, name) ? HTML_NAMED_ENTITIES[name] : null;
+    if (decodedReference === null) {
+      valid = false;
+      return '\uFFFD';
+    }
+    return decodedReference;
+  });
+  return valid && decoded.length <= maxLength ? decoded : null;
+}
+
 type ParsedXmlText = { text: string };
 
 function parsedXmlText(value: unknown): ParsedXmlText | null {
@@ -247,12 +279,51 @@ function normalizedTitleKey(value: string): string {
     .trim();
 }
 
-function normalizedExcerpt(value: unknown): string {
+function joinedAuthorNames(names: Array<string | null>): string | null {
+  if (names.length === 0 || names.some((name) => name === null)) return null;
+  const author = names.join('; ');
+  return author.length <= MAX_AUTHOR_LENGTH ? author : null;
+}
+
+function hasCanonicalDcNamespace(scopes: Array<Record<string, unknown>>): boolean {
+  let declared = false;
+  for (const scope of scopes) {
+    const declaration = scope['@xmlns:dc'];
+    if (declaration === undefined) continue;
+    if (declaration !== DC_CREATOR_NAMESPACE) return false;
+    declared = true;
+  }
+  return declared;
+}
+
+function normalizedAuthor(
+  item: Record<string, unknown>,
+  atom: boolean,
+  namespaceScopes: Array<Record<string, unknown>>,
+): string | null {
+  if (atom) {
+    return joinedAuthorNames(asArray(item.author).map((value) => {
+      const author = asRecord(value);
+      return normalizedMetadata(author?.name, MAX_AUTHOR_LENGTH);
+    }));
+  }
+  return joinedAuthorNames(asArray(item['dc:creator']).map((value) => {
+    const creator = asRecord(value);
+    if (!hasCanonicalDcNamespace(creator ? [...namespaceScopes, creator] : namespaceScopes)) return null;
+    return normalizedMetadata(value, MAX_AUTHOR_LENGTH);
+  }));
+}
+
+function normalizedExcerpt(value: unknown, html = false): string {
   const parsed = parsedXmlText(value);
   if (!parsed || UNSAFE_CONTROL_CHARACTER.test(parsed.text)) return '';
-  const decoded = decodeXmlReferences(parsed.text, MAX_FEED_BYTES);
+  const xmlDecoded = decodeXmlReferences(parsed.text, MAX_FEED_BYTES);
+  if (xmlDecoded === null) return '';
+  // Atom HTML serializa o markup em duas camadas; a segunda decodificação é restrita ao fallback.
+  const decoded = html ? decodeHtmlReferences(xmlDecoded, MAX_FEED_BYTES) : xmlDecoded;
   if (decoded === null) return '';
-  const normalized = decoded.normalize('NFKC');
+  // O BCB usa U+200B como espaçamento invisível no HTML do feed.
+  const normalized = (html ? decoded.replaceAll('\u200B', '') : decoded).normalize('NFKC');
   if (UNSAFE_CONTROL_CHARACTER.test(normalized) || FORMAT_CONTROL.test(normalized)) return '';
   return normalized
     .replace(/<[^>]*>/gu, ' ')
@@ -364,7 +435,7 @@ async function fetchFeedXml(initialValue: string, fetchImpl: typeof fetch): Prom
     for (let hops = 0; ; hops += 1) {
       const response = await fetchImpl(url, {
         signal: controller.signal,
-        headers: { Accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml' },
+        headers: { Accept: FEED_ACCEPT, 'User-Agent': FEED_USER_AGENT },
         redirect: 'manual',
       });
       try {
@@ -414,6 +485,15 @@ function alternateLink(item: Record<string, unknown>): unknown {
   return null;
 }
 
+function normalizedAtomContentExcerpt(value: unknown): string {
+  const content = asRecord(value);
+  if (!content) return normalizedExcerpt(value);
+  const type = content['@type'];
+  if (type === undefined || type === 'text') return normalizedExcerpt(value);
+  if (type === 'html') return normalizedExcerpt(value, true);
+  return '';
+}
+
 function parseFeed(xml: string, source: AllowlistSource, retrievedAt: string): ParsedFeed | null {
   if (!xml) return null;
   const preparedXml = prepareXml(xml);
@@ -423,17 +503,20 @@ function parseFeed(xml: string, source: AllowlistSource, retrievedAt: string): P
     parseTagValue: false,
     ignoreAttributes: false,
     attributeNamePrefix: '@',
-    removeNSPrefix: true,
+    removeNSPrefix: false,
   }).parse(preparedXml) as unknown;
   const root = asRecord(parsed);
   if (!root) return null;
 
   let entries: unknown[];
+  let rssNamespaceScopes: Array<Record<string, unknown>> = [];
   if (root.rss !== undefined) {
-    const channelValue = asRecord(root.rss)?.channel;
+    const rss = asRecord(root.rss);
+    const channelValue = rss?.channel;
     const channel = typeof channelValue === 'string' && channelValue.trim() === '' ? {} : asRecord(channelValue);
-    if (!channel) return null;
+    if (!rss || !channel) return null;
     entries = asArray(channel.item);
+    rssNamespaceScopes = [rss, channel];
   } else if (root.feed !== undefined) {
     const feed = typeof root.feed === 'string' && root.feed.trim() === '' ? {} : asRecord(root.feed);
     if (!feed) return null;
@@ -443,13 +526,16 @@ function parseFeed(xml: string, source: AllowlistSource, retrievedAt: string): P
   }
 
   const candidates: SourceCandidate[] = [];
+  const atom = root.feed !== undefined;
   for (const entry of entries.slice(0, 100)) {
     const item = asRecord(entry);
     if (!item) continue;
     const title = normalizedMetadata(item.title, MAX_TITLE_LENGTH);
     const url = canonicalUrl(alternateLink(item));
     if (!title || !url) continue;
-    const excerpt = normalizedExcerpt(item.description ?? item.summary);
+    const primaryExcerpt = normalizedExcerpt(item.description ?? item.summary);
+    const excerpt = atom && !primaryExcerpt ? normalizedAtomContentExcerpt(item.content) : primaryExcerpt;
+    const author = normalizedAuthor(item, atom, atom ? [] : [...rssNamespaceScopes, item]);
     const id = `src-${createHash('sha256').update(`${source.id}\0${url}`, 'utf8').digest('hex').slice(0, 24)}`;
     candidates.push({
       id,
@@ -462,6 +548,8 @@ function parseFeed(xml: string, source: AllowlistSource, retrievedAt: string): P
       retrievedAt,
       excerpt,
       excerptSha256: createHash('sha256').update(excerpt, 'utf8').digest('hex'),
+      ...(author === null ? {} : { author }),
+      ...(source.licenseUrl === undefined ? {} : { licenseUrl: source.licenseUrl }),
     });
   }
   return { entryCount: entries.length, candidates };

@@ -79,10 +79,16 @@ arquivo material acumula frescor indexável e a newsletter (Projeto 2) será o e
   já existente.
 - Fontes: oficiais (BCB/IBGE/CVM/Tesouro/governo) + pequena allowlist de mídia confiável. Só
   HTTPS, hosts exatos e redirecionamentos revalidados; sem paywall e sem copiar corpo de
-  matéria. Toda requisição de ingestão desativa redirect automático. Cada `Location` é
+  matéria. Toda requisição de feed usa o User-Agent transparente
+  `ABCInvestimentosDiario/1.0 (+https://www.abcinvestimentos.com.br/diario-do-investidor/)`.
+  Toda requisição de ingestão desativa redirect automático. Cada `Location` é
   resolvido e validado antes de novo request: somente `https:`, host e porta exatamente
   allowlisted, sem credenciais; no máximo três hops. Alvo proibido, `Location` malformado,
-  loop ou excesso de hops falha fechado e pula somente aquela fonte.
+  loop ou excesso de hops falha fechado e pula somente aquela fonte. O excerpt vem de
+  `description`/`summary`; apenas na ausência deles, usa `content` do Atom tipo `text`
+  (ou sem tipo) ou `html`, normalizado como texto e limitado a 600 caracteres. Tipos
+  desconhecidos, inclusive `application/xhtml+xml`, falham fechado sem extrair texto
+  aninhado. RSS `content:encoded` não é fallback e artigo completo nunca é requisitado.
 - Todos os números editoriais publicados vêm exclusivamente do snapshot BCB da edição. A
   prosa editorial não contém algarismos; blocos numéricos são renderizados separadamente a
   partir de `edition.snapshot`. Não existe esquema de fato determinístico nem permissão para
@@ -150,12 +156,24 @@ A automação apenas lê e verifica o cofre; nunca o edita.
 
 **Curadoria é dado + evidência, não decisão livre da IA em runtime.** A coleta busca BCB e
 somente feeds `enabled` da allowlist, revalida cada hop e guarda evidência normalizada no
-cache ignorado. `decideEdition` usa somente calendário, thresholds, lições e notícias
-coletadas. `selection.json` registra a decisão e, para cada fonte selecionada, `sourceId`,
-`publisher`, `kind`, `title`, `canonicalUrl`, `publishedAt`, `retrievedAt`, `excerpt`,
-`excerptSha256`, cluster e tópico. A IA lê somente `selection.json` e as entradas aprovadas de
-lição/evento explicitamente referenciadas ali; nunca busca corpo de matéria. Redige no máximo
-3 itens, com prosa original e sem recomendação.
+cache ignorado. `SourceRef` e `SourceCandidate` aceitam `author?` e `licenseUrl?` opcionais;
+`AllowlistSource` declara `licenseUrl?`, propagado sem invenção para cada candidato. O autor
+vem de Atom `author/name` ou RSS `dc:creator` com o prefixo `dc` vinculado ao namespace
+Dublin Core canônico; prefixo ausente, URI falsa ou autor inválido omitem a atribuição.
+Múltiplos autores Atom são preservados em ordem, separados por `; `. `decideEdition` usa
+somente calendário, thresholds, lições e
+notícias coletadas. `selection.json` registra a decisão e, para cada fonte selecionada,
+`sourceId`, `publisher`, `kind`, `title`, `canonicalUrl`, `publishedAt`, `retrievedAt`,
+`author?`, `licenseUrl?`, `excerpt`, `excerptSha256`, cluster e tópico. A IA lê somente
+`selection.json` e as entradas aprovadas de lição/evento explicitamente referenciadas ali;
+nunca busca corpo de matéria. Redige no máximo 3 itens, com prosa original e sem recomendação.
+
+**Limite CC BY-ND do The Conversation Brasil.** O excerpt dessa fonte é evidência de citação
+literal, nunca insumo para paráfrase, resumo ou tradução pela IA. Até existir superfície de
+citação literal aprovada, ela pode ser coletada, mas não pode ser a única base de um
+`NewsItem` reescrito; a Task 3 deve rejeitar esse caso. Qualquer superfície pública futura
+precisa apresentar juntos manchete, trecho literal, autor, publisher, link do artigo e link da
+licença.
 
 **Decisão material vs. morno (determinística).** É `material` se houver evento do calendário,
 `|Δdólar| >= 1,0`, notícia oficial com fonte suficiente ou notícia de mídia corroborada por
@@ -201,9 +219,12 @@ edição, inclusive `morno`, com `Cache-Control: no-store`.
 
 **Proveniência e aviso herdam o que já existe.** Byline honesta: "Diário do Investidor ·
 curadoria automática com fontes verificadas", sem revisor humano fingido. Cada notícia guarda
-título, link e data das fontes — nunca excerpt longo nem corpo copiado. Reusa `CalcDisclaimer`
-e a frase única de origem da poupança nas superfícies existentes. Todo número editorial do
-Diário vem exclusivamente do snapshot BCB da edição e é renderizado em bloco separado.
+título, link, data, autor e licença das fontes — nunca excerpt longo nem corpo copiado. A UI
+futura deve mostrar autor/publisher e link da licença quando existirem; para The Conversation
+Brasil, a citação literal só pode aparecer com manchete, trecho, autor, publisher, link do
+artigo e link da licença juntos. Reusa `CalcDisclaimer` e a frase única de origem da poupança
+nas superfícies existentes. Todo número editorial do Diário vem exclusivamente do snapshot
+BCB da edição e é renderizado em bloco separado.
 
 **O portão (teste por mutação obrigatório).** O validador revalida schema, cofre, aprovação,
 fontes, delta substantivo, status, snapshot e imutabilidade antes de escrever a edição final.

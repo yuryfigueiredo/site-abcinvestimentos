@@ -1,6 +1,6 @@
 # Diário do Investidor — Carta da Curadoria
 
-Versão da carta: 1.0.1
+Versão da carta: 1.0.2
 
 ## Nome e propósito
 
@@ -12,7 +12,11 @@ O escopo é renda fixa, juros, inflação, câmbio, bolsa e fundos imobiliários
 
 ## Política de fontes
 
-A curadoria usa fontes oficiais do Banco Central, IBGE, CVM, Tesouro Nacional e governo federal, além de uma pequena allowlist de mídia confiável. Somente feeds explicitamente habilitados e verificados entram na coleta. Toda requisição usa HTTPS, host exato e redirect manual; cada destino é revalidado antes de ser requisitado. Paywall, cópia do corpo da matéria e fonte sem lastro não são aceitos.
+A curadoria usa fontes oficiais do Banco Central, IBGE, CVM, Tesouro Nacional e governo federal, além de uma pequena allowlist de mídia confiável. Somente feeds explicitamente habilitados e verificados entram na coleta. Toda requisição usa HTTPS, host exato e redirect manual; cada destino é revalidado antes de ser requisitado. O coletor se identifica com User-Agent transparente. Paywall, cópia do corpo da matéria e fonte sem lastro não são aceitos.
+
+A ativação verificada cobre exclusivamente os três feeds do Banco Central e o feed Atom do The Conversation Brasil. O excerpt usa `description` ou `summary`; na ausência deles, pode usar `content` do Atom, normalizado como texto e limitado a seiscentos caracteres. O artigo nunca é requisitado. A evidência preserva autor quando o feed oferece Atom `author/name` ou RSS `dc:creator`, além do publisher e da licença HTTPS declarada na allowlist.
+
+O The Conversation Brasil usa CC BY-ND. Seu excerpt é evidência de citação literal, nunca insumo para paráfrase, resumo ou tradução pela IA. Até existir superfície de citação literal aprovada, essa fonte pode ser coletada, mas não pode ser a única base de notícia editorial autoral. Qualquer superfície pública futura deve apresentar juntos manchete, trecho literal, autor, publisher, link do artigo e link da licença.
 
 Notícia de veículo oficial precisa de fonte oficial suficiente. Notícia de mídia exige pelo menos dois veículos independentes. A seleção registra a evidência; a redação não busca o corpo da matéria nem inventa pauta.
 

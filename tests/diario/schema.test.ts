@@ -82,6 +82,41 @@ describe('parseEdition', () => {
     expect(parseEdition(value)).toEqual(value);
   });
 
+  it('preserves optional author and licenseUrl source attribution', () => {
+    const value = materialEdition();
+    value.sources[0].author = 'Ana Souza';
+    value.sources[0].licenseUrl = 'https://creativecommons.org/licenses/by-nd/4.0/';
+
+    expect(parseEdition(value)).toEqual(value);
+  });
+
+  it.each([
+    ['author', 42, /author.*string/i],
+    ['author', ' ', /author.*whitespace|length/i],
+    ['author', 'Ana\u0000Souza', /author.*control/i],
+    ['author', 'a'.repeat(501), /author.*length/i],
+    ['licenseUrl', 42, /licenseUrl.*string/i],
+    ['licenseUrl', 'http://creativecommons.org/licenses/by-nd/4.0/', /licenseUrl.*HTTPS/i],
+    ['licenseUrl', 'https://user:secret@creativecommons.org/licenses/by-nd/4.0/', /licenseUrl.*credentials/i],
+    ['licenseUrl', 'https://creativecommons.org/licenses/by-nd/4.0/#terms', /licenseUrl.*fragment/i],
+  ])('rejects invalid optional source attribution field %s', (field, invalid, expected) => {
+    const value = {
+      ...materialEdition(),
+      sources: [{ ...materialEdition().sources[0], [field]: invalid }],
+    };
+
+    expect(() => parseEdition(value)).toThrow(expected);
+  });
+
+  it('keeps SourceRef strict when optional attribution fields are supported', () => {
+    const value = {
+      ...materialEdition(),
+      sources: [{ ...materialEdition().sources[0], attributionNote: 'Campo não declarado.' }],
+    };
+
+    expect(() => parseEdition(value)).toThrow(/attributionNote|unknown field/i);
+  });
+
   it('rejects duplicate NewsItem.id with the conflicting path and identifier', () => {
     const value = materialEdition();
     value.items.push({ ...value.items[0] });
@@ -301,6 +336,30 @@ describe('parseAllowlist', () => {
 
   it('requires an allowlist version', () => {
     expect(() => parseAllowlist({ sources: [source] })).toThrow(/allowlist\.version.*required/i);
+  });
+
+  it('preserves an optional verified licenseUrl on an allowlist source', () => {
+    const licensed = {
+      ...source,
+      licenseUrl: 'https://creativecommons.org/licenses/by-nd/4.0/',
+    };
+
+    expect(parseAllowlist({ version: '1.2.3', sources: [licensed] })).toEqual({
+      allowlistVersion: '1.2.3',
+      allowlist: [licensed],
+    });
+  });
+
+  it.each([
+    [42, /licenseUrl.*string/i],
+    ['http://creativecommons.org/licenses/by-nd/4.0/', /licenseUrl.*HTTPS/i],
+    ['https://user:secret@creativecommons.org/licenses/by-nd/4.0/', /licenseUrl.*credentials/i],
+    ['https://creativecommons.org/licenses/by-nd/4.0/#terms', /licenseUrl.*fragment/i],
+  ])('rejects an invalid allowlist licenseUrl %j', (licenseUrl, expected) => {
+    expect(() => parseAllowlist({
+      version: '1.2.3',
+      sources: [{ ...source, licenseUrl }],
+    })).toThrow(expected);
   });
 
   it.each(['1.2', 'latest', '01.2.3', '1.2.3-01'])('rejects the invalid semver %s', (version) => {

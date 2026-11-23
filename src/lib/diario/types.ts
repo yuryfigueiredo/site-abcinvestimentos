@@ -25,6 +25,7 @@ export interface AllowlistSource {
   feeds: AllowlistFeed[];
   enabled: boolean;
   termsUrl?: string;
+  licenseUrl?: string;
 }
 
 export interface Thresholds {
@@ -51,6 +52,8 @@ export interface SourceRef {
   canonicalUrl: string;
   publishedAt: string | null;
   retrievedAt: string;
+  author?: string;
+  licenseUrl?: string;
 }
 
 export interface SourceCandidate extends SourceRef {

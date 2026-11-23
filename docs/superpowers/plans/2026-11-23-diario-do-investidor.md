@@ -77,9 +77,15 @@ type ReasonCode = 'calendar-event' | 'dollar-trigger' | 'official-news'
   | 'corroborated-media-news' | 'monday-lesson' | 'no-substantive-delta'
   | 'history-unavailable';
 
+interface AllowlistFeed { url: string; topics: Topic[]; }
+interface AllowlistSource {
+  id: string; publisher: string; kind: 'official' | 'media'; feeds: AllowlistFeed[];
+  enabled: boolean; termsUrl?: string; licenseUrl?: string;
+}
 interface SourceRef {
   id: string; sourceId: string; kind: 'official' | 'media'; publisher: string;
   title: string; canonicalUrl: string; publishedAt: string | null; retrievedAt: string;
+  author?: string; licenseUrl?: string;
 }
 interface SourceCandidate extends SourceRef {
   excerpt: string; excerptSha256: string; // só no cache ignorado, nunca na edição publicada
@@ -137,7 +143,7 @@ interface ValidationContext {
 interface CollectOptions { root?: string; now?: Date; fetch?: typeof fetch; }
 ```
 
-`AllowlistSource` e `Thresholds` são interfaces locais de `types.ts`, espelhando os JSONs do cofre. O snapshot do Diário guarda apenas os quatro indicadores medidos; a Poupança continua nas superfícies existentes. `Selection` é o único contrato de evidência lido pelo escritor: `excerpt`/`excerptSha256` ficam no cache ignorado e `SourceRef` público guarda apenas metadados da fonte. Nenhum número editorial é declarado fora de `BcbSnapshot`; thresholds numéricos permanecem internos no cofre.
+`AllowlistSource` e `Thresholds` são interfaces locais de `types.ts`, espelhando os JSONs do cofre. `author?` e `licenseUrl?` são opcionais e validados estritamente; a licença declarada na allowlist é propagada para `SourceRef`/`SourceCandidate`. O snapshot do Diário guarda apenas os quatro indicadores medidos; a Poupança continua nas superfícies existentes. `Selection` é o único contrato de evidência lido pelo escritor: `excerpt`/`excerptSha256` ficam no cache ignorado e `SourceRef` público guarda apenas metadados da fonte. Nenhum número editorial é declarado fora de `BcbSnapshot`; thresholds numéricos permanecem internos no cofre.
 
 ---
 
@@ -243,7 +249,7 @@ git commit -m "feat(diario): adiciona dominio e cofre versionado da curadoria"
 
 - [ ] **Step 1: Escrever os testes que falham.**
 
-Cobrir: toda requisição usa `redirect: "manual"`; `never requests forbidden redirect target` confirma no spy que host não allowlisted não é requisitado; `Location` para `http:`, host com aparência enganosa, credenciais ou porta não allowlisted também nunca é requisitado; `malformed and loop redirects skip only that source` e o teste do quarto hop confirmam que as demais fontes continuam; `401/402/403` interrompe fonte; RSS malformado pula só aquela fonte; XML não processa entidades; cache não guarda corpo de matéria; dólar usa duas observações mais recentes com datas; BCB fora não inventa frescor; `indicators.ts` continua chamando exatamente 432/4389/13522/1.
+Cobrir: toda requisição usa `redirect: "manual"`; `never requests forbidden redirect target` confirma no spy que host não allowlisted não é requisitado; `Location` para `http:`, host com aparência enganosa, credenciais ou porta não allowlisted também nunca é requisitado; `malformed and loop redirects skip only that source` e o teste do quarto hop confirmam que as demais fontes continuam; `401/402/403` interrompe fonte; RSS malformado pula só aquela fonte; XML não processa entidades; cache não guarda corpo de matéria; dólar usa duas observações mais recentes com datas; BCB fora não inventa frescor; `indicators.ts` continua chamando exatamente 432/4389/13522/1. Para a ativação governada, cobrir User-Agent/Accept no request inicial e em redirects, fallback exclusivo de Atom `content` normalizado e limitado a 600 caracteres, precedência de `summary`/`description`, não uso de RSS `content:encoded`, autores Atom/RSS, licença propagada e schema estrito dos campos opcionais. A allowlist verificada deve habilitar somente os três feeds BCB e o feed The Conversation Brasil, mantendo todos os demais candidatos desabilitados e sem feeds.
 
 - [ ] **Step 2: Rodar RED.**
 
@@ -261,9 +267,9 @@ Mover fetch/parse do BCB para `src/lib/bcb.ts`; `indicators.ts` mantém `getIndi
 
 - [ ] **Step 4: Implementar a coleta.**
 
-Ler e verificar o cofre; buscar BCB; buscar somente feeds `enabled`. Toda requisição HTTP de ingestão, inclusive BCB, usa `redirect: "manual"`. Para cada resposta de redirect, resolver `Location` contra a URL atual e validar antes de qualquer novo request: esquema exatamente `https:`, hostname e porta exatamente allowlisted, sem username/password; seguir no máximo três hops. Alvo proibido, `Location` inválido, loop ou excesso de hops encerra somente aquela fonte, sem requisitar o alvo. Guardar evidência normalizada em `.cache/diario/<date>/`; nunca baixar artigo completo. Parser XML com `processEntities: false`. Deduplicar URL canônica e título normalizado.
+Ler e verificar o cofre; buscar BCB; buscar somente feeds `enabled`. Toda requisição HTTP de ingestão, inclusive BCB, usa `redirect: "manual"`. Os feeds enviam `Accept` de RSS/Atom/XML e o User-Agent transparente `ABCInvestimentosDiario/1.0 (+https://www.abcinvestimentos.com.br/diario-do-investidor/)`. Para cada resposta de redirect, resolver `Location` contra a URL atual e validar antes de qualquer novo request: esquema exatamente `https:`, hostname e porta exatamente allowlisted, sem username/password; seguir no máximo três hops. Alvo proibido, `Location` inválido, loop ou excesso de hops encerra somente aquela fonte, sem requisitar o alvo. Guardar evidência normalizada em `.cache/diario/<date>/`; nunca baixar artigo completo. Parser XML com `processEntities: false`. Deduplicar URL canônica e título normalizado.
 
-Valor Investe e InfoMoney são candidatos iniciais, mas só entram `enabled: true` após smoke test de feed e termos. Se reprovarem, parar e pedir aprovação do dono antes de lançar só com oficiais.
+O excerpt prefere `description`/`summary`; se o texto normalizado estiver vazio e o feed for Atom, usa `content` tipo `text` (ou sem tipo) ou `html` como fallback, remove markup, normaliza espaços e limita a 600 caracteres. Tipos desconhecidos, inclusive `application/xhtml+xml`, falham fechado. RSS `content:encoded` nunca é fallback. Extrair autor de Atom `author/name` ou RSS `dc:creator` somente quando o prefixo está vinculado ao namespace Dublin Core canônico; atribuição inválida ou parcial é omitida. Preservar autores Atom múltiplos com `; ` e propagar `licenseUrl` da allowlist. A ativação autorizada pós-smoke cobre somente três feeds BCB e o feed The Conversation Brasil; todos os outros candidatos continuam `enabled: false` e sem feeds novos.
 
 - [ ] **Step 5: Adicionar scripts e ignorar cache.**
 
@@ -309,9 +315,9 @@ git commit -m "feat(diario): coleta BCB e RSS allowlisted fora do build"
 
 Curadoria: evento/gatilho/notícia oficial/mídia corroborada → `material`; dia comum → `morno`; segunda usa lição só se quiet e 1x por semana ISO; não repete lição; fim de semana sem observação nova é quiet; threshold usa valor não arredondado. Testes dedicados: `rejects repeated canonical URL`, `rejects repeated normalized title`, `same event without new substantive source evidence falls quiet` e `rejects materially similar editorial payload`; histórico inválido/ambíguo cai para `morno`; duplicatas são removidas sem descartar um cluster genuinamente novo.
 
-`selection.json`: para cada fonte selecionada, conter `sourceId`, `publisher`, `kind`, `title`, `canonicalUrl`, `publishedAt`, `retrievedAt`, `excerpt`, `excerptSha256`, `clusterId` e `topic`; URL segue a normalização canônica, título é trimado, timestamps são ISO, excerpt tem `trim` e colapso de espaços para um único, e o hash é SHA-256 dos bytes UTF-8 desse excerpt. A decisão e os clusters selecionados também estão presentes.
+`selection.json`: para cada fonte selecionada, conter `sourceId`, `publisher`, `kind`, `title`, `canonicalUrl`, `publishedAt`, `retrievedAt`, `author?`, `licenseUrl?`, `excerpt`, `excerptSha256`, `clusterId` e `topic`; URL segue a normalização canônica, título é trimado, timestamps são ISO, excerpt tem `trim` e colapso de espaços para um único, e o hash é SHA-256 dos bytes UTF-8 desse excerpt. A decisão e os clusters selecionados também estão presentes.
 
-Validador: snapshot confere com evidência BCB; campo `stale` só copia a edição anterior e permanece rotulado; todo item tem fonte suficiente (1 oficial ou 2 veículos independentes) e somente fontes de `selection.json`; prosa sem dígito/HTML em todos os campos editoriais; nenhum número editorial fora do snapshot; material/morno e delta substantivo recomputados; payload similar contra as dez edições materiais recentes é rejeitado; fonte allowlisted; ausência de aviso falha; mesmo dia não sobrescreve; mudança de política ou aprovação inválida falha.
+Validador: snapshot confere com evidência BCB; campo `stale` só copia a edição anterior e permanece rotulado; todo item tem fonte suficiente (1 oficial ou 2 veículos independentes) e somente fontes de `selection.json`; prosa sem dígito/HTML em todos os campos editoriais; nenhum número editorial fora do snapshot; material/morno e delta substantivo recomputados; payload similar contra as dez edições materiais recentes é rejeitado; fonte allowlisted; ausência de aviso falha; mesmo dia não sobrescreve; mudança de política ou aprovação inválida falha. Fonte com `licenseUrl` CC BY-ND não pode ser a única base de um `NewsItem` reescrito: o excerpt é citação literal, nunca insumo para paráfrase, resumo ou tradução pela IA. Até existir superfície de citação literal aprovada, ela pode ser coletada, mas não usada como notícia editorial autoral.
 
 - [ ] **Step 2: Rodar RED.**
 
@@ -325,7 +331,7 @@ A IA não decide materialidade. `decideEdition` usa somente dados coletados, o c
 
 Um cluster é duplicado se todas as fontes repetem URL canônica ou título normalizado já visto, ou se o agregado dos títulos/excertos selecionados atinge o limiar contra `headline/summary/whyItMatters` de item material anterior. Um evento com o mesmo `eventId` só sobrevive se houver fonte com URL canônica inédita para aquele evento, título abaixo do limiar, excerpt não vazio e hash válido, e o excerpt também ficar abaixo do limiar contra o texto editorial e os títulos de fontes daquele evento no histórico. Uma lição é duplicada se o `lessonId` já apareceu ou se título/corpo atingem o limiar. O validador também compara o payload editorial completo (`title`, `summary`, itens e lição) com cada edição material recente e rejeita igualdade normalizada ou similaridade igual/superior a `0.80`. Histórico ausente/inválido/ambíguo produz `morno` com `history-unavailable`; ausência de delta produz `morno` com `no-substantive-delta`.
 
-O CLI `npm run diario:curate` lê evidência, histórico e cofre e escreve `.cache/diario/<date>/selection.json` por `buildSelection`. A seleção contém a decisão, clusters e, para cada fonte, todos os campos de `SelectedSourceEvidence`; URL é canônica, título é trimado, timestamps são ISO, excerpt sofre `trim` e colapso de espaços para um único, e `excerptSha256` cobre seus bytes UTF-8. A IA lê somente esse arquivo e as entradas aprovadas de lição/evento explicitamente referenciadas por seus IDs; nunca faz fetch de corpo de matéria. O rascunho pode usar somente os `sourceIds` selecionados. O validador revalida schema, cofre, aprovação, fontes contra a seleção/evidência, status, snapshot, delta e imutabilidade antes de escrever a edição final. A edição final guarda apenas metadados das fontes — não guarda excerpt nem copia matéria.
+O CLI `npm run diario:curate` lê evidência, histórico e cofre e escreve `.cache/diario/<date>/selection.json` por `buildSelection`. A seleção contém a decisão, clusters e, para cada fonte, todos os campos de `SelectedSourceEvidence`; URL é canônica, título é trimado, timestamps são ISO, excerpt sofre `trim` e colapso de espaços para um único, e `excerptSha256` cobre seus bytes UTF-8. A IA lê somente esse arquivo e as entradas aprovadas de lição/evento explicitamente referenciadas por seus IDs; nunca faz fetch de corpo de matéria. O rascunho pode usar somente os `sourceIds` selecionados. O validador revalida schema, cofre, aprovação, fontes contra a seleção/evidência, status, snapshot, delta e imutabilidade antes de escrever a edição final. A edição final guarda apenas metadados das fontes — não guarda excerpt nem copia matéria. O validador também impede `NewsItem` reescrito sustentado somente por fonte CC BY-ND; qualquer citação pública futura deve reunir manchete, trecho literal, autor, publisher, link do artigo e link da licença.
 
 - [ ] **Step 4: Criar a seed pelo caminho real.**
 
@@ -340,7 +346,7 @@ Se o dia for quiet ou o gate não provar delta substantivo, a seed é morna; nã
 
 - [ ] **Step 5: Registrar mutação.**
 
-Executar ao menos 10 mutações deliberadas e registrar qual teste pegou cada uma, incluindo: número editorial fora do snapshot, host fora da allowlist, redirect proibido, fonte faltando, status errado, URL/título repetido, evento sem evidência nova, payload similar, lição repetida, hash divergente e campo/formato inválido de aprovação.
+Executar ao menos 10 mutações deliberadas e registrar qual teste pegou cada uma, incluindo: número editorial fora do snapshot, host fora da allowlist, redirect proibido, fonte faltando, status errado, URL/título repetido, evento sem evidência nova, payload similar, lição repetida, hash divergente, campo/formato inválido de aprovação e `NewsItem` reescrito sustentado somente por fonte CC BY-ND.
 
 - [ ] **Step 6: Rodar GREEN e commit.**
 
@@ -501,8 +507,8 @@ O prompt e a regra no `AGENTS.md` fixam este procedimento, nesta ordem:
 1. Garantir `.cache/diario/` e criar `.cache/diario/automation.lock` com `mkdir` atômico; gravar um token de dono e instalar imediatamente o cleanup `finally`-style com `trap ... EXIT` e traps de sinal, antes de qualquer pull. Se o diretório do lock já existir, parar com erro para revisão do operador; não usar idade, PID ou limpeza automática para removê-lo.
 2. Ainda sob o lock, conferir árvore suja e rodar `git pull --ff-only origin main`; qualquer falha interrompe o run.
 3. Verificar cofre e `approval.json`; rodar `diario:collect` e `diario:curate`.
-4. Ler somente `.cache/diario/<date>/selection.json` e as entradas aprovadas de lição/evento explicitamente referenciadas ali. A seleção precisa trazer a decisão e, por fonte, `sourceId`, `publisher`, `kind`, `title`, `canonicalUrl`, `publishedAt`, `retrievedAt`, `excerpt`, `excerptSha256`, cluster e tópico. Nunca buscar corpo de matéria.
-5. Redigir somente o rascunho ignorado, com no máximo 3 itens, prosa original sem dígitos, sem recomendação, sem cripto, sem HTML e sem paywall. Todo número editorial deve vir do snapshot da edição; em dúvida de lastro ou delta substantivo, produzir edição quiet.
+4. Ler somente `.cache/diario/<date>/selection.json` e as entradas aprovadas de lição/evento explicitamente referenciadas ali. A seleção precisa trazer a decisão e, por fonte, `sourceId`, `publisher`, `kind`, `title`, `canonicalUrl`, `publishedAt`, `retrievedAt`, `author?`, `licenseUrl?`, `excerpt`, `excerptSha256`, cluster e tópico. Nunca buscar corpo de matéria.
+5. Redigir somente o rascunho ignorado, com no máximo 3 itens, prosa original sem dígitos, sem recomendação, sem cripto, sem HTML e sem paywall. Todo número editorial deve vir do snapshot da edição; em dúvida de lastro ou delta substantivo, produzir edição quiet. Fonte CC BY-ND não pode ser a única base de notícia reescrita; seu excerpt é citação literal e nunca pode ser parafraseado, resumido ou traduzido pela IA.
 6. Rodar `npm run diario:validate -- --publish`, `npm test`, `npm run build` e `git diff --check`; commitar com caminhos explícitos e somente então fazer o push autorizado. O lock permanece durante validação, build e commit.
 7. Em qualquer saída, sucesso ou erro, o cleanup instalado no passo 1 remove o marcador somente se o token for dono do lock e depois tenta `rmdir`; nunca remove lock alheio, nunca usa `rm -rf` e nunca apaga lock stale automaticamente.
 
