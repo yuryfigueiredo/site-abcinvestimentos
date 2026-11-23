@@ -36,13 +36,14 @@ arquivo material acumula frescor indexável e a newsletter (Projeto 2) será o e
    diferencial genuíno: evento, gatilho, notícia oficial, mídia corroborada ou lição elegível.
 3. Curadoria grounded com fontes oficiais (BCB/IBGE/CVM/Tesouro/governo) e fontes allowlisted
    de mídia confiável. Toda notícia tem evidência suficiente; a IA não decide materialidade.
+   Todo número editorial publicado pertence ao snapshot BCB da edição.
 4. Curadoria estruturada como cofre versionado: carta, allowlist, thresholds, calendário,
    lições, changelog e aprovação, com hash e teste impedindo mudança autônoma.
 5. Honestidade nos dias mornos: a edição registra "sem alteração relevante" e o hub/endpoint
    podem mostrá-la, mas **nenhuma URL datada duplicada** é criada.
-6. Um portão com teste por mutação que derruba a publicação se houver número não rastreável,
-   fonte inválida, status/materialidade incorretos, aviso ausente, lição repetida ou cofre
-   divergente da aprovação.
+6. Um portão com teste por mutação que derruba a publicação se houver número fora do snapshot,
+   fonte inválida, status/materialidade incorretos, aviso ausente, URL/evento/lição/payload
+   duplicado ou cofre/aprovação divergentes.
 7. Automação diária às **19:00 BRT** e **rebuild diário de garantia**, mantendo o site fresco
    mesmo quando a observação BCB não muda de data.
 
@@ -78,13 +79,19 @@ arquivo material acumula frescor indexável e a newsletter (Projeto 2) será o e
   já existente.
 - Fontes: oficiais (BCB/IBGE/CVM/Tesouro/governo) + pequena allowlist de mídia confiável. Só
   HTTPS, hosts exatos e redirecionamentos revalidados; sem paywall e sem copiar corpo de
-  matéria. Falha de uma fonte não autoriza buscar host privado nem publicar evidência inválida.
-- Todo número editorial vem do snapshot BCB ou de fato determinístico. A prosa da IA não
-  contém algarismos; números são renderizados em blocos factuais separados.
+  matéria. Toda requisição de ingestão desativa redirect automático. Cada `Location` é
+  resolvido e validado antes de novo request: somente `https:`, host e porta exatamente
+  allowlisted, sem credenciais; no máximo três hops. Alvo proibido, `Location` malformado,
+  loop ou excesso de hops falha fechado e pula somente aquela fonte.
+- Todos os números editoriais publicados vêm exclusivamente do snapshot BCB da edição. A
+  prosa editorial não contém algarismos; blocos numéricos são renderizados separadamente a
+  partir de `edition.snapshot`. Não existe esquema de fato determinístico nem permissão para
+  publicar número calculado ou redigido fora do snapshot.
 - Conteúdo educacional, nunca recomendação de compra/venda. O aviso é fixo e não editável pela
   IA em toda edição.
 - O cofre da curadoria só muda por ordem explícita do dono, registrada em `approval.json` e
-  `changelog.md`, com hash recomputado e testes verdes.
+  `changelog.md`, com hash recomputado e testes verdes. O hash cobre somente os seis arquivos
+  de conteúdo; `approval.json` é validado, nunca incluído no próprio hash.
 - A data da edição usa `America/Sao_Paulo`. A automação roda às **19:00 BRT**; o gatilho de
   dólar é `|Δ%| >= 1,0`; lição semanal às segundas, no máximo 1 por semana ISO e só quando não
   há notícia, evento ou gatilho.
@@ -122,7 +129,9 @@ medir números: usa `getIndicators()` ao vivo e lê a edição mais recente para
 `provenance`. O snapshot guarda apenas `selic`, `cdi`, `ipca12m` e `dolar`, cada um com valor,
 data da observação e origem `bcb-sgs` | `stale` | `unavailable`; o status geral é `ok` |
 `stale` | `unavailable`. A decisão registra `material` | `morno` e os reason codes. Nenhum
-número fora do snapshot ou de bloco factual determinístico; nenhum dígito na prosa editorial.
+número editorial aparece fora do snapshot e nenhum dígito aparece na prosa editorial. O
+`policy` público contém apenas versões, IDs de fontes e hosts; thresholds numéricos ficam no
+cofre e não são renderados como fatos.
 
 **Cofre de curadoria com aprovação/hash/teste.** `src/data/diario/curadoria/` contém
 `carta.md`, `allowlist.json`, `thresholds.json`, `calendario.json`, `licoes.json`,
@@ -130,22 +139,55 @@ número fora do snapshot ou de bloco factual determinístico; nenhum dígito na 
 critério material/morno, cadência, automação, regra de mudança e newsletter fora do escopo.
 O procedimento é: ordem explícita do dono → editar arquivos do cofre → append no changelog →
 recomputar o hash → atualizar `approval.json` com `instructionRef` → rodar os testes. O hash
-SHA-256 cobre os bytes em ordem fixa (`carta.md`, `allowlist.json`, `thresholds.json`,
-`calendario.json`, `licoes.json`, `changelog.md`), separados por `path + \0 + bytes + \0`.
-`approval.json` guarda `bundleSha256`, `charterVersion`, `approvedAt`, `approvedBy` e a
-referência da ordem. A automação apenas lê e verifica o cofre; nunca o edita.
+SHA-256 cobre somente os bytes dos seis arquivos de conteúdo em ordem fixa (`carta.md`,
+`allowlist.json`, `thresholds.json`, `calendario.json`, `licoes.json`, `changelog.md`),
+separados por `path + \0 + bytes + \0`; `approval.json` nunca entra no próprio hash.
+`approval.json` exige `bundleSha256` hexadecimal minúsculo de 64 caracteres igual ao hash,
+`charterVersion` no formato `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$` e igual ao charter/changelog,
+`approvedAt` em UTC ISO válido, `approvedBy` com um a 120 caracteres após trim e sem controles,
+e `instructionRef` com o caminho relativo exato do plano commitado.
+A automação apenas lê e verifica o cofre; nunca o edita.
 
 **Curadoria é dado + evidência, não decisão livre da IA em runtime.** A coleta busca BCB e
-somente feeds `enabled` da allowlist, valida host final e guarda evidência normalizada no
+somente feeds `enabled` da allowlist, revalida cada hop e guarda evidência normalizada no
 cache ignorado. `decideEdition` usa somente calendário, thresholds, lições e notícias
-coletadas. A IA só redige sobre os IDs de `selection.json`, com no máximo 3 itens, prosa
-original e sem recomendação.
+coletadas. `selection.json` registra a decisão e, para cada fonte selecionada, `sourceId`,
+`publisher`, `kind`, `title`, `canonicalUrl`, `publishedAt`, `retrievedAt`, `excerpt`,
+`excerptSha256`, cluster e tópico. A IA lê somente `selection.json` e as entradas aprovadas de
+lição/evento explicitamente referenciadas ali; nunca busca corpo de matéria. Redige no máximo
+3 itens, com prosa original e sem recomendação.
 
 **Decisão material vs. morno (determinística).** É `material` se houver evento do calendário,
 `|Δdólar| >= 1,0`, notícia oficial com fonte suficiente ou notícia de mídia corroborada por
 pelo menos 2 veículos independentes. A lição de segunda só entra se o dia estiver quiet e
 ainda não houver lição na mesma semana ISO. Caso contrário é `morno`: a edição é registrada e
 consumível, mas não vira página indexada.
+
+**Portão substantivo anti-duplicação (determinístico).** O histórico de comparação são as
+10 edições `material` mais recentes anteriores à candidata (ou todas, se houver menos); IDs de
+lição também são comparados com todas as edições anteriores. Lista vazia é histórico válido;
+arquivo de edição ausente, inválido ou ambíguo não é. URL canônica é normalizada com URL HTTPS, host em
+minúsculas, remoção de porta padrão, fragmento e parâmetros de rastreamento conhecidos, e
+demais query params ordenados. Texto usa Unicode NFKC, minúsculas, remoção de diacríticos e
+colapso de pontuação/espaços. Similaridade é Jaccard de shingles de três tokens, com limiar
+`0.80`; textos com menos de três tokens usam o texto normalizado inteiro.
+
+Um cluster é rotulado duplicado quando todas as suas fontes repetem URL canônica ou título
+normalizado já visto, ou quando o agregado dos títulos/excertos selecionados atinge o limiar
+contra `headline/summary/whyItMatters` de um item material anterior. Um evento com o mesmo
+`eventId` só é novo se houver ao menos uma fonte com URL canônica inédita para aquele evento,
+título com similaridade abaixo do limiar, excerpt não vazio e hash válido, e o excerpt também
+ficar abaixo do limiar contra o texto editorial e os títulos de fontes daquele evento no
+histórico. Uma lição é duplicada se o `lessonId` já apareceu ou se título/corpo atingem o
+limiar. O validador repete
+a comparação do payload editorial completo (`title`, `summary`, itens e lição) contra cada
+edição material recente e rejeita igualdade normalizada ou similaridade igual/superior a
+`0.80`.
+
+Entrada de histórico ausente, inválida ou ambígua não prova novidade: resulta em `morno` com
+`history-unavailable`. Se todos os candidatos substantivos forem duplicados e não restar
+razão material independente, resulta em `morno` com `no-substantive-delta`. A quiet nunca
+cria URL datada.
 
 **Hub vivo = 1 URL canônica, sempre "hoje".** `/diario-do-investidor/` renderiza no build a
 partir de `getIndicators()` + a última edição. Os indicadores rotulam origem e fallback;
@@ -160,23 +202,28 @@ edição, inclusive `morno`, com `Cache-Control: no-store`.
 **Proveniência e aviso herdam o que já existe.** Byline honesta: "Diário do Investidor ·
 curadoria automática com fontes verificadas", sem revisor humano fingido. Cada notícia guarda
 título, link e data das fontes — nunca excerpt longo nem corpo copiado. Reusa `CalcDisclaimer`
-e a frase única de origem da poupança nas superfícies existentes. Todo número do Diário ou é
-do snapshot medido ou vem rotulado como fato determinístico.
+e a frase única de origem da poupança nas superfícies existentes. Todo número editorial do
+Diário vem exclusivamente do snapshot BCB da edição e é renderizado em bloco separado.
 
-**O portão (teste por mutação obrigatório).** O validador revalida schema, cofre, fontes,
-status, snapshot e imutabilidade antes de escrever a edição final. O teste falha se: houver
-número não presente no snapshot; faltar `provenance`/`disclaimer`; fonte não allowlisted ou
-insuficiente; `morno` gerar URL datada; lição repetida; mesmo dia sobrescrito; hash de aprovação
-divergente. Mutação obrigatória antes de confiar — se o teste passar com número inventado ou
-cofre alterado, o portão é decorativo.
+**O portão (teste por mutação obrigatório).** O validador revalida schema, cofre, aprovação,
+fontes, delta substantivo, status, snapshot e imutabilidade antes de escrever a edição final.
+O teste falha se: houver número editorial fora do snapshot; faltar `provenance`/`disclaimer`;
+fonte não allowlisted ou insuficiente; URL/título, evento, lição ou payload duplicado; `morno`
+gerar URL datada; mesmo dia sobrescrito; campo/formato de aprovação inválido; hash de aprovação
+divergente. Mutação obrigatória antes de confiar — se o teste passar com número inventado,
+duplicata ou cofre alterado, o portão é decorativo.
 
 **A automação (entrega = o prompt).** Roda diariamente no Qoder do Mac às **19:00 BRT**:
-`git pull --ff-only` → lock → parar se a árvore estiver suja → verificar cofre →
-`diario:collect` → `diario:curate` → preencher somente o rascunho ignorado com os IDs de
-`selection.json` → `diario:validate -- --publish` → `npm test` + `npm run build` +
-`git diff --check` → commit com caminhos explícitos → `git push origin main` (Vercel
-rebuilda). Guardas: nunca `git add -A`; nunca editar o cofre; não commitar/pushar com teste ou
-build falhando; em qualquer dúvida de lastro, decair para `morno`.
+adquirir lock exclusivo → conferir árvore suja → `git pull --ff-only origin main` → verificar
+cofre/aprovação → `diario:collect` → `diario:curate` → preencher somente o rascunho ignorado a
+partir de `selection.json` e das entradas aprovadas ali referenciadas → `diario:validate --
+--publish` → `npm test` + `npm run build` + `git diff --check` → commit com caminhos
+explícitos → `git push origin main` (Vercel rebuilda). O lock é adquirido antes do pull e
+mantido até o fim da validação/build/commit; a liberação ocorre em cleanup `finally`-style,
+inclusive em erro. Lock existente/stale interrompe o run para revisão do operador e nunca é
+apagado automaticamente. Guardas: nunca `git add -A`; nunca editar o cofre; não
+commitar/pushar com teste ou build falhando; em qualquer dúvida de lastro ou novidade,
+decair para `morno`.
 
 **Rebuild diário de garantia.** O cron existente (`30 17 * * *` UTC = 14:30 BRT) passa a
 sempre disparar o Deploy Hook quando o BCB estiver alcançável, mesmo sem observação nova. Se o
