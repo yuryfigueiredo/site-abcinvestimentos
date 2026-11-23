@@ -78,6 +78,10 @@ function atomItem(): string {
   return `<entry><title>Juros e inflação</title><link href="${ARTICLE}" rel="alternate" type="text/html"/><summary>Resumo curto da notícia.</summary><published>2026-11-23T18:00:00Z</published></entry>`;
 }
 
+function atomFeed(entries: string[]): string {
+  return `<?xml version="1.0" encoding="UTF-8"?><feed xmlns="http://www.w3.org/2005/Atom">${entries.join('')}</feed>`;
+}
+
 function bcbPayload(code: number, count: number): Response {
   if (code === 1) {
     return new Response(
@@ -451,10 +455,13 @@ describe('allowlisted ingestion', () => {
     expect(cacheInputs()).toEqual(result);
   });
 
-  it('treats one successfully parsed empty feed as quiet evidence despite another feed failure', async () => {
+  it.each([
+    ['RSS', rss([])],
+    ['Atom', atomFeed([])],
+  ])('treats one successfully parsed empty %s feed as quiet evidence despite another feed failure', async (_format, xml) => {
     setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
     const fetchMock = mockFetch((input) => {
-      if (String(input) === ALPHA_FEED) return new Response(rss([]), { status: 200 });
+      if (String(input) === ALPHA_FEED) return new Response(xml, { status: 200 });
       if (String(input) === BETA_FEED) return new Response('offline', { status: 503 });
       return defaultHandler(input);
     });
@@ -462,6 +469,55 @@ describe('allowlisted ingestion', () => {
     const result = await collect(fetchMock);
 
     expect(result.sources).toEqual([]);
+    expect(cacheInputs()).toEqual(result);
+  });
+
+  it.each([
+    ['RSS', rss(['<item><title>Notícia sem link</title><description>Sem URL.</description></item>'])],
+    ['Atom', atomFeed(['<entry><title>Notícia sem link</title><summary>Sem URL.</summary></entry>'])],
+  ])('does not treat a nonempty %s feed with zero usable candidates as quiet evidence', async (_format, xml) => {
+    setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) return new Response(xml, { status: 200 });
+      if (String(input) === BETA_FEED) return new Response('offline', { status: 503 });
+      return defaultHandler(input);
+    });
+
+    await expect(collect(fetchMock)).rejects.toThrow(/collection unavailable.*every enabled feed/i);
+    expect(existsSync(join(root, '.cache/diario', DATE, 'inputs.json'))).toBe(false);
+  });
+
+  it('throws before persisting when every enabled feed is nonempty but has zero usable candidates', async () => {
+    setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      const url = String(input);
+      if (url === ALPHA_FEED || url === BETA_FEED) {
+        return new Response(rss(['<item><title>Notícia sem link</title></item>']), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    await expect(collect(fetchMock)).rejects.toThrow(/collection unavailable.*every enabled feed/i);
+    expect(existsSync(join(root, '.cache/diario', DATE, 'inputs.json'))).toBe(false);
+  });
+
+  it('keeps partial usable success when another enabled feed has zero usable candidates', async () => {
+    setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      const url = String(input);
+      if (url === ALPHA_FEED) {
+        return new Response(rss([
+          '<item><title>Notícia sem link</title></item>',
+          rssItem(),
+        ]), { status: 200 });
+      }
+      if (url === BETA_FEED) return new Response(rss(['<item><title>Outra notícia sem link</title></item>']), { status: 200 });
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources.map((item) => item.sourceId)).toEqual(['alpha']);
     expect(cacheInputs()).toEqual(result);
   });
 
@@ -583,6 +639,28 @@ describe('allowlisted ingestion', () => {
     expect(tracked.cancel).toHaveBeenCalledTimes(1);
   });
 
+  it.each([401, 402, 403])('HTTP %i skips the publisher’s remaining feed without stopping other publishers', async (status) => {
+    const secondAlphaFeed = 'https://feeds.example.test/alpha/second/rss';
+    const alpha = source('alpha', ALPHA_FEED);
+    alpha.feeds.push({ url: secondAlphaFeed, topics: ['juros'] });
+    setSources([alpha, source('beta', BETA_FEED)]);
+    const tracked = trackedResponse(['paywalled'], { status }, false);
+    const fetchMock = mockFetch((input) => {
+      const url = String(input);
+      if (url === ALPHA_FEED) return tracked.response;
+      if (url === secondAlphaFeed) {
+        return new Response(rss([rssItem({ title: 'Segundo feed da Alpha', link: 'https://news.example.test/alpha-second' })]), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources.map((item) => item.sourceId)).toEqual(['beta']);
+    expect(requestedUrls(fetchMock).filter((url) => url.includes('feeds.example.test'))).toEqual([ALPHA_FEED, BETA_FEED]);
+    expect(tracked.cancel).toHaveBeenCalledTimes(1);
+  });
+
   it('a paywalled HTML response skips only that source and cancels its unread body', async () => {
     setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
     const tracked = trackedResponse(['<html><body>Assine para ler</body></html>'], {
@@ -638,6 +716,89 @@ describe('allowlisted ingestion', () => {
     expect(JSON.stringify(cacheInputs())).not.toContain('root:');
   });
 
+  it.each([
+    ['title', '<title>Juros &foo; e inflação</title>', ARTICLE],
+    ['link', '<title>Juros e inflação</title>', `${ARTICLE}?a=1&foo;=2`],
+  ])('rejects undefined XML entity references in %s', async (_field, metadata, link) => {
+    setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(`<rss><channel><title>Feed</title><link>https://feeds.example.test/</link><description>Feed</description><item>${metadata}<link>${link}</link></item></channel></rss>`, { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources.map((item) => item.sourceId)).toEqual(['beta']);
+    expect(JSON.stringify(cacheInputs())).not.toContain('&foo;');
+  });
+
+  it.each([
+    ['&#0;', 'zero'],
+    ['&#1;', 'XML-forbidden control'],
+    ['&#xD800;', 'high surrogate'],
+    ['&#xDFFF;', 'low surrogate'],
+    ['&#xFFFE;', 'BMP noncharacter'],
+    ['&#xFFFF;', 'BMP noncharacter boundary'],
+    ['&#x110000;', 'above Unicode range'],
+    ['&#999999999999999999999;', 'unsafe integer'],
+  ])('rejects invalid numeric XML reference %s (%s) outside candidate metadata', async (reference) => {
+    setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(`<rss><channel><title>Feed ${reference}</title><link>https://feeds.example.test/</link><description>Feed</description>${rssItem()}</channel></rss>`, { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources.map((item) => item.sourceId)).toEqual(['beta']);
+  });
+
+  it.each([
+    ['&#9;', 'tab'],
+    ['&#10;', 'line feed'],
+    ['&#13;', 'carriage return'],
+    ['&#x20;', 'first printable character'],
+    ['&#xD7FF;', 'last before surrogate range'],
+    ['&#xE000;', 'first after surrogate range'],
+    ['&#xFFFD;', 'last BMP XML character'],
+    ['&#x10000;', 'first supplementary character'],
+    ['&#x10FFFF;', 'last Unicode code point'],
+  ])('accepts valid numeric XML reference %s (%s)', async (reference) => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(`<rss><channel><title>Feed ${reference}</title><link>https://feeds.example.test/</link><description>Feed</description>${rssItem()}</channel></rss>`, { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources.map((item) => item.sourceId)).toEqual(['alpha']);
+  });
+
+  it('keeps undefined references literal in CDATA and ignores references in comments', async () => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const literal = 'Literal &foo; &bar;';
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(`<?xml version="1.0"?><rss><channel><!-- &foo; &#0; &#xD800; &#x110000; COMMENT_SENTINEL --><title>Feed</title><link>https://feeds.example.test/</link><description>Feed</description><item><title>Juros &amp; inflação</title><link>${ARTICLE}</link><description><![CDATA[${literal}]]></description><content><![CDATA[&#0; &#xD800; &#x110000; CDATA_SENTINEL]]></content></item></channel></rss>`, { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+    const cached = readFileSync(join(root, '.cache/diario', DATE, 'inputs.json'), 'utf8');
+
+    expect(result.sources[0]).toMatchObject({ title: 'Juros & inflação', excerpt: literal });
+    expect(cached).not.toContain('COMMENT_SENTINEL');
+    expect(cached).not.toContain('CDATA_SENTINEL');
+  });
+
   it('decodes predefined and numeric XML references once in safe metadata', async () => {
     setSources([source('alpha', ALPHA_FEED)]);
     const entityFeed = `<?xml version="1.0"?><rss><channel><item><title>  Juros &#38; infla&#231;&#227;o &amp; c&#xE2;mbio  </title><link>${ARTICLE}?a=1&amp;b=2</link><description>Resumo &amp; contexto.</description><pubDate>Mon, 23 Nov 2026 18:00:00 +0000</pubDate></item><item><title>Juros &amp;lt; inflação &amp;amp; câmbio</title><link>https://news.example.test/single-pass</link></item></channel></rss>`;
@@ -690,12 +851,60 @@ describe('allowlisted ingestion', () => {
     expect(result.sources.map((item) => item.canonicalUrl)).toEqual(['https://news.example.test/one']);
   });
 
+  it('rejects nested RSS title elements instead of concatenating or dropping child text', async () => {
+    setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(rss([
+          `<item><title>Juros <b>e</b> inflação</title><link>${ARTICLE}</link></item>`,
+        ]), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources.map((item) => item.sourceId)).toEqual(['beta']);
+  });
+
+  it('rejects Atom XHTML titles instead of extracting or sanitizing nested text', async () => {
+    setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(atomFeed([
+          `<entry><title type="xhtml"><div xmlns="http://www.w3.org/1999/xhtml">Juros <b>e</b> inflação</div></title><link href="${ARTICLE}" rel="alternate"/></entry>`,
+        ]), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources.map((item) => item.sourceId)).toEqual(['beta']);
+  });
+
+  it('accepts a title record containing only attributes and text', async () => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === ALPHA_FEED) {
+        return new Response(rss([
+          `<item><title xml:lang="pt-BR">Juros e inflação</title><link>${ARTICLE}</link></item>`,
+        ]), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(result.sources[0]?.title).toBe('Juros e inflação');
+  });
+
   it.each([
     ['CDATA markup', '<![CDATA[<b>Juros</b> e inflação]]>'],
     ['predefined markup', '&lt;b&gt;Juros&lt;/b&gt; e inflação'],
     ['numeric markup', '&#60;script&#62;Juros&#60;/script&#62;'],
   ])('rejects title markup instead of persisting it: %s', async (_label, titleXml) => {
-    setSources([source('alpha', ALPHA_FEED)]);
+    setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
     const fetchMock = mockFetch((input) => {
       if (String(input) === ALPHA_FEED) {
         return new Response(
@@ -708,11 +917,11 @@ describe('allowlisted ingestion', () => {
 
     const result = await collect(fetchMock);
 
-    expect(result.sources).toEqual([]);
+    expect(result.sources.map((item) => item.sourceId)).toEqual(['beta']);
   });
 
   it.each(['Juros\u200B e inflação', 'Juros\u202E e inflação'])('rejects unsafe Unicode format controls in titles: %j', async (title) => {
-    setSources([source('alpha', ALPHA_FEED)]);
+    setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
     const fetchMock = mockFetch((input) => {
       if (String(input) === ALPHA_FEED) return new Response(rss([rssItem({ title })]), { status: 200 });
       return defaultHandler(input);
@@ -720,7 +929,7 @@ describe('allowlisted ingestion', () => {
 
     const result = await collect(fetchMock);
 
-    expect(result.sources).toEqual([]);
+    expect(result.sources.map((item) => item.sourceId)).toEqual(['beta']);
   });
 
   it('revalidates decoded article URLs before canonicalization', async () => {
@@ -811,7 +1020,7 @@ describe('allowlisted ingestion', () => {
     ['control character in title', { title: 'Juros\u009F e inflação' }],
     ['unsafe URL length', { link: `https://news.example.test/${'x'.repeat(2_100)}` }],
   ])('rejects unsafe metadata: %s', async (_label, options) => {
-    setSources([source('alpha', ALPHA_FEED)]);
+    setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
     const fetchMock = mockFetch((input) => {
       if (String(input) === ALPHA_FEED) return new Response(rss([rssItem(options)]), { status: 200 });
       return defaultHandler(input);
@@ -819,7 +1028,7 @@ describe('allowlisted ingestion', () => {
 
     const result = await collect(fetchMock);
 
-    expect(result.sources).toEqual([]);
+    expect(result.sources.map((item) => item.sourceId)).toEqual(['beta']);
   });
 
   it('deduplicates canonical URL and normalized title without collapsing independent publishers', async () => {

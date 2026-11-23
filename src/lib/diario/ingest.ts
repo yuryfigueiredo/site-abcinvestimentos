@@ -31,6 +31,7 @@ const HOSTNAME = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0
 const TRACKING_PARAMETERS = /^(?:utm_.*|fbclid|gclid|dclid|mc_cid|mc_eid|igshid|ref|referrer)$/iu;
 const XML_ENTITIES = /<!\s*(?:DOCTYPE|ENTITY)\b/iu;
 const XML_CHARACTER_REFERENCE = /&(?:amp|lt|gt|apos|quot|#(?:\d+|x[\da-fA-F]+));/gu;
+const XML_REFERENCE_AT_POSITION = /&(?:amp|lt|gt|apos|quot|#(?:\d+|x[\da-fA-F]+));/yu;
 const XML_PREDEFINED_ENTITIES: Readonly<Record<string, string>> = {
   '&amp;': '&',
   '&lt;': '<',
@@ -56,26 +57,57 @@ function asArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [value];
 }
 
+function isValidXmlCodePoint(codePoint: number): boolean {
+  return Number.isSafeInteger(codePoint) && (
+    codePoint === 9 ||
+    codePoint === 10 ||
+    codePoint === 13 ||
+    (codePoint >= 0x20 && codePoint <= 0xd7ff) ||
+    (codePoint >= 0xe000 && codePoint <= 0xfffd) ||
+    (codePoint >= 0x10000 && codePoint <= 0x10ffff)
+  );
+}
+
+function decodeXmlReference(reference: string): string | null {
+  if (!reference.startsWith('&#')) return XML_PREDEFINED_ENTITIES[reference] ?? null;
+  const hexadecimal = reference[2] === 'x';
+  const codePoint = Number.parseInt(reference.slice(hexadecimal ? 3 : 2, -1), hexadecimal ? 16 : 10);
+  return isValidXmlCodePoint(codePoint) ? String.fromCodePoint(codePoint) : null;
+}
+
+function validateXmlReferences(xml: string): boolean {
+  for (let index = 0; index < xml.length; index += 1) {
+    if (xml.startsWith('<!--', index)) {
+      const end = xml.indexOf('-->', index + 4);
+      if (end === -1) return false;
+      index = end + 2;
+      continue;
+    }
+    if (xml.startsWith('<![CDATA[', index)) {
+      const end = xml.indexOf(']]>', index + 9);
+      if (end === -1) return false;
+      index = end + 2;
+      continue;
+    }
+    if (xml[index] !== '&') continue;
+    XML_REFERENCE_AT_POSITION.lastIndex = index;
+    const match = XML_REFERENCE_AT_POSITION.exec(xml);
+    if (!match || decodeXmlReference(match[0]) === null) return false;
+    index += match[0].length - 1;
+  }
+  return true;
+}
+
 function decodeXmlReferences(value: string, maxLength: number): string | null {
   if (value.length > maxLength) return null;
   let valid = true;
   const decoded = value.replace(XML_CHARACTER_REFERENCE, (reference) => {
-    if (!reference.startsWith('&#')) {
-      return XML_PREDEFINED_ENTITIES[reference] ?? reference;
-    }
-    const hexadecimal = reference[2] === 'x';
-    const codePoint = Number.parseInt(reference.slice(hexadecimal ? 3 : 2, -1), hexadecimal ? 16 : 10);
-    if (
-      !Number.isSafeInteger(codePoint) ||
-      codePoint === 0 ||
-      codePoint > 0x10ffff ||
-      (codePoint >= 0xd800 && codePoint <= 0xdfff) ||
-      (codePoint < 0x20 && codePoint !== 9 && codePoint !== 10 && codePoint !== 13)
-    ) {
+    const decodedReference = decodeXmlReference(reference);
+    if (decodedReference === null) {
       valid = false;
       return '\uFFFD';
     }
-    return String.fromCodePoint(codePoint);
+    return decodedReference;
   });
   return valid && decoded.length <= maxLength ? decoded : null;
 }
@@ -94,6 +126,13 @@ function metadataValue(value: unknown, maxLength: number): string | null {
   if (typeof value === 'string') return normalizedMetadata(value, maxLength);
   const record = asRecord(value);
   return record ? normalizedMetadata(record['#text'], maxLength) : null;
+}
+
+function titleValue(value: unknown, maxLength: number): string | null {
+  if (typeof value === 'string') return normalizedMetadata(value, maxLength);
+  const record = asRecord(value);
+  if (!record || Object.keys(record).some((key) => key !== '#text' && !key.startsWith('@'))) return null;
+  return normalizedMetadata(record['#text'], maxLength);
 }
 
 function canonicalUrl(value: unknown): string | null {
@@ -216,9 +255,19 @@ function isAllowedFeedUrl(value: URL, allowedHost: string, allowedPort: string):
   );
 }
 
-async function fetchFeedXml(initialValue: string, fetchImpl: typeof fetch): Promise<string | null> {
+type FeedFetchOutcome =
+  | { kind: 'xml'; xml: string }
+  | { kind: 'blocked' }
+  | { kind: 'unavailable' };
+
+type ParsedFeed = {
+  entryCount: number;
+  candidates: SourceCandidate[];
+};
+
+async function fetchFeedXml(initialValue: string, fetchImpl: typeof fetch): Promise<FeedFetchOutcome> {
   let url = feedUrl(initialValue);
-  if (!url) return null;
+  if (!url) return { kind: 'unavailable' };
   const allowedHost = url.hostname;
   const allowedPort = url.port || '443';
   url.hash = '';
@@ -235,34 +284,35 @@ async function fetchFeedXml(initialValue: string, fetchImpl: typeof fetch): Prom
       });
       try {
         if (REDIRECT_STATUSES.has(response.status)) {
-          if (hops >= MAX_REDIRECTS) return null;
+          if (hops >= MAX_REDIRECTS) return { kind: 'unavailable' };
           const location = response.headers.get('location');
           if (!location || location.length > MAX_URL_LENGTH || CONTROL_OR_SPACE.test(location) || INVALID_URL_CHARACTER.test(location)) {
-            return null;
+            return { kind: 'unavailable' };
           }
           let target: URL;
           try {
             target = new URL(location, url);
           } catch {
-            return null;
+            return { kind: 'unavailable' };
           }
-          if (!isAllowedFeedUrl(target, allowedHost, allowedPort)) return null;
+          if (!isAllowedFeedUrl(target, allowedHost, allowedPort)) return { kind: 'unavailable' };
           target.hash = '';
-          if (visited.has(target.href)) return null;
+          if (visited.has(target.href)) return { kind: 'unavailable' };
           visited.add(target.href);
           url = target;
           continue;
         }
-        if (!response.ok || response.status === 401 || response.status === 402 || response.status === 403) return null;
+        if (response.status === 401 || response.status === 402 || response.status === 403) return { kind: 'blocked' };
+        if (!response.ok) return { kind: 'unavailable' };
         const contentType = response.headers.get('content-type')?.split(';', 1)[0].trim().toLowerCase() ?? '';
-        if (contentType && !XML_TYPES.has(contentType) && !contentType.endsWith('+xml')) return null;
-        return await readBoundedText(response, MAX_FEED_BYTES, 'Feed');
+        if (contentType && !XML_TYPES.has(contentType) && !contentType.endsWith('+xml')) return { kind: 'unavailable' };
+        return { kind: 'xml', xml: await readBoundedText(response, MAX_FEED_BYTES, 'Feed') };
       } finally {
         await cancelResponseBody(response);
       }
     }
   } catch {
-    return null;
+    return { kind: 'unavailable' };
   } finally {
     clearTimeout(timeout);
   }
@@ -272,19 +322,19 @@ function alternateLink(item: Record<string, unknown>): string | null {
   if (typeof item.link === 'string') return item.link;
   for (const value of asArray(item.link)) {
     const link = asRecord(value);
-    if (!link || typeof link.href !== 'string') continue;
-    if (link.rel === undefined || link.rel === 'alternate') return link.href;
+    if (!link || typeof link['@href'] !== 'string') continue;
+    if (link['@rel'] === undefined || link['@rel'] === 'alternate') return link['@href'];
   }
   return null;
 }
 
-function parseFeed(xml: string, source: AllowlistSource, retrievedAt: string): SourceCandidate[] | null {
-  if (!xml || XML_ENTITIES.test(xml) || XMLValidator.validate(xml) !== true) return null;
+function parseFeed(xml: string, source: AllowlistSource, retrievedAt: string): ParsedFeed | null {
+  if (!xml || XML_ENTITIES.test(xml) || !validateXmlReferences(xml) || XMLValidator.validate(xml) !== true) return null;
   const parsed = new XMLParser({
     processEntities: false,
     parseTagValue: false,
     ignoreAttributes: false,
-    attributeNamePrefix: '',
+    attributeNamePrefix: '@',
     removeNSPrefix: true,
   }).parse(xml) as unknown;
   const root = asRecord(parsed);
@@ -292,11 +342,12 @@ function parseFeed(xml: string, source: AllowlistSource, retrievedAt: string): S
 
   let entries: unknown[];
   if (root.rss !== undefined) {
-    const channel = asRecord(asRecord(root.rss)?.channel);
+    const channelValue = asRecord(root.rss)?.channel;
+    const channel = typeof channelValue === 'string' && channelValue.trim() === '' ? {} : asRecord(channelValue);
     if (!channel) return null;
     entries = asArray(channel.item);
   } else if (root.feed !== undefined) {
-    const feed = asRecord(root.feed);
+    const feed = typeof root.feed === 'string' && root.feed.trim() === '' ? {} : asRecord(root.feed);
     if (!feed) return null;
     entries = asArray(feed.entry);
   } else {
@@ -307,7 +358,7 @@ function parseFeed(xml: string, source: AllowlistSource, retrievedAt: string): S
   for (const entry of entries.slice(0, 100)) {
     const item = asRecord(entry);
     if (!item) continue;
-    const title = metadataValue(item.title, MAX_TITLE_LENGTH);
+    const title = titleValue(item.title, MAX_TITLE_LENGTH);
     const url = canonicalUrl(alternateLink(item));
     if (!title || !url) continue;
     const excerpt = normalizedExcerpt(item.description ?? item.summary);
@@ -325,7 +376,7 @@ function parseFeed(xml: string, source: AllowlistSource, retrievedAt: string): S
       excerptSha256: createHash('sha256').update(excerpt, 'utf8').digest('hex'),
     });
   }
-  return candidates;
+  return { entryCount: entries.length, candidates };
 }
 
 async function collectSource(
@@ -337,12 +388,13 @@ async function collectSource(
   let successfulFeeds = 0;
   for (const feed of source.feeds) {
     try {
-      const xml = await fetchFeedXml(feed.url, fetchImpl);
-      if (xml === null) continue;
-      const parsed = parseFeed(xml, source, retrievedAt);
-      if (parsed === null) continue;
+      const outcome = await fetchFeedXml(feed.url, fetchImpl);
+      if (outcome.kind === 'blocked') break;
+      if (outcome.kind === 'unavailable') continue;
+      const parsed = parseFeed(outcome.xml, source, retrievedAt);
+      if (parsed === null || (parsed.entryCount > 0 && parsed.candidates.length === 0)) continue;
       successfulFeeds += 1;
-      candidates.push(...parsed);
+      candidates.push(...parsed.candidates);
     } catch {
       // Limites do parser XML também encerram somente este feed.
     }
