@@ -3,10 +3,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { afterEach, describe, expect, it } from 'vitest';
-import { draft } from './fixtures';
+import { computeCurationBundleHash } from '../../src/lib/diario/governance';
+import { readEditions } from '../../src/lib/diario/store';
+import { DATE, draft } from './fixtures';
 
 const ROOT = process.cwd();
 const BRIEFING_HEADINGS = ['O que aconteceu', 'Por que importa', 'O que observar'] as const;
+const MATERIAL_DATE = DATE;
+const QUIET_DATE = '2026-11-24';
 const temporaryRoots: string[] = [];
 
 function source(relativePath: string): string {
@@ -21,11 +25,95 @@ function componentTag(componentSource: string, name: string): string {
   return end === -1 ? '' : componentSource.slice(start, end + 1);
 }
 
+function styleRule(css: string, selector: string): string {
+  const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+  const rule = new RegExp(String.raw`${escapedSelector}\s*\{([^}]*)\}`, 'u').exec(css);
+  if (!rule) throw new Error(`CSS rule not found: ${selector}`);
+  return rule[1];
+}
+
+function declaration(rule: string, property: string): string {
+  const value = new RegExp(String.raw`(?:^|;)\s*${property}:\s*([^;]+);`, 'u').exec(rule)?.[1]?.trim();
+  if (!value) throw new Error(`CSS declaration not found: ${property}`);
+  return value;
+}
+
+function themeTokens(theme: 'light' | 'dark'): Record<string, string> {
+  const pattern = theme === 'light'
+    ? /:root\[data-theme="light"\],\s*html\[data-theme="light"\]\s*\{([^}]*)\}/u
+    : /:root\[data-theme="dark"\],\s*html\[data-theme="dark"\]\s*\{([^}]*)\}/u;
+  const block = pattern.exec(globalStyles)?.[1];
+  if (!block) throw new Error(`Theme tokens not found: ${theme}`);
+  return Object.fromEntries(
+    [...block.matchAll(/(--[\w-]+):\s*([^;]+);/gu)].map(([, name, value]) => [name, value.trim()]),
+  );
+}
+
+function resolveCssValue(value: string, tokens: Record<string, string>, seen = new Set<string>()): string {
+  const variable = /^var\((--[\w-]+)\)$/u.exec(value.trim());
+  if (!variable) return value.trim();
+  const name = variable[1];
+  if (seen.has(name)) throw new Error(`Circular CSS token: ${name}`);
+  const token = tokens[name];
+  if (!token) throw new Error(`CSS token not found: ${name}`);
+  return resolveCssValue(token, tokens, new Set([...seen, name]));
+}
+
+interface Rgba {
+  red: number;
+  green: number;
+  blue: number;
+  alpha: number;
+}
+
+function parseColor(value: string): Rgba {
+  const hex = /^#([\da-f]{6})$/iu.exec(value);
+  if (hex) {
+    return {
+      red: Number.parseInt(hex[1].slice(0, 2), 16),
+      green: Number.parseInt(hex[1].slice(2, 4), 16),
+      blue: Number.parseInt(hex[1].slice(4, 6), 16),
+      alpha: 1,
+    };
+  }
+  const rgba = /^rgba?\(\s*(\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3})(?:,\s*(\d*\.?\d+))?\s*\)$/iu.exec(value);
+  if (!rgba) throw new Error(`Unsupported CSS color: ${value}`);
+  return {
+    red: Number(rgba[1]),
+    green: Number(rgba[2]),
+    blue: Number(rgba[3]),
+    alpha: rgba[4] === undefined ? 1 : Number(rgba[4]),
+  };
+}
+
+function composite(foreground: Rgba, background: Rgba): Rgba {
+  return {
+    red: foreground.red * foreground.alpha + background.red * (1 - foreground.alpha),
+    green: foreground.green * foreground.alpha + background.green * (1 - foreground.alpha),
+    blue: foreground.blue * foreground.alpha + background.blue * (1 - foreground.alpha),
+    alpha: 1,
+  };
+}
+
+function luminance(color: Rgba): number {
+  const channels = [color.red, color.green, color.blue].map((channel) => {
+    const srgb = channel / 255;
+    return srgb <= 0.04045 ? srgb / 12.92 : ((srgb + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+}
+
+function contrastRatio(foreground: Rgba, background: Rgba): number {
+  const values = [luminance(foreground), luminance(background)].sort((left, right) => right - left);
+  return (values[0] + 0.05) / (values[1] + 0.05);
+}
+
 const hub = source('src/pages/diario-do-investidor/index.astro');
 const archive = source('src/pages/diario-do-investidor/[date].astro');
 const body = source('src/components/diario/EditionBody.astro');
 const indicatorGrid = source('src/components/diario/IndicatorGrid.astro');
 const eventCard = source('src/components/diario/EventCard.astro');
+const globalStyles = source('src/styles/global.css');
 const verifyBuild = source('scripts/diario/verify-build.ts');
 
 afterEach(() => {
@@ -131,6 +219,24 @@ describe('Diário article surfaces', () => {
     expect(archive).toMatch(/\.diario-article__aside :global\(\.indicator-panel__source\)[\s\S]*?font-size:\s*0\.88rem;/u);
   });
 
+  it.each([
+    { label: 'article news source', css: body, selector: '.edition-body--article .edition-body__item-sources a' },
+    { label: 'event', css: eventCard, selector: '.event-card a' },
+  ])('keeps $label links at WCAG AA contrast in light and dark themes', ({ css, selector }) => {
+    const linkColor = declaration(styleRule(css, selector), 'color');
+    const cardBackground = declaration(styleRule(globalStyles, '.abc-card'), 'background');
+
+    for (const theme of ['light', 'dark'] as const) {
+      const tokens = themeTokens(theme);
+      const canvas = parseColor(resolveCssValue(tokens['--bg-canvas'], tokens));
+      const card = composite(parseColor(resolveCssValue(cardBackground, tokens)), canvas);
+      const foreground = composite(parseColor(resolveCssValue(linkColor, tokens)), card);
+      const ratio = contrastRatio(foreground, card);
+
+      expect(ratio, `${theme}: ${linkColor} on ${cardBackground}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
   it('requires all briefing headings in the build verifier', () => {
     for (const heading of BRIEFING_HEADINGS) {
       expect(verifyBuild).toContain(`'${heading}'`);
@@ -149,17 +255,32 @@ interface BuildFixture {
 function buildFixture(): BuildFixture {
   const root = mkdtempSync(join(tmpdir(), 'diario-surface-build-'));
   temporaryRoots.push(root);
-  cpSync(join(ROOT, 'src/data/diario'), join(root, 'src/data/diario'), { recursive: true });
+  cpSync(join(ROOT, 'src/data/diario/curadoria'), join(root, 'src/data/diario/curadoria'), { recursive: true });
 
-  const quiet = draft('2026-11-24');
-  writeFileSync(
-    join(root, 'src/data/diario/edicoes', `${quiet.date}.json`),
-    `${JSON.stringify(quiet, null, 2)}\n`,
-    'utf8',
-  );
+  const approvalPath = join(root, 'src/data/diario/curadoria/approval.json');
+  const approval = JSON.parse(readFileSync(approvalPath, 'utf8')) as Record<string, unknown>;
+  approval.bundleSha256 = computeCurationBundleHash(root);
+  writeFileSync(approvalPath, `${JSON.stringify(approval, null, 2)}\n`, 'utf8');
+
+  const material = draft(MATERIAL_DATE);
+  const quiet = draft(QUIET_DATE);
+  if (material.decision.status !== 'material' || material.items.length > 0) {
+    throw new Error('The material fixture must be a no-news edition');
+  }
+  if (quiet.decision.status !== 'morno') throw new Error('The quiet fixture must be a quiet edition');
+
+  const editionsDirectory = join(root, 'src/data/diario/edicoes');
+  mkdirSync(editionsDirectory, { recursive: true });
+  for (const edition of [material, quiet]) {
+    writeFileSync(
+      join(editionsDirectory, `${edition.date}.json`),
+      `${JSON.stringify(edition, null, 2)}\n`,
+      'utf8',
+    );
+  }
 
   const hubDirectory = join(root, 'dist/diario-do-investidor');
-  const datedDirectory = join(hubDirectory, '2026-11-23');
+  const datedDirectory = join(hubDirectory, material.date);
   mkdirSync(datedDirectory, { recursive: true });
   mkdirSync(join(root, 'dist/api/diario'), { recursive: true });
   writeFileSync(
@@ -185,6 +306,14 @@ function verify(root: string): ReturnType<typeof spawnSync> {
 }
 
 describe('Diário build verification', () => {
+  it('uses an isolated one-material/one-quiet edition dataset', () => {
+    const fixture = buildFixture();
+    const editions = readEditions(fixture.root);
+
+    expect(editions.map((edition) => edition.date)).toEqual([QUIET_DATE, MATERIAL_DATE]);
+    expect(editions.map((edition) => edition.decision.status)).toEqual(['morno', 'material']);
+  });
+
   it.each(BRIEFING_HEADINGS)('rejects a material page missing the heading %s', (missingHeading) => {
     const fixture = buildFixture();
     writeFileSync(
@@ -203,7 +332,7 @@ describe('Diário build verification', () => {
     writeFileSync(fixture.datedPath, materialHtml(BRIEFING_HEADINGS), 'utf8');
 
     const result = verify(fixture.root);
-    expect(result.status).toBe(0);
+    expect(result.status, String(result.stderr)).toBe(0);
     expect(result.stdout).toContain('1 arquivo(s) material(is)');
     expect(result.stdout).toContain('1 edição(ões) morna(s) sem URL');
   });
