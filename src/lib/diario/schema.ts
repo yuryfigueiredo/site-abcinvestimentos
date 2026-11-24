@@ -10,6 +10,7 @@ import type {
   CollectedInputs,
   CurationDecision,
   Edition,
+  EditorialBriefing,
   Lesson,
   MeasuredKey,
   MeasuredValue,
@@ -87,14 +88,15 @@ function text(value: unknown, path: string, min: number, max: number): string {
   if (typeof value !== 'string') throw new Error(`${path} must be a string`);
   if (CONTROL_CHARACTER.test(value)) throw new Error(`${path} contains control characters`);
   if (value !== value.trim()) throw new Error(`${path} must not have leading or trailing whitespace`);
-  if (value.length < min || value.length > max) {
+  const length = value.trim().length;
+  if (length < min || length > max) {
     throw new Error(`${path} length must be between ${min} and ${max}`);
   }
   return value;
 }
 
-function prose(value: unknown, path: string, max: number): string {
-  const result = text(value, path, 1, max);
+function prose(value: unknown, path: string, max: number, min = 1): string {
+  const result = text(value, path, min, max);
   if (DECIMAL_NUMBER.test(result)) throw new Error(`${path} editorial prose must not contain digits`);
   if (HTML_MARKUP.test(result)) throw new Error(`${path} editorial prose must not contain HTML`);
   return result;
@@ -296,6 +298,45 @@ function parseNewsItem(value: unknown, path: string): NewsItem {
   };
 }
 
+export function parseCalendarEvent(value: unknown, path: string): CalendarEvent {
+  const fields = objectFields(value, path);
+  checkKeys(fields, ['id', 'date', 'title', 'sourceUrl'], path);
+  return {
+    id: identifier(required(fields, 'id', path), `${path}.id`),
+    date: parseCalendarDate(required(fields, 'date', path), `${path}.date`),
+    title: text(required(fields, 'title', path), `${path}.title`, 1, 240),
+    sourceUrl: parseHttpsUrl(required(fields, 'sourceUrl', path), `${path}.sourceUrl`),
+  };
+}
+
+function normalizedWatchItem(value: string): string {
+  return value
+    .normalize('NFKC')
+    .toLocaleLowerCase('pt-BR')
+    .normalize('NFKD')
+    .replace(/\p{M}/gu, '')
+    .replace(/\s+/gu, ' ')
+    .trim();
+}
+
+export function parseEditorialBriefing(value: unknown): EditorialBriefing {
+  const path = 'edition.briefing';
+  const fields = objectFields(value, path);
+  checkKeys(fields, ['whatHappened', 'whyItMatters', 'whatToWatch'], path);
+  const whatHappened = prose(required(fields, 'whatHappened', path), `${path}.whatHappened`, 1600, 240);
+  const whyItMatters = prose(required(fields, 'whyItMatters', path), `${path}.whyItMatters`, 1200, 200);
+  const watchEntries = arrayValue(required(fields, 'whatToWatch', path), `${path}.whatToWatch`, 4);
+  if (watchEntries.length < 2) throw new Error(`${path}.whatToWatch requires at least 2 entries`);
+  const whatToWatch = watchEntries.map((entry, index) =>
+    prose(entry, `${path}.whatToWatch[${index}]`, 320, 60),
+  );
+  const normalizedWatchItems = whatToWatch.map(normalizedWatchItem);
+  if (new Set(normalizedWatchItems).size !== normalizedWatchItems.length) {
+    throw new Error(`${path}.whatToWatch must not contain duplicate normalized items`);
+  }
+  return { whatHappened, whyItMatters, whatToWatch };
+}
+
 function parseMeasuredValue(value: unknown, path: string): MeasuredValue {
   const fields = objectFields(value, path);
   checkKeys(fields, ['value', 'observedOn', 'origin'], path);
@@ -484,6 +525,8 @@ export function parseEdition(value: unknown): Edition {
       'decision',
       'items',
       'lesson',
+      'briefing',
+      'event',
       'sources',
       'relatedCalculatorSlug',
       'policy',
@@ -491,7 +534,7 @@ export function parseEdition(value: unknown): Edition {
     ],
     'edition',
   );
-  if (required(fields, 'schemaVersion', 'edition') !== 1) throw new Error('edition.schemaVersion must be 1');
+  if (required(fields, 'schemaVersion', 'edition') !== 2) throw new Error('edition.schemaVersion must be 2');
 
   const items = arrayValue(required(fields, 'items', 'edition'), 'edition.items', 3).map((entry, index) =>
     parseNewsItem(entry, `edition.items[${index}]`),
@@ -500,6 +543,28 @@ export function parseEdition(value: unknown): Edition {
     parseSourceRef(entry, `edition.sources[${index}]`),
   );
   const lesson = fields.has('lesson') ? parseLesson(fields.get('lesson'), 'edition.lesson') : undefined;
+  const decision = parseCurationDecision(required(fields, 'decision', 'edition'), 'edition.decision');
+  const briefing = fields.has('briefing') ? parseEditorialBriefing(fields.get('briefing')) : undefined;
+  const event = fields.has('event') ? parseCalendarEvent(fields.get('event'), 'edition.event') : undefined;
+
+  if (decision.status === 'material' && briefing === undefined) {
+    throw new Error('edition.briefing is required for material editions');
+  }
+  if (decision.status === 'morno' && briefing !== undefined) {
+    throw new Error('edition.briefing is forbidden in quiet editions');
+  }
+  if (decision.status === 'morno' && event !== undefined) {
+    throw new Error('edition.event is forbidden in quiet editions');
+  }
+  if (decision.eventId === undefined && event !== undefined) {
+    throw new Error('edition.event is forbidden when edition.decision.eventId is absent');
+  }
+  if (decision.eventId !== undefined && event === undefined) {
+    throw new Error('edition.event is required when edition.decision.eventId exists');
+  }
+  if (event !== undefined && event.id !== decision.eventId) {
+    throw new Error('edition.event.id must match edition.decision.eventId');
+  }
 
   rejectDuplicateIds(items, 'edition.items', 'NewsItem');
   rejectDuplicateIds(sources, 'edition.sources', 'SourceRef');
@@ -515,17 +580,19 @@ export function parseEdition(value: unknown): Edition {
   }
 
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     id: identifier(required(fields, 'id', 'edition'), 'edition.id'),
     date: parseCalendarDate(required(fields, 'date', 'edition'), 'edition.date'),
     generatedAt: parseIsoTimestamp(required(fields, 'generatedAt', 'edition'), 'edition.generatedAt'),
     title: prose(required(fields, 'title', 'edition'), 'edition.title', 240),
     summary: prose(required(fields, 'summary', 'edition'), 'edition.summary', 4000),
     snapshot: parseBcbSnapshot(required(fields, 'snapshot', 'edition'), 'edition.snapshot'),
-    decision: parseCurationDecision(required(fields, 'decision', 'edition'), 'edition.decision'),
+    decision,
     items,
     sources,
     ...(lesson === undefined ? {} : { lesson }),
+    ...(briefing === undefined ? {} : { briefing }),
+    ...(event === undefined ? {} : { event }),
     relatedCalculatorSlug: slug(required(fields, 'relatedCalculatorSlug', 'edition'), 'edition.relatedCalculatorSlug'),
     policy: parsePolicy(required(fields, 'policy', 'edition'), 'edition.policy'),
     provenance: parseProvenance(required(fields, 'provenance', 'edition'), 'edition.provenance'),
@@ -562,17 +629,9 @@ export function parseCollectedInputs(value: unknown): CollectedInputs {
   const sources = arrayValue(required(fields, 'sources', 'inputs'), 'inputs.sources', 1000).map((entry, index) =>
     parseSourceCandidate(entry, `inputs.sources[${index}]`),
   );
-  const events = arrayValue(required(fields, 'events', 'inputs'), 'inputs.events', 100).map((entry, index) => {
-    const path = `inputs.events[${index}]`;
-    const eventFields = objectFields(entry, path);
-    checkKeys(eventFields, ['id', 'date', 'title', 'sourceUrl'], path);
-    return {
-      id: identifier(required(eventFields, 'id', path), `${path}.id`),
-      date: parseCalendarDate(required(eventFields, 'date', path), `${path}.date`),
-      title: text(required(eventFields, 'title', path), `${path}.title`, 1, 240),
-      sourceUrl: parseHttpsUrl(required(eventFields, 'sourceUrl', path), `${path}.sourceUrl`),
-    };
-  });
+  const events = arrayValue(required(fields, 'events', 'inputs'), 'inputs.events', 100).map((entry, index) =>
+    parseCalendarEvent(entry, `inputs.events[${index}]`),
+  );
   const lessons = parseLessons(required(fields, 'lessons', 'inputs'));
   const previousEditions = arrayValue(required(fields, 'previousEditions', 'inputs'), 'inputs.previousEditions', 1000).map(
     (entry) => parseEdition(entry),
@@ -690,17 +749,10 @@ export function parseCalendar(value: unknown): CalendarEvent[] {
   const ids = new Set<string>();
   return entries.map((entry, index) => {
     const path = `calendar[${index}]`;
-    const fields = objectFields(entry, path);
-    checkKeys(fields, ['id', 'date', 'title', 'sourceUrl'], path);
-    const id = identifier(required(fields, 'id', path), `${path}.id`);
-    if (ids.has(id)) throw new Error(`${path}.id duplicates a calendar event`);
-    ids.add(id);
-    return {
-      id,
-      date: parseCalendarDate(required(fields, 'date', path), `${path}.date`),
-      title: text(required(fields, 'title', path), `${path}.title`, 1, 240),
-      sourceUrl: parseHttpsUrl(required(fields, 'sourceUrl', path), `${path}.sourceUrl`),
-    };
+    const event = parseCalendarEvent(entry, path);
+    if (ids.has(event.id)) throw new Error(`${path}.id duplicates a calendar event`);
+    ids.add(event.id);
+    return event;
   });
 }
 

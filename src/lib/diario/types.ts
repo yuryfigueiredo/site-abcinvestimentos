@@ -98,6 +98,12 @@ export interface CalendarEvent {
   sourceUrl: string;
 }
 
+export interface EditorialBriefing {
+  whatHappened: string;
+  whyItMatters: string;
+  whatToWatch: string[];
+}
+
 export interface BcbObservation {
   value: number;
   date: string;
@@ -125,7 +131,7 @@ export interface CurationDecision {
 }
 
 export interface Edition {
-  schemaVersion: 1;
+  schemaVersion: 2;
   id: string;
   date: string;
   generatedAt: string;
@@ -135,6 +141,8 @@ export interface Edition {
   decision: CurationDecision;
   items: NewsItem[];
   lesson?: Lesson;
+  briefing?: EditorialBriefing;
+  event?: CalendarEvent;
   sources: SourceRef[];
   relatedCalculatorSlug: string;
   policy: {
