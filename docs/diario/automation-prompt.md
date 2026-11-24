@@ -142,11 +142,13 @@ também interrompe o run: não commite nem publique.
 
    ```bash
    git add src/data/diario/edicoes/<date>.json
+   git diff --cached --check
    git commit -m "docs(diario): publica edição <date>"
    ```
 
-2. O lock permanece até o fim do commit. Não use `git add -A` nem inclua cache, rascunho, cofre ou
-   arquivos alheios.
+2. A checagem staged inclui a nova edição, que o `git diff --check` anterior não consegue ver.
+   Qualquer falha interrompe o run antes do commit. O lock permanece até o fim do commit. Não use
+   `git add -A` nem inclua cache, rascunho, cofre ou arquivos alheios.
 3. Faça `git push origin main` somente após aprovação explícita do dono para publicar. Sem essa
    aprovação, encerre após o commit e relate que a edição ficou local.
 

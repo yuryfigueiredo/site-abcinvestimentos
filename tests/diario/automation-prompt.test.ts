@@ -21,11 +21,14 @@ function expectInOrder(...fragments: string[]): void {
 
 describe('Prompt da automação do Diário', () => {
   it('fixa a versão exata e a operação no Mac às 19:00 BRT', () => {
-    expect(normalized).toContain('diario-2026-11-23-briefing-v2');
+    const expectedVersion = 'diario-2026-11-23-briefing-v2';
+    const versionTokens = prompt.match(/diario-\d{4}-\d{2}-\d{2}-briefing-v\d+/gu) ?? [];
+    expect(new Set(versionTokens)).toEqual(new Set([expectedVersion]));
+    expect(normalized).toContain(`Versão obrigatória: \`${expectedVersion}\``);
+    expect(normalized).toContain(`\`provenance.promptVersion\` como \`${expectedVersion}\``);
     expect(normalized).toContain('19:00 BRT');
     expect(normalized).toContain('America/Sao_Paulo');
     expect(normalized).toContain('Mac');
-    expect(normalized).toContain('provenance.promptVersion');
   });
 
   it('adquire o lock antes do pull, para em árvore suja e preserva arquivos alheios', () => {
@@ -120,9 +123,19 @@ describe('Prompt da automação do Diário', () => {
 
   it('commita caminhos explícitos e não confunde validação com publicação antecipada', () => {
     expect(normalized).toMatch(/git add src\/data\/diario\/edicoes\/<date>\.json/u);
+    expect(normalized).toContain('git diff --cached --check');
     expect(normalized).toMatch(/git commit/u);
     expect(normalized).toMatch(/git push origin main/u);
     expect(normalized).toMatch(/push.*aprova[çc][ãa]o expl[íi]cita/u);
-    expectInOrder('npm run diario:validate -- --publish', 'npm test', 'npm run build', 'git diff --check', 'git add src/data/diario/edicoes/<date>.json', 'git commit', 'git push origin main');
+    expectInOrder(
+      'npm run diario:validate -- --publish',
+      'npm test',
+      'npm run build',
+      'git diff --check',
+      'git add src/data/diario/edicoes/<date>.json',
+      'git diff --cached --check',
+      'git commit',
+      'git push origin main',
+    );
   });
 });
