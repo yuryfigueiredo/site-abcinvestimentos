@@ -23,11 +23,14 @@ interface Props {
 const { edition } = Astro.props;
 const measured = edition.snapshot.measured;
 const indicatorKeys: MeasuredKey[] = ['selic', 'cdi', 'ipca12m', 'dolar'];
-const indicatorRows = indicatorKeys.map((key): IndicatorRow => measured[key] ?? {
-  value: null,
-  observedOn: null,
-  origin: 'unavailable',
-});
+const indicatorRows = indicatorKeys.map((key): IndicatorRow => ({
+  key,
+  ...(measured[key] ?? {
+    value: null,
+    observedOn: null,
+    origin: 'unavailable',
+  }),
+}));
 const editionDate = new Date(`${edition.date}T12:00:00`).toLocaleDateString('pt-BR', {
   day: '2-digit',
   month: 'long',
@@ -161,6 +164,10 @@ const articleJsonLd = {
     font-size: clamp(1.12rem, 2vw, 1.24rem);
     line-height: 1.8;
     text-wrap: pretty;
+  }
+
+  .diario-article__aside :global(.indicator-panel h2) {
+    text-wrap: balance;
   }
 
   .diario-article__aside :global(.indicator-row dd strong),

@@ -112,6 +112,7 @@ const hub = source('src/pages/diario-do-investidor/index.astro');
 const archive = source('src/pages/diario-do-investidor/[date].astro');
 const body = source('src/components/diario/EditionBody.astro');
 const indicatorGrid = source('src/components/diario/IndicatorGrid.astro');
+const sourceList = source('src/components/diario/SourceList.astro');
 const eventCard = source('src/components/diario/EventCard.astro');
 const globalStyles = source('src/styles/global.css');
 const verifyBuild = source('scripts/diario/verify-build.ts');
@@ -139,6 +140,7 @@ describe('Diário article surfaces', () => {
       expect(body).toMatch(new RegExp(`<h2[^>]*>${heading}</h2>`, 'u'));
       expect(hub).not.toContain(heading);
     }
+    expect(body).toMatch(/<ul role="list">\s*\{briefing\.whatToWatch\.map/u);
   });
 
   it('renders the factual event card only when the article has an event', () => {
@@ -170,9 +172,9 @@ describe('Diário article surfaces', () => {
     expect(archive.indexOf(summary)).toBeLessThan(archive.indexOf('<IndicatorGrid'));
   });
 
-  it('maps the four fixed snapshot keys and uses explicit unavailable rows', () => {
+  it('maps every fixed snapshot key to a labeled measured or unavailable row', () => {
     expect(archive).toContain("['selic', 'cdi', 'ipca12m', 'dolar']");
-    expect(archive).toMatch(/measured\[key\] \?\? \{\s*value: null,\s*observedOn: null,\s*origin: 'unavailable',?\s*\}/u);
+    expect(archive).toMatch(/indicatorKeys\.map\(\(key\): IndicatorRow => \(\{\s*key,\s*\.\.\.\(measured\[key\] \?\? \{\s*value: null,\s*observedOn: null,\s*origin: 'unavailable',?\s*\}\),?\s*\}\)/u);
     expect(archive).toContain('edition.snapshot.measured');
     expect(archive).not.toMatch(/getIndicators/u);
   });
@@ -197,9 +199,9 @@ describe('Diário article surfaces', () => {
     expect(indicatorGrid).toContain('em relação à observação anterior');
     expect(indicatorGrid).toContain('showBcbSource &&');
 
-    for (const code of ['432', '4389', '13522', '1']) {
-      expect(indicatorGrid).toContain(code);
-    }
+    expect(indicatorGrid.replace(/\s+/gu, ' ')).toContain(
+      'Séries: 432 (Selic), 4389 (CDI), 13522 (IPCA acumulado) e 1 (Dólar / PTAX).',
+    );
   });
 
   it('scopes readable article typography and visible focus without adding JavaScript', () => {
@@ -207,6 +209,10 @@ describe('Diário article surfaces', () => {
     expect(body).toMatch(/\.edition-body--article\s*\{[^}]*line-height:\s*1\.[78]\d*;/u);
     expect(body).toContain('text-wrap: pretty');
     expect(body).toContain('text-wrap: balance');
+    expect(declaration(styleRule(body, '.edition-body--article :global(.source-list h2)'), 'text-wrap')).toBe('balance');
+    expect(declaration(styleRule(archive, '.diario-article__aside :global(.indicator-panel h2)'), 'text-wrap')).toBe('balance');
+    expect(styleRule(sourceList, '.source-list h2')).not.toMatch(/text-wrap/u);
+    expect(styleRule(indicatorGrid, '.indicator-panel h2')).not.toMatch(/text-wrap/u);
     expect(body).toContain(':global(a):focus-visible');
     expect(archive).toContain('text-wrap: pretty');
     expect(archive).toContain('text-wrap: balance');

@@ -64,7 +64,7 @@ const sourcesById = new Map(edition.sources.map((source) => [source.id, source])
   {variant === 'article' && briefing && (
     <section class="edition-body__section edition-body__watch" aria-labelledby="briefing-o-que-observar">
       <h2 id="briefing-o-que-observar">O que observar</h2>
-      <ul>
+      <ul role="list">
         {briefing.whatToWatch.map((point) => <li>{point}</li>)}
       </ul>
     </section>
@@ -295,6 +295,10 @@ const sourcesById = new Map(edition.sources.map((source) => [source.id, source])
   .edition-body--article :global(.source-list) {
     margin-block-start: 2.75rem;
     padding-block-start: 1.75rem;
+  }
+
+  .edition-body--article :global(.source-list h2) {
+    text-wrap: balance;
   }
 
   .edition-body--article :global(.source-list__publisher) {
