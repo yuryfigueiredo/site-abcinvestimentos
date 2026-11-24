@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { buildSelection, decideEdition } from '../../src/lib/diario/curate';
 import { computeCurationBundleHash, verifyGovernance } from '../../src/lib/diario/governance';
 import { parseEdition, parseSelection } from '../../src/lib/diario/schema';
-import type { CollectedInputs, Edition, Selection, Vault } from '../../src/lib/diario/types';
+import type { CollectedInputs, Edition, EditorialBriefing, Selection, Vault } from '../../src/lib/diario/types';
 import {
   loadValidationContext,
   validateAndPublish,
@@ -97,6 +97,19 @@ function materialSelection(collected: CollectedInputs, approvedVault: Vault): Se
     reasonCodes: ['corroborated-media-news'],
     newsClusterIds: ['cluster-media'],
   }, approvedVault, []);
+}
+
+function materialBriefing(): EditorialBriefing {
+  return {
+    whatHappened:
+      'A curadoria identificou um fato novo que justifica uma leitura própria para a data. O conteúdo aprovado reúne o contexto necessário para entender o que mudou e por que o assunto merece atenção. A síntese permanece educacional, não antecipa desdobramentos e não apresenta recomendação de investimento.',
+    whyItMatters:
+      'O contexto ajuda o investidor a relacionar o fato com seus objetivos, prazo e tolerância a oscilações. A leitura educacional permite acompanhar mudanças com mais critério, sem transformar informação pública em promessa de resultado ou em indicação de compra e venda de ativos.',
+    whatToWatch: [
+      'Acompanhe os próximos comunicados oficiais e verifique se novas informações alteram o contexto apresentado nesta edição.',
+      'Observe os desdobramentos relacionados ao tema e compare as fontes aprovadas antes de revisar o planejamento.',
+    ],
+  };
 }
 
 describe('parseSelection', () => {
@@ -200,6 +213,7 @@ describe('validateEdition', () => {
     selection.selectedSources = collected.sources.map((item) => ({ ...item, clusterId: 'cluster-media', topic: 'juros' as const }));
     const value = draft('2026-11-24', collected, approvedVault);
     value.decision = selection.decision;
+    value.briefing = materialBriefing();
     value.items = [{
       id: 'noticia-media',
       topic: 'juros',
@@ -234,6 +248,7 @@ describe('validateEdition', () => {
     selection.selectedSources = collected.sources.map((item) => ({ ...item, clusterId: 'cluster-media', topic: 'juros' as const }));
     const value = draft('2026-11-24', collected, approvedVault);
     value.decision = selection.decision;
+    value.briefing = materialBriefing();
     value.items = [{
       id: 'noticia-media',
       topic: 'juros',
@@ -284,6 +299,7 @@ describe('validateEdition', () => {
     selection.selectedSources = [{ ...collected.sources[0], clusterId: 'cluster-media', topic: 'juros' }];
     const value = draft('2026-11-24', collected, approvedVault);
     value.decision = selection.decision;
+    value.briefing = materialBriefing();
     value.items = [{
       id: 'noticia-nd',
       topic: 'juros',
@@ -315,6 +331,7 @@ describe('validateEdition', () => {
   it('rejects a material or quiet status that was not recomputed from evidence', () => {
     const { value, context: validation } = quietContext();
     value.decision.status = 'material';
+    value.briefing = materialBriefing();
 
     expect(() => validateEdition(value, validation)).toThrow(/decision|status/i);
   });

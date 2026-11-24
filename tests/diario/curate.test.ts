@@ -31,6 +31,7 @@ function calendarEvent(date = DATE) {
 function withEventPrevious(date = '2026-11-22'): Edition {
   const previous = previousEdition(date);
   previous.decision = { status: 'material', reasonCodes: ['calendar-event'], eventId: 'copom-2026-11', newsClusterIds: [] };
+  previous.event = calendarEvent(date);
   previous.items = [];
   previous.sources = [{
     id: 'fonte-evento-anterior',
