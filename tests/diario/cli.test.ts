@@ -3,8 +3,9 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, write
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { buildDeterministicBriefing } from '../../src/lib/diario/briefing';
 import { computeCurationBundleHash, verifyGovernance } from '../../src/lib/diario/governance';
-import { parseSelection } from '../../src/lib/diario/schema';
+import { parseEditorialBriefing, parseSelection } from '../../src/lib/diario/schema';
 import { DATE, draft, inputs, source } from './fixtures';
 
 const roots: string[] = [];
@@ -50,6 +51,52 @@ describe('Diário CLIs', () => {
     const selection = parseSelection(JSON.parse(readFileSync(join(root, '.cache/diario', DATE, 'selection.json'), 'utf8')));
     expect(selection.decision.status).toBe('material');
     expect(selection.selectedSources.map((item) => item.id)).toEqual(['fonte-bcb']);
+    expect(existsSync(join(root, 'src/data/diario/edicoes', `${DATE}.json`))).toBe(false);
+  });
+
+  it('writes deterministic briefing without publishing a no-news material edition', () => {
+    const root = tempRoot();
+    const approvedVault = verifyGovernance(root);
+    const collected = inputs();
+    collected.bcb.dolar = [
+      { value: 5.05, date: DATE },
+      { value: 4.99, date: '2026-11-20' },
+    ];
+    collected.lessons = approvedVault.lessons;
+    writeJson(join(root, '.cache/diario', DATE, 'inputs.json'), collected);
+
+    runScript('curate', root);
+
+    const edition = draft(DATE, collected, approvedVault);
+    const briefingPath = join(root, '.cache/diario', DATE, 'briefing.json');
+    const bytes = readFileSync(briefingPath, 'utf8');
+    const briefing = parseEditorialBriefing(JSON.parse(bytes));
+    expect(edition.decision).toMatchObject({
+      status: 'material',
+      reasonCodes: ['dollar-trigger'],
+      newsClusterIds: [],
+    });
+    expect(briefing).toEqual(buildDeterministicBriefing(edition, approvedVault));
+    expect(briefing.whatHappened).toMatch(/d[oó]lar/iu);
+    expect(briefing.whatHappened).toMatch(/limiar/iu);
+    expect(bytes).toBe(`${JSON.stringify(briefing, null, 2)}\n`);
+    expect(existsSync(join(root, 'src/data/diario/edicoes', `${DATE}.json`))).toBe(false);
+  });
+
+  it('does not write deterministic briefing for a selected official news cluster', () => {
+    const root = tempRoot();
+    const approvedVault = verifyGovernance(root);
+    const collected = inputs();
+    collected.sources = [source()];
+    collected.lessons = approvedVault.lessons;
+    writeJson(join(root, '.cache/diario', DATE, 'inputs.json'), collected);
+
+    runScript('curate', root);
+
+    const selection = parseSelection(JSON.parse(readFileSync(join(root, '.cache/diario', DATE, 'selection.json'), 'utf8')));
+    expect(selection.decision.newsClusterIds.length).toBeGreaterThan(0);
+    expect(selection.selectedSources.map((item) => item.id)).toEqual(['fonte-bcb']);
+    expect(existsSync(join(root, '.cache/diario', DATE, 'briefing.json'))).toBe(false);
     expect(existsSync(join(root, 'src/data/diario/edicoes', `${DATE}.json`))).toBe(false);
   });
 

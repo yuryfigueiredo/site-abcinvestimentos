@@ -34,7 +34,7 @@ const TOPIC_TERMS: Record<Topic, RegExp> = {
   regulacao: /\b(?:regulacao|regulador|fiscalizacao|compliance|cvm|fgc|bacen)\b/iu,
 };
 
-const EVENT_TOPICS: Record<string, Topic> = {
+export const EVENT_TOPICS: Readonly<Record<string, Topic>> = {
   copom: 'juros',
   ipca: 'inflacao',
   'igp-m': 'inflacao',

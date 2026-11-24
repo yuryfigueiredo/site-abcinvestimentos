@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { buildDeterministicBriefing } from '../../src/lib/diario/briefing';
 import { buildBcbSnapshot, buildSelection, decideEdition } from '../../src/lib/diario/curate';
 import type {
   AllowlistSource,
@@ -214,7 +215,7 @@ export function draft(date = DATE, collected = inputs(date), approvedVault = vau
   const event = decision.eventId === undefined
     ? undefined
     : approvedVault.calendar.find((candidate) => candidate.id === decision.eventId);
-  return {
+  const edition: Edition = {
     schemaVersion: 2,
     id: `diario-${date}`,
     date,
@@ -235,18 +236,6 @@ export function draft(date = DATE, collected = inputs(date), approvedVault = vau
     }],
     sources: selection.selectedSources.map(sourceRef),
     ...(lesson === undefined ? {} : { lesson }),
-    ...(decision.status === 'material' ? {
-      briefing: {
-        whatHappened:
-          'A curadoria identificou um fato novo que justifica uma leitura própria para a data. O conteúdo aprovado reúne o contexto necessário para entender o que mudou e por que o assunto merece atenção. A síntese permanece educacional, não antecipa desdobramentos e não apresenta recomendação de investimento.',
-        whyItMatters:
-          'O contexto ajuda o investidor a relacionar o fato com seus objetivos, prazo e tolerância a oscilações. A leitura educacional permite acompanhar mudanças com mais critério, sem transformar informação pública em promessa de resultado ou em indicação de compra e venda de ativos.',
-        whatToWatch: [
-          'Acompanhe os próximos comunicados oficiais e verifique se novas informações alteram o contexto apresentado nesta edição.',
-          'Observe os desdobramentos relacionados ao tema e compare as fontes aprovadas antes de revisar o planejamento.',
-        ],
-      },
-    } : {}),
     ...(event === undefined ? {} : { event }),
     relatedCalculatorSlug: 'juros-compostos',
     policy: publicPolicy(approvedVault),
@@ -256,6 +245,21 @@ export function draft(date = DATE, collected = inputs(date), approvedVault = vau
       disclaimerKey: 'educacional-nao-e-recomendacao',
     },
   };
+  if (edition.decision.status === 'material') {
+    edition.briefing = edition.decision.newsClusterIds.length === 0
+      ? buildDeterministicBriefing(edition, approvedVault)
+      : {
+          whatHappened:
+            'A curadoria identificou um fato novo que justifica uma leitura própria para a data. O conteúdo aprovado reúne o contexto necessário para entender o que mudou e por que o assunto merece atenção. A síntese permanece educacional, não antecipa desdobramentos e não apresenta recomendação de investimento.',
+          whyItMatters:
+            'O contexto ajuda o investidor a relacionar o fato com seus objetivos, prazo e tolerância a oscilações. A leitura educacional permite acompanhar mudanças com mais critério, sem transformar informação pública em promessa de resultado ou em indicação de compra e venda de ativos.',
+          whatToWatch: [
+            'Acompanhe os próximos comunicados oficiais e verifique se novas informações alteram o contexto apresentado nesta edição.',
+            'Observe os desdobramentos relacionados ao tema e compare as fontes aprovadas antes de revisar o planejamento.',
+          ],
+        };
+  }
+  return edition;
 }
 
 export function previousEdition(date: string, candidate = source()): Edition {
