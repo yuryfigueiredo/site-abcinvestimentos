@@ -5,7 +5,7 @@ import DiarioByline from '../../components/diario/DiarioByline.astro';
 import EditionBody from '../../components/diario/EditionBody.astro';
 import IndicatorGrid from '../../components/diario/IndicatorGrid.astro';
 import { getIndicators } from '../../lib/indicators';
-import { absUrl } from '../../lib/seo';
+import { absUrl, breadcrumbSchema } from '../../lib/seo';
 import { latestEdition, materialEditions, readEditions } from '../../lib/diario/store';
 import type { MeasuredKey } from '../../lib/diario/types';
 import { SITE_CONFIG } from '../../config/site';
@@ -28,13 +28,21 @@ const editionDate = new Date(`${latest.date}T12:00:00`).toLocaleDateString('pt-B
 });
 const collectionJsonLd = {
   '@context': 'https://schema.org',
-  '@type': 'CollectionPage',
-  name: 'Diário do Investidor',
-  description: 'Leitura diária do mercado financeiro com indicadores do Banco Central e curadoria de fontes verificadas.',
-  url: absUrl('/diario-do-investidor'),
-  inLanguage: 'pt-BR',
-  isPartOf: { '@type': 'WebSite', '@id': `${SITE_CONFIG.url}/#website` },
-  publisher: { '@id': `${SITE_CONFIG.url}/#organization` },
+  '@graph': [
+    {
+      '@type': 'CollectionPage',
+      name: 'Diário do Investidor',
+      description: 'Leitura diária do mercado financeiro com indicadores do Banco Central e curadoria de fontes verificadas.',
+      url: absUrl('/diario-do-investidor'),
+      inLanguage: 'pt-BR',
+      isPartOf: { '@type': 'WebSite', '@id': `${SITE_CONFIG.url}/#website` },
+      publisher: { '@id': `${SITE_CONFIG.url}/#organization` },
+    },
+    breadcrumbSchema([
+      { name: 'Início', path: '/' },
+      { name: 'Diário do Investidor' },
+    ]),
+  ],
 };
 ---
 

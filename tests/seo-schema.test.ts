@@ -1,7 +1,10 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { SITE_CONFIG } from '../src/config/site';
 import { absUrl, applicationSchema, breadcrumbSchema, ldJson } from '../src/lib/seo';
 import { formatDateBr } from '../src/lib/finance';
+import { diarioHubLastmod, diarioSitemapMetadata } from '../src/lib/diario/seo';
 
 const ORIGIN = 'https://www.abcinvestimentos.com.br';
 
@@ -80,5 +83,85 @@ describe('formatDateBr', () => {
     // SITE_CONFIG.defaultIndicators.updatedAt é 'Out/2026 (Referência BCB)': um Date()
     // aqui imprimia NaN/NaN/NaN no byline quando a API do BCB falha.
     expect(formatDateBr('Out/2026 (Referência BCB)')).toBe('Out/2026 (Referência BCB)');
+  });
+});
+
+function source(relativePath: string): string {
+  return readFileSync(join(process.cwd(), relativePath), 'utf8');
+}
+
+describe('Diário no sitemap', () => {
+  const context = {
+    hubLastmod: '2026-11-23',
+    materialDates: new Set(['2026-11-23']),
+  };
+
+  it('inclui a data material com lastmod da própria edição', () => {
+    expect(diarioSitemapMetadata('/diario-do-investidor/2026-11-23/', context)).toEqual({
+      include: true,
+      lastmod: '2026-11-23',
+    });
+  });
+
+  it('exclui uma data morna mesmo que uma URL tenha sobrado no build', () => {
+    expect(diarioSitemapMetadata('/diario-do-investidor/2026-11-22/', context)).toEqual({
+      include: false,
+    });
+  });
+
+  it('usa a última data relevante do hub sem marcar a metodologia como diária', () => {
+    expect(diarioSitemapMetadata('/diario-do-investidor/', context)).toEqual({
+      include: true,
+      lastmod: '2026-11-23',
+    });
+    expect(diarioSitemapMetadata('/diario-do-investidor/metodologia/', context)).toEqual({
+      include: true,
+    });
+  });
+
+  it('escolhe a maior data entre a edição e a observação BCB', () => {
+    expect(diarioHubLastmod('2026-11-22', '2026-11-23')).toBe('2026-11-23');
+    expect(diarioHubLastmod('2026-11-23', '2026-11-20')).toBe('2026-11-23');
+    expect(diarioHubLastmod('2026-11-23', undefined)).toBe('2026-11-23');
+  });
+});
+
+describe('Descoberta e metadados do Diário', () => {
+  it('oferece o hub no menu desktop e mobile com estado ativo', () => {
+    const header = source('src/components/Header.astro');
+    expect(header.match(/href="\/diario-do-investidor"/gu)).toHaveLength(2);
+    expect(header).toContain('isDiarioActive');
+    expect(header).toContain('aria-current={isDiarioActive ? \'page\' : undefined}');
+  });
+
+  it('oferece o hub no footer e na home', () => {
+    expect(source('src/components/Footer.astro')).toContain('href="/diario-do-investidor/"');
+    expect(source('src/pages/index.astro')).toContain('href="/diario-do-investidor/"');
+  });
+
+  it('mantém canonical e breadcrumb no hub e no arquivo material', () => {
+    const hub = source('src/pages/diario-do-investidor/index.astro');
+    const archive = source('src/pages/diario-do-investidor/[date].astro');
+    expect(hub).toContain('canonical="/diario-do-investidor"');
+    expect(hub).toContain('breadcrumbSchema');
+    expect(archive).toContain('canonical={`/diario-do-investidor/${edition.date}`}');
+    expect(archive).toContain('breadcrumbSchema');
+  });
+
+  it('usa byline automática honesta ligada à metodologia', () => {
+    const byline = source('src/components/diario/DiarioByline.astro');
+    expect(byline).toContain('Diário do Investidor · curadoria automática com fontes verificadas');
+    expect(byline).toContain('/diario-do-investidor/metodologia/');
+    expect(byline).not.toMatch(/revis(?:ado|ão)\s+(?:por\s+)?(?:humano|pessoa)/iu);
+  });
+
+  it('explica materialidade, fontes, cofre e limites educacionais na metodologia', () => {
+    const methodology = source('src/pages/diario-do-investidor/metodologia.astro');
+    expect(methodology).toContain('material');
+    expect(methodology).toContain('morno');
+    expect(methodology).toContain('Banco Central');
+    expect(methodology).toContain('cofre');
+    expect(methodology).toContain('recomendação');
+    expect(methodology).toContain('SITE_CONFIG.legalDisclaimer');
   });
 });

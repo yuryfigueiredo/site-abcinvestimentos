@@ -178,7 +178,21 @@ const bookCovers = await fetchBookCovers();
     </div>
   </section>
 
-  <!-- 4. Trilha Educativa: O ABC do Investidor (Do A ao C) -->
+  <!-- 4. Diário do Investidor: leitura diária com curadoria verificada -->
+  <section class="section diario-home-section" id="diario-do-investidor">
+    <div class="container">
+      <div class="diario-home-card">
+        <div>
+          <span class="badge-pill">Leitura diária do mercado</span>
+          <h2>Diário do Investidor</h2>
+          <p>O que mudou, o que não mudou e por que importa. Dados oficiais, fontes verificadas e páginas datadas só quando há substância.</p>
+        </div>
+        <a href="/diario-do-investidor/" class="btn btn-primary">Ler a edição de hoje →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. Trilha Educativa: O ABC do Investidor (Do A ao C) -->
   <section class="section" id="trilha-abc">
     <div class="container">
       <div class="section-head">
@@ -770,6 +784,49 @@ const bookCovers = await fetchBookCovers();
     width: 100%;
     font-size: 0.84rem;
     margin-top: auto;
+  }
+
+  .diario-home-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+    padding: clamp(1.4rem, 3.5vw, 2.4rem);
+    border: 1px solid var(--border-card);
+    border-inline-start: 3px solid var(--brand-blue);
+    background:
+      linear-gradient(120deg, color-mix(in srgb, var(--brand-blue) 8%, transparent), transparent 58%),
+      var(--bg-elevated);
+  }
+
+  .diario-home-card h2 {
+    margin-block: 0.65rem 0.6rem;
+    font-size: clamp(1.7rem, 3.5vw, 2.5rem);
+    line-height: 1.1;
+    letter-spacing: -0.05em;
+  }
+
+  .diario-home-card p {
+    max-inline-size: 720px;
+    color: var(--text-secondary);
+    line-height: 1.75;
+  }
+
+  .diario-home-card .btn {
+    flex: none;
+    min-block-size: 48px;
+  }
+
+  @media (max-width: 720px) {
+    .diario-home-card {
+      align-items: stretch;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .diario-home-card .btn {
+      inline-size: 100%;
+    }
   }
 
   /* Disclaimer Panel */

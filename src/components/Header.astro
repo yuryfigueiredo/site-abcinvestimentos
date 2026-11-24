@@ -4,6 +4,7 @@ import FinanceIcon from './icons/FinanceIcon.astro';
 
 const pathname = Astro.url.pathname;
 const isCalcActive = pathname.startsWith('/calculadoras');
+const isDiarioActive = pathname.startsWith('/diario-do-investidor');
 const isGuiaActive = pathname.startsWith('/guia');
 const isPlanilhaActive = pathname.startsWith('/planilha-abc');
 const isQuantoRendeActive = pathname.startsWith('/quanto-rende');
@@ -56,6 +57,9 @@ const isQuantoRendeActive = pathname.startsWith('/quanto-rende');
 
         <a href="/guia" class:list={['nav-link', { 'is-active': isGuiaActive }]} aria-current={isGuiaActive ? 'page' : undefined}>
           Guia ABC
+        </a>
+        <a href="/diario-do-investidor" class:list={['nav-link', { 'is-active': isDiarioActive }]} aria-current={isDiarioActive ? 'page' : undefined}>
+          Diário
         </a>
         <a href="/quanto-rende" class:list={['nav-link', { 'is-active': isQuantoRendeActive }]} aria-current={isQuantoRendeActive ? 'page' : undefined}>
           Quanto Rende
@@ -148,6 +152,10 @@ const isQuantoRendeActive = pathname.startsWith('/quanto-rende');
           <div class="mobile-nav-links">
             <a href="/guia" class="mobile-nav-row">
               <span>📖 Guia ABC & Dicionário A–Z</span>
+              <span class="mobile-arrow">→</span>
+            </a>
+            <a href="/diario-do-investidor" class="mobile-nav-row">
+              <span>Diário do Investidor</span>
               <span class="mobile-arrow">→</span>
             </a>
             <a href="/quanto-rende" class="mobile-nav-row">
