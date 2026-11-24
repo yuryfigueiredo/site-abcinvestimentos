@@ -3,6 +3,8 @@ import { join } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { latestEdition, materialEditions, readEditions } from '../../src/lib/diario/store';
 
+const BRIEFING_HEADINGS = ['O que aconteceu', 'Por que importa', 'O que observar'] as const;
+
 try {
   const root = process.cwd();
   const dist = join(root, 'dist');
@@ -27,6 +29,13 @@ try {
       const html = readFileSync(datedPath, 'utf8');
       if (!html.includes('rel="canonical"') || !html.includes('application/ld+json') || !html.includes('"@type":"Article"')) {
         throw new Error(`Arquivo material ${edition.date} está sem canonical ou JSON-LD Article`);
+      }
+      const renderedHeadings = [...html.matchAll(/<h2\b[^>]*>([\s\S]*?)<\/h2>/gu)]
+        .map((match) => match[1].trim());
+      for (const heading of BRIEFING_HEADINGS) {
+        if (!renderedHeadings.includes(heading)) {
+          throw new Error(`Arquivo material ${edition.date} está sem o bloco "${heading}" do briefing.`);
+        }
       }
     } else if (existsSync(datedPath)) {
       throw new Error(`Edição morna virou URL datada: ${edition.date}`);

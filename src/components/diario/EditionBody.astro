@@ -1,29 +1,73 @@
 ---
 import CalcDisclaimer from '../CalcDisclaimer.astro';
+import EventCard from './EventCard.astro';
 import SourceList from './SourceList.astro';
-import type { Edition } from '../../lib/diario/types';
+import type { Edition, SourceRef } from '../../lib/diario/types';
 
-interface Props {
+export interface EditionBodyProps {
   edition: Edition;
+  variant: 'hub' | 'article';
+  showSummary?: boolean;
 }
 
-const { edition } = Astro.props;
+const { edition, variant, showSummary = true } = Astro.props;
+const briefing = edition.briefing;
+const sourcesById = new Map(edition.sources.map((source) => [source.id, source]));
 ---
 
-<div class="edition-body">
-  <p class="edition-body__lead">{edition.summary}</p>
+<div class={`edition-body edition-body--${variant}`}>
+  {showSummary && <p class="edition-body__lead">{edition.summary}</p>}
+
+  {variant === 'article' && briefing && (
+    <>
+      <section class="edition-body__section edition-body__section--lead" aria-labelledby="briefing-aconteceu">
+        <h2 id="briefing-aconteceu">O que aconteceu</h2>
+        <p>{briefing.whatHappened}</p>
+      </section>
+
+      <section class="edition-body__section edition-body__briefing-why" aria-labelledby="briefing-por-que-importa">
+        <h2 id="briefing-por-que-importa">Por que importa</h2>
+        <p>{briefing.whyItMatters}</p>
+      </section>
+    </>
+  )}
 
   {edition.items.length > 0 && (
     <div class="edition-body__news">
-      {edition.items.map((item) => (
-        <section class="edition-body__item">
-          <span class="edition-body__topic">{item.topic.replaceAll('-', ' ')}</span>
-          <h2>{item.headline}</h2>
-          <p>{item.summary}</p>
-          <p class="edition-body__why"><strong>Por que importa:</strong> {item.whyItMatters}</p>
-        </section>
-      ))}
+      {edition.items.map((item) => {
+        const itemSources = item.sourceIds.map((sourceId) => sourcesById.get(sourceId))
+          .filter((itemSource): itemSource is SourceRef => itemSource !== undefined);
+
+        return (
+          <section class="edition-body__item">
+            <span class="edition-body__topic">{item.topic.replaceAll('-', ' ')}</span>
+            <h2>{item.headline}</h2>
+            <p>{item.summary}</p>
+            <p class="edition-body__why"><strong>Por que importa:</strong> {item.whyItMatters}</p>
+            {variant === 'article' && itemSources.length > 0 && (
+              <p class="edition-body__item-sources">
+                Fontes:{' '}
+                {itemSources.map((itemSource, index) => (
+                  <span key={itemSource.id}>
+                    {index > 0 && ' · '}
+                    <a href={itemSource.canonicalUrl} rel="noopener noreferrer">{itemSource.publisher}</a>
+                  </span>
+                ))}
+              </p>
+            )}
+          </section>
+        );
+      })}
     </div>
+  )}
+
+  {variant === 'article' && briefing && (
+    <section class="edition-body__section edition-body__watch" aria-labelledby="briefing-o-que-observar">
+      <h2 id="briefing-o-que-observar">O que observar</h2>
+      <ul>
+        {briefing.whatToWatch.map((point) => <li>{point}</li>)}
+      </ul>
+    </section>
   )}
 
   {edition.lesson && (
@@ -33,6 +77,10 @@ const { edition } = Astro.props;
       <p>{edition.lesson.body}</p>
       <a href={`/guia/${edition.lesson.guideSlug}/`}>Aprofundar no guia →</a>
     </section>
+  )}
+
+  {variant === 'article' && edition.event && (
+    <EventCard event={edition.event} />
   )}
 
   <SourceList sources={edition.sources} />
@@ -123,10 +171,187 @@ const { edition } = Astro.props;
     flex: none;
   }
 
+  .edition-body--article {
+    max-inline-size: 70ch;
+    color: var(--text-secondary);
+    font-size: 1.04rem;
+    line-height: 1.8;
+    overflow-wrap: break-word;
+  }
+
+  .edition-body--article .edition-body__lead {
+    font-size: 1.2rem;
+    line-height: 1.8;
+    text-wrap: pretty;
+  }
+
+  .edition-body--article .edition-body__section {
+    margin-block-start: 2.75rem;
+    padding-block-start: 1.75rem;
+    border-block-start: 1px solid var(--border-subtle);
+  }
+
+  .edition-body--article .edition-body__section--lead {
+    margin-block-start: 0;
+    padding-block-start: 0;
+    border-block-start: 0;
+  }
+
+  .edition-body--article .edition-body__lead + .edition-body__section--lead {
+    margin-block-start: 2.25rem;
+    padding-block-start: 1.75rem;
+    border-block-start: 1px solid var(--border-subtle);
+  }
+
+  .edition-body--article h2 {
+    margin-block: 0 0.85rem;
+    font-size: clamp(1.35rem, 2.5vw, 1.75rem);
+    line-height: 1.25;
+    text-wrap: balance;
+  }
+
+  .edition-body--article .edition-body__briefing-why {
+    padding-inline-start: 1.1rem;
+    border-inline-start: 2px solid var(--brand-blue);
+  }
+
+  .edition-body--article .edition-body__news {
+    gap: 0;
+    margin-block-start: 2.75rem;
+  }
+
+  .edition-body--article .edition-body__item,
+  .edition-body--article .edition-body__lesson {
+    padding: 1.75rem 0 0;
+    border: 0;
+    border-block-start: 1px solid var(--border-subtle);
+    background: transparent;
+  }
+
+  .edition-body--article .edition-body__item:first-child {
+    padding-block-start: 0;
+    border-block-start: 0;
+  }
+
+  .edition-body--article .edition-body__item h2,
+  .edition-body--article .edition-body__lesson h2 {
+    margin-block: 0.45rem 0.75rem;
+    font-size: 1.35rem;
+    line-height: 1.35;
+    text-wrap: balance;
+  }
+
+  .edition-body--article .edition-body__item p,
+  .edition-body--article .edition-body__lesson p {
+    line-height: 1.8;
+  }
+
+  .edition-body--article .edition-body__why {
+    font-size: 0.96rem;
+  }
+
+  .edition-body--article .edition-body__item-sources {
+    margin-block-start: 1rem;
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    line-height: 1.65;
+  }
+
+  .edition-body--article .edition-body__item-sources a {
+    color: var(--brand-blue);
+    overflow-wrap: anywhere;
+    text-decoration: underline;
+    text-underline-offset: 0.18em;
+  }
+
+  .edition-body--article .edition-body__watch ul {
+    display: grid;
+    gap: 1rem;
+    margin-block-start: 1rem;
+    list-style: none;
+  }
+
+  .edition-body--article .edition-body__watch li {
+    padding-block-start: 1rem;
+    border-block-start: 1px solid var(--border-subtle);
+  }
+
+  .edition-body--article .edition-body__watch li:first-child {
+    padding-block-start: 0;
+    border-block-start: 0;
+  }
+
+  .edition-body--article .edition-body__lesson {
+    margin-block-start: 2.75rem;
+    border-inline-start: 0;
+  }
+
+  .edition-body--article .edition-body__footer {
+    margin-block-start: 2.75rem;
+    padding-block-start: 1.75rem;
+    border-block-start: 1px solid var(--border-subtle);
+  }
+
+  .edition-body--article :global(.source-list) {
+    margin-block-start: 2.75rem;
+    padding-block-start: 1.75rem;
+  }
+
+  .edition-body--article :global(.source-list__publisher) {
+    font-size: 0.88rem;
+  }
+
+  .edition-body--article :global(.source-list li strong) {
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+
+  .edition-body--article :global(.source-list li p) {
+    font-size: 0.88rem;
+    line-height: 1.6;
+  }
+
+  .edition-body--article :global(a):focus-visible {
+    border-radius: 2px;
+    outline: 2px solid var(--brand-blue);
+    outline-offset: 3px;
+  }
+
   @media (max-width: 720px) {
     .edition-body__footer {
       align-items: stretch;
       flex-direction: column;
+    }
+  }
+
+  @media (max-width: 520px) {
+    .edition-body--article {
+      font-size: 1rem;
+    }
+
+    .edition-body--article .edition-body__section,
+    .edition-body--article .edition-body__news,
+    .edition-body--article .edition-body__lesson,
+    .edition-body--article .edition-body__footer,
+    .edition-body--article :global(.source-list) {
+      margin-block-start: 2.25rem;
+      padding-block-start: 1.4rem;
+    }
+
+    .edition-body--article .edition-body__section--lead {
+      margin-block-start: 0;
+      padding-block-start: 0;
+      border-block-start: 0;
+    }
+
+    .edition-body--article .edition-body__lead + .edition-body__section--lead {
+      margin-block-start: 2.25rem;
+      padding-block-start: 1.4rem;
+      border-block-start: 1px solid var(--border-subtle);
+    }
+
+    .edition-body--article .edition-body__briefing-why {
+      padding-inline-start: 0.85rem;
     }
   }
 </style>

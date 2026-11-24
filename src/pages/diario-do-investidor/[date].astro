@@ -3,6 +3,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import DiarioByline from '../../components/diario/DiarioByline.astro';
 import EditionBody from '../../components/diario/EditionBody.astro';
 import IndicatorGrid from '../../components/diario/IndicatorGrid.astro';
+import type { IndicatorRow } from '../../components/diario/IndicatorGrid.astro';
 import { absUrl, breadcrumbSchema } from '../../lib/seo';
 import { materialEditions, readEditions } from '../../lib/diario/store';
 import type { Edition, MeasuredKey } from '../../lib/diario/types';
@@ -21,12 +22,12 @@ interface Props {
 
 const { edition } = Astro.props;
 const measured = edition.snapshot.measured;
-const indicatorRows = (Object.keys(measured) as MeasuredKey[]).map((key) => ({
-  key,
-  value: measured[key]!.value,
-  observedOn: measured[key]!.observedOn,
-  origin: measured[key]!.origin,
-}));
+const indicatorKeys: MeasuredKey[] = ['selic', 'cdi', 'ipca12m', 'dolar'];
+const indicatorRows = indicatorKeys.map((key): IndicatorRow => measured[key] ?? {
+  value: null,
+  observedOn: null,
+  origin: 'unavailable',
+});
 const editionDate = new Date(`${edition.date}T12:00:00`).toLocaleDateString('pt-BR', {
   day: '2-digit',
   month: 'long',
@@ -89,16 +90,19 @@ const articleJsonLd = {
         </div>
         <h1>{edition.title}</h1>
         <DiarioByline />
+        <p class="diario-article__summary">{edition.summary}</p>
       </header>
 
       <div class="diario-article__grid">
         <div class="abc-card diario-article__body">
-          <EditionBody edition={edition} />
+          <EditionBody edition={edition} variant="article" showSummary={false} />
         </div>
         <aside class="diario-article__aside">
           <IndicatorGrid
             title="Snapshot desta edição"
             rows={indicatorRows}
+            dollarChangePct={edition.snapshot.dollarChangePct}
+            showBcbSource={true}
             note="Estes valores pertencem à edição e não mudam quando o hub recebe dados novos."
           />
           <a class="diario-article__back" href="/diario-do-investidor/">← Voltar ao hub vivo</a>
@@ -142,10 +146,44 @@ const articleJsonLd = {
   }
 
   .diario-article__header h1 {
+    max-inline-size: 22ch;
     margin-block: 0.8rem 0.9rem;
     font-size: clamp(2rem, 4.5vw, 3.35rem);
     line-height: 1.08;
     letter-spacing: -0.055em;
+    text-wrap: balance;
+  }
+
+  .diario-article__summary {
+    max-inline-size: 70ch;
+    margin-block-start: 1.1rem;
+    color: var(--text-secondary);
+    font-size: clamp(1.12rem, 2vw, 1.24rem);
+    line-height: 1.8;
+    text-wrap: pretty;
+  }
+
+  .diario-article__aside :global(.indicator-row dd strong),
+  .diario-article__aside :global(.indicator-panel__variation strong),
+  .diario-article__aside :global(.indicator-row dd span),
+  .diario-article__aside :global(.indicator-row dd time) {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .diario-article__aside :global(.indicator-row__origin),
+  .diario-article__aside :global(.indicator-row dd span),
+  .diario-article__aside :global(.indicator-row dd time),
+  .diario-article__aside :global(.indicator-panel__variation span),
+  .diario-article__aside :global(.indicator-panel__note),
+  .diario-article__aside :global(.indicator-panel__source) {
+    font-size: 0.88rem;
+    line-height: 1.6;
+  }
+
+  .diario-article :global(a):focus-visible {
+    border-radius: 2px;
+    outline: 2px solid var(--brand-blue);
+    outline-offset: 3px;
   }
 
   .diario-article__grid {
@@ -192,6 +230,24 @@ const articleJsonLd = {
     .diario-article__aside {
       position: static;
       grid-row: 1;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .diario-article {
+      padding-block: 1.5rem 3rem;
+    }
+
+    .diario-article__header {
+      margin-block-end: 1.4rem;
+    }
+
+    .diario-article__summary {
+      font-size: 1.08rem;
+    }
+
+    .diario-article__body {
+      padding: 1.1rem;
     }
   }
 </style>

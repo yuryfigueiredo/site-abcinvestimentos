@@ -2,18 +2,22 @@
 import { formatBRL, formatPct } from '../../lib/finance';
 import type { MeasuredKey } from '../../lib/diario/types';
 
-interface Props {
-  title: string;
-  rows: {
-    key: MeasuredKey;
-    value: number;
-    observedOn: string;
-    origin: 'bcb-sgs' | 'stale' | 'unavailable' | 'config-fallback';
-  }[];
-  note?: string;
+export interface IndicatorRow {
+  key: MeasuredKey;
+  value: number | null;
+  observedOn: string | null;
+  origin: 'bcb-sgs' | 'stale' | 'unavailable' | 'config-fallback';
 }
 
-const { title, rows, note } = Astro.props;
+interface Props {
+  title: string;
+  rows: IndicatorRow[];
+  note?: string;
+  dollarChangePct?: number | null;
+  showBcbSource?: boolean;
+}
+
+const { title, rows, note, dollarChangePct, showBcbSource } = Astro.props;
 const labels: Record<MeasuredKey, string> = {
   selic: 'Selic',
   cdi: 'CDI',
@@ -50,11 +54,17 @@ function isIsoDate(value: string): boolean {
             <span class="indicator-row__origin">{originLabels[row.origin]}</span>
           </dt>
           <dd>
-            <strong>{formatValue(row.key, row.value)}</strong>
-            {isIsoDate(row.observedOn) ? (
-              <time datetime={row.observedOn}>Observado em {new Date(`${row.observedOn}T12:00:00`).toLocaleDateString('pt-BR')}</time>
+            {row.value === null || !Number.isFinite(row.value) ? (
+              <strong class="indicator-row__unavailable">Indisponível</strong>
             ) : (
-              <span>{row.observedOn}</span>
+              <strong>{formatValue(row.key, row.value)}</strong>
+            )}
+            {row.value !== null && Number.isFinite(row.value) && row.observedOn && (
+              isIsoDate(row.observedOn) ? (
+                <time datetime={row.observedOn}>Observado em {new Date(`${row.observedOn}T12:00:00`).toLocaleDateString('pt-BR')}</time>
+              ) : (
+                <span>{row.observedOn}</span>
+              )
             )}
           </dd>
         </div>
@@ -63,7 +73,20 @@ function isIsoDate(value: string): boolean {
   ) : (
     <p class="indicator-panel__empty">Os indicadores desta edição estão indisponíveis.</p>
   )}
+  {dollarChangePct !== null && dollarChangePct !== undefined && Number.isFinite(dollarChangePct) && (
+    <div class="indicator-panel__variation">
+      <span>Variação do dólar / PTAX</span>
+      <strong>{formatPct(dollarChangePct)}</strong>
+      <span>em relação à observação anterior</span>
+    </div>
+  )}
   {note && <p class="indicator-panel__note">{note}</p>}
+  {showBcbSource && (
+    <p class="indicator-panel__source">
+      Fonte dos dados: Banco Central do Brasil, Sistema Gerenciador de Séries Temporais (SGS).
+      Séries: 432 (Selic), 4389 (CDI), 13522 (IPCA acumulado) e 1 (Dólar / PTAX).
+    </p>
+  )}
 </section>
 
 <style>
@@ -140,12 +163,35 @@ function isIsoDate(value: string): boolean {
   }
 
   .indicator-row[data-origin='stale'] dd strong,
-  .indicator-row[data-origin='config-fallback'] dd strong {
+  .indicator-row[data-origin='config-fallback'] dd strong,
+  .indicator-row__unavailable {
     color: var(--text-secondary);
   }
 
+  .indicator-panel__variation {
+    display: grid;
+    gap: 0.3rem;
+    margin-block-start: 1rem;
+    padding: 1rem;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-surface);
+  }
+
+  .indicator-panel__variation span {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    line-height: 1.5;
+  }
+
+  .indicator-panel__variation strong {
+    font-family: var(--font-mono);
+    font-size: 1.2rem;
+    letter-spacing: -0.04em;
+  }
+
   .indicator-panel__empty,
-  .indicator-panel__note {
+  .indicator-panel__note,
+  .indicator-panel__source {
     margin-block-start: 1rem;
     color: var(--text-muted);
     font-size: 0.78rem;
