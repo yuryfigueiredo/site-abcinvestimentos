@@ -332,12 +332,36 @@ function sourceRepeated(source: SourceCandidate, previous: Edition[]): boolean {
   ));
 }
 
+function editorialPayloadParts(edition: Edition): string[] {
+  return [
+    edition.title,
+    edition.summary,
+    ...edition.items.flatMap((item) => [
+      item.id,
+      item.topic,
+      item.headline,
+      item.summary,
+      item.whyItMatters,
+      ...item.sourceIds,
+    ]),
+    ...(edition.briefing
+      ? [edition.briefing.whatHappened, edition.briefing.whyItMatters, ...edition.briefing.whatToWatch]
+      : []),
+    ...(edition.lesson ? [edition.lesson.title, edition.lesson.body] : []),
+    ...(edition.event ? [edition.event.title, edition.event.sourceUrl] : []),
+  ];
+}
+
+export function editorialPayload(edition: Edition): string {
+  return editorialPayloadParts(edition).join(' ');
+}
+
 function clusterIsDuplicate(cluster: NewsCluster, previous: Edition[]): boolean {
   if (cluster.sources.every((source) => sourceRepeated(source, previous))) return true;
   const aggregate = clusterText(cluster);
-  return previous.some((edition) => edition.items.some((item) =>
-    textSimilarity(aggregate, `${item.headline} ${item.summary} ${item.whyItMatters}`) >= SIMILARITY_THRESHOLD,
-  ));
+  return previous.some((edition) =>
+    textSimilarity(aggregate, editorialPayload(edition)) >= SIMILARITY_THRESHOLD,
+  );
 }
 
 function selectClusters(inputs: CollectedInputs, previous: Edition[], vault: Vault): NewsCluster[] {
@@ -372,9 +396,10 @@ function eventHasNewEvidence(
   const topic = EVENT_TOPICS[eventKind(event.id, vault)!];
   const priorEventEditions = previous.filter((edition) => edition.decision.eventId === event.id);
   const priorSources = priorEventEditions.flatMap((edition) => edition.sources);
-  const priorEditorial = priorEventEditions.flatMap((edition) => edition.items.flatMap((item) => [
-    item.headline, item.summary, item.whyItMatters,
-  ]));
+  const priorEditorial = priorEventEditions.flatMap((edition) => [
+    editorialPayload(edition),
+    ...editorialPayloadParts(edition),
+  ]);
   return clusters.some((cluster) => cluster.topic === topic && cluster.sources.some((source) => {
     if (sourceRepeated(source, priorEventEditions)) return false;
     if (priorSources.some((earlier) =>

@@ -1,10 +1,12 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
+import { buildDeterministicBriefing } from './briefing';
 import {
   buildBcbSnapshot,
   buildSelection,
   decideEdition,
+  editorialPayload,
   historyIsValid,
   isCcByNd,
   normalizedText,
@@ -15,7 +17,14 @@ import {
   textSimilarity,
 } from './curate';
 import { verifyGovernance } from './governance';
-import { parseCollectedInputs, parseEdition, parseSelection, parseSourceCandidate } from './schema';
+import {
+  parseCalendarEvent,
+  parseCollectedInputs,
+  parseEdition,
+  parseEditorialBriefing,
+  parseSelection,
+  parseSourceCandidate,
+} from './schema';
 import { isCalendarDate, parseCalendarDate } from './time';
 import type { CollectedInputs, Edition, SelectedSourceEvidence, Selection, ValidationContext, Vault } from './types';
 
@@ -201,20 +210,68 @@ function validateSources(edition: Edition, selection: Selection, vault: Vault): 
   }
 }
 
-function editorialPayload(edition: Edition): string {
-  return [
-    edition.title,
-    edition.summary,
-    ...edition.items.flatMap((item) => [item.headline, item.summary, item.whyItMatters]),
-    ...(edition.lesson ? [edition.lesson.title, edition.lesson.body] : []),
-  ].join(' ');
+function briefingSections(edition: Edition): string[] {
+  if (edition.briefing === undefined) return [];
+  const briefing = parseEditorialBriefing(edition.briefing);
+  return [briefing.whatHappened, briefing.whyItMatters, ...briefing.whatToWatch];
+}
+
+function factualDifferential(edition: Edition) {
+  return {
+    reasonCodes: edition.decision.reasonCodes,
+    eventId: edition.decision.eventId ?? null,
+    lessonId: edition.decision.lessonId ?? null,
+    measured: edition.snapshot.measured,
+    dollarChangePct: edition.snapshot.dollarChangePct,
+  };
+}
+
+function validateEvent(edition: Edition, vault: Vault): void {
+  const eventId = edition.decision.eventId;
+  if (eventId === undefined) {
+    if (edition.event !== undefined) throw new Error('edition.event is forbidden when edition.decision.eventId is absent');
+    return;
+  }
+  if (edition.event === undefined) throw new Error('edition.event is required when edition.decision.eventId exists');
+
+  const event = parseCalendarEvent(edition.event, 'edition.event');
+  if (event.date !== edition.date) throw new Error('edition.event.date must match edition.date');
+  const approvedIndex = vault.calendar.findIndex((candidate) => candidate.id === eventId);
+  if (approvedIndex < 0) throw new Error(`edition.event "${eventId}" is absent from the approved calendar`);
+  const approved = parseCalendarEvent(vault.calendar[approvedIndex], `vault.calendar[${approvedIndex}]`);
+  if (!sameJson(event, approved)) throw new Error(`edition.event "${eventId}" does not match the approved calendar`);
+}
+
+function validateDeterministicBriefing(edition: Edition, vault: Vault): void {
+  if (edition.decision.status !== 'material' || edition.items.length > 0) return;
+  const expected = buildDeterministicBriefing(edition, vault);
+  if (edition.briefing === undefined || !sameJson(edition.briefing, expected)) {
+    throw new Error('edition.briefing must match the deterministic briefing for a no-news material edition');
+  }
 }
 
 function validateSubstantiveDelta(edition: Edition, previous: Edition[]): void {
   const payload = editorialPayload(edition);
-  for (const earlier of recentMaterialEditions(previous)) {
+  const recent = recentMaterialEditions(previous);
+  for (const earlier of recent) {
+    if (edition.items.length === 0 && earlier.items.length === 0) {
+      if (sameJson(factualDifferential(edition), factualDifferential(earlier))) {
+        throw new Error(`Edition factual differential is identical to ${earlier.id}`);
+      }
+      continue;
+    }
     if (textSimilarity(payload, editorialPayload(earlier)) >= 0.80) {
       throw new Error(`Edition payload is materially similar to ${earlier.id}`);
+    }
+  }
+
+  if (edition.items.length > 0) {
+    const sections = briefingSections(edition).map(normalizedText);
+    for (const earlier of recent) {
+      const earlierSections = briefingSections(earlier).map(normalizedText);
+      if (sections.some((section) => earlierSections.includes(section))) {
+        throw new Error(`Edition briefing section duplicates ${earlier.id}`);
+      }
     }
   }
 }
@@ -261,6 +318,9 @@ export function validateEdition(value: unknown, context: ValidationContext): Edi
     ? { status: 'morno' as const, reasonCodes: ['history-unavailable' as const], newsClusterIds: [] }
     : decideEdition(collected, previous, vault);
   if (!sameJson(edition.decision, expectedDecision)) throw new Error('edition.decision does not match the deterministic curation decision');
+
+  validateEvent(edition, vault);
+  validateDeterministicBriefing(edition, vault);
 
   const expectedSelection = buildSelection(collected, expectedDecision, vault, previous);
   if (!sameJson(selection, expectedSelection)) throw new Error('selection.json does not match the deterministic selection');

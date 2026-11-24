@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { buildDeterministicBriefing } from '../../src/lib/diario/briefing';
 import {
   buildBcbSnapshot,
   buildSelection,
   decideEdition,
 } from '../../src/lib/diario/curate';
-import type { Edition } from '../../src/lib/diario/types';
+import * as curation from '../../src/lib/diario/curate';
+import type { Edition, EditorialBriefing } from '../../src/lib/diario/types';
 import {
   DATE,
   RETRIEVED_AT,
@@ -31,7 +33,8 @@ function calendarEvent(date = DATE) {
 function withEventPrevious(date = '2026-11-22'): Edition {
   const previous = previousEdition(date);
   previous.decision = { status: 'material', reasonCodes: ['calendar-event'], eventId: 'copom-2026-11', newsClusterIds: [] };
-  previous.event = calendarEvent(date);
+  const event = calendarEvent(date);
+  previous.event = event;
   previous.items = [];
   previous.sources = [{
     id: 'fonte-evento-anterior',
@@ -43,8 +46,56 @@ function withEventPrevious(date = '2026-11-22'): Edition {
     publishedAt: `${date}T10:00:00Z`,
     retrievedAt: `${date}T12:00:00Z`,
   }];
+  const approvedVault = vault();
+  approvedVault.calendar = [event];
+  previous.briefing = buildDeterministicBriefing(previous, approvedVault);
   return previous;
 }
+
+function compactNewsBriefing(): EditorialBriefing {
+  return {
+    whatHappened:
+      'A avaliação de juros organiza o contexto monetário. '.repeat(5).trim(),
+    whyItMatters:
+      'O contexto educacional ajuda o investidor a acompanhar fatos sem recomendação. '.repeat(4).trim(),
+    whatToWatch: [
+      'Acompanhe os comunicados oficiais e compare os fatos antes de revisar o planejamento. '.repeat(2).trim(),
+      'Observe os próximos desdobramentos e mantenha a leitura separada de decisões individuais. '.repeat(2).trim(),
+    ],
+  };
+}
+
+describe('editorialPayload', () => {
+  it('includes every editorial block and the official event title and URL', () => {
+    const collected = inputs();
+    collected.sources = [source()];
+    const event = calendarEvent();
+    collected.events = [event];
+    const approvedVault = vault();
+    approvedVault.calendar = [event];
+    const news = draft(DATE, collected, approvedVault);
+    const lesson = draft();
+
+    const newsPayload = curation.editorialPayload(news);
+    const lessonPayload = curation.editorialPayload(lesson);
+
+    expect(newsPayload).toContain(news.title);
+    expect(newsPayload).toContain(news.summary);
+    expect(newsPayload).toContain(news.items[0].id);
+    expect(newsPayload).toContain(news.items[0].topic);
+    expect(newsPayload).toContain(news.items[0].headline);
+    expect(newsPayload).toContain(news.items[0].summary);
+    expect(newsPayload).toContain(news.items[0].whyItMatters);
+    for (const sourceId of news.items[0].sourceIds) expect(newsPayload).toContain(sourceId);
+    expect(newsPayload).toContain(news.briefing!.whatHappened);
+    expect(newsPayload).toContain(news.briefing!.whyItMatters);
+    for (const section of news.briefing!.whatToWatch) expect(newsPayload).toContain(section);
+    expect(newsPayload).toContain(event.title);
+    expect(newsPayload).toContain(event.sourceUrl);
+    expect(lessonPayload).toContain(lesson.lesson!.title);
+    expect(lessonPayload).toContain(lesson.lesson!.body);
+  });
+});
 
 describe('decideEdition', () => {
   it('marks a fresh official article as material', () => {
@@ -190,6 +241,42 @@ describe('decideEdition', () => {
     expect(decideEdition(collected, [previous], vault()).status).toBe('morno');
   });
 
+  it('compares a candidate cluster with the complete prior editorial payload, including its briefing', () => {
+    const previous = previousEdition('2026-11-23');
+    previous.title = 'Juros';
+    previous.summary = 'Resumo';
+    previous.items[0].headline = 'Notícia';
+    previous.items[0].summary = 'Síntese';
+    previous.items[0].whyItMatters = 'Contexto';
+    previous.briefing = compactNewsBriefing();
+    const priorEditorialText = [
+      previous.title,
+      previous.summary,
+      previous.items[0].id,
+      previous.items[0].topic,
+      previous.items[0].headline,
+      previous.items[0].summary,
+      previous.items[0].whyItMatters,
+      ...previous.items[0].sourceIds,
+      previous.briefing.whatHappened,
+      previous.briefing.whyItMatters,
+      ...previous.briefing.whatToWatch,
+    ].join(' ');
+    const collected = inputs('2026-11-24');
+    collected.sources = [sourceForDate('2026-11-24', {
+      id: 'fonte-payload-repetido',
+      title: priorEditorialText.slice(0, 450),
+      canonicalUrl: 'https://www.bcb.gov.br/publicacoes/comunicados/replica',
+      excerpt: priorEditorialText.slice(450).trim(),
+    })];
+
+    expect(decideEdition(collected, [previous], vault())).toEqual({
+      status: 'morno',
+      reasonCodes: ['no-substantive-delta'],
+      newsClusterIds: [],
+    });
+  });
+
   it('removes duplicates without discarding a genuinely new cluster', () => {
     const collected = inputs();
     collected.sources = [
@@ -254,6 +341,26 @@ describe('decideEdition', () => {
       title: 'Copom divulga nota complementar',
       canonicalUrl: 'https://www.bcb.gov.br/publicacoes/comunicados/complementar',
       excerpt: previous.sources[0].title,
+    })];
+    const approvedVault = vault();
+    approvedVault.calendar = [event];
+
+    expect(decideEdition(collected, [previous], approvedVault)).toEqual({
+      status: 'material',
+      reasonCodes: ['official-news'],
+      newsClusterIds: ['cluster-1'],
+    });
+  });
+
+  it('does not reopen an event from evidence copied from the prior editorial payload', () => {
+    const previous = withEventPrevious('2026-11-23');
+    const collected = inputs('2026-11-24');
+    const event = calendarEvent('2026-11-24');
+    collected.events = [event];
+    collected.sources = [sourceForDate('2026-11-24', {
+      title: 'Copom divulga nota complementar',
+      canonicalUrl: 'https://www.bcb.gov.br/publicacoes/comunicados/complementar',
+      excerpt: previous.briefing!.whatToWatch[0],
     })];
     const approvedVault = vault();
     approvedVault.calendar = [event];

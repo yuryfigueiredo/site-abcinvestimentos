@@ -1,8 +1,10 @@
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { buildSelection, decideEdition } from '../../src/lib/diario/curate';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { buildDeterministicBriefing } from '../../src/lib/diario/briefing';
+import { buildBcbSnapshot, buildSelection, decideEdition } from '../../src/lib/diario/curate';
+import * as curation from '../../src/lib/diario/curate';
 import { computeCurationBundleHash, verifyGovernance } from '../../src/lib/diario/governance';
 import { parseEdition, parseSelection } from '../../src/lib/diario/schema';
 import type { CollectedInputs, Edition, EditorialBriefing, Selection, Vault } from '../../src/lib/diario/types';
@@ -21,6 +23,7 @@ import {
   mediaSourceForDate,
   previousEdition,
   source,
+  sourceForDate,
   sourceRef,
   vault,
 } from './fixtures';
@@ -68,6 +71,61 @@ function quietContext(date = '2026-11-24') {
   };
 }
 
+function noNewsContext(date = '2026-11-24', previous: Edition[] = []) {
+  const collected = inputs(date);
+  collected.bcb.dolar = [
+    { value: 5.05, date },
+    { value: 4.99, date: '2026-11-20' },
+  ];
+  const approvedVault = vault();
+  const decision = decideEdition(collected, previous, approvedVault);
+  const selection = buildSelection(collected, decision, approvedVault, previous);
+  const value = draft(date, collected, approvedVault, previous);
+  return {
+    value,
+    context: {
+      vault: approvedVault,
+      selection,
+      evidence: [],
+      collected,
+      previousEditions: previous,
+    },
+  };
+}
+
+function eventContext() {
+  const collected = inputs('2026-11-24');
+  const event = {
+    id: 'copom-2026-11-24',
+    date: '2026-11-24',
+    title: 'Reunião do Copom',
+    sourceUrl: 'https://www.bcb.gov.br/publicacoes/comunicados/copom',
+  };
+  collected.events = [event];
+  const approvedVault = vault();
+  approvedVault.calendar = [event];
+  const decision = decideEdition(collected, [], approvedVault);
+  const selection = buildSelection(collected, decision, approvedVault, []);
+  const value = draft('2026-11-24', collected, approvedVault);
+  value.event = { ...event };
+  return { value, event, context: { vault: approvedVault, selection, evidence: [], collected, previousEditions: [] as Edition[] } };
+}
+
+function newsContext(previous: Edition[] = []) {
+  const collected = inputs('2026-11-24');
+  collected.sources = [sourceForDate('2026-11-24', {
+    id: 'fonte-noticia-nova',
+    title: 'Copom publica nova avaliação sobre liquidez',
+    canonicalUrl: 'https://www.bcb.gov.br/publicacoes/comunicados/nova-liquidez',
+    excerpt: 'A nova nota oficial acrescenta critérios de liquidez ao comunicado e orienta o acompanhamento da política monetária.',
+  })];
+  const approvedVault = vault();
+  const decision = decideEdition(collected, previous, approvedVault);
+  const selection = buildSelection(collected, decision, approvedVault, previous);
+  const value = draft('2026-11-24', collected, approvedVault, previous);
+  return { value, context: { vault: approvedVault, selection, evidence: collected.sources, collected, previousEditions: previous } };
+}
+
 function tempRoot(): string {
   const root = mkdtempSync(join(tmpdir(), 'diario-validate-'));
   roots.push(root);
@@ -108,6 +166,19 @@ function materialBriefing(): EditorialBriefing {
     whatToWatch: [
       'Acompanhe os próximos comunicados oficiais e verifique se novas informações alteram o contexto apresentado nesta edição.',
       'Observe os desdobramentos relacionados ao tema e compare as fontes aprovadas antes de revisar o planejamento.',
+    ],
+  };
+}
+
+function priorNewsBriefing(): EditorialBriefing {
+  return {
+    whatHappened:
+      'A edição anterior registrou um comunicado oficial sobre juros e manteve a análise restrita aos fatos então disponíveis. O resumo explicou o contexto sem antecipar resultados e separou a leitura educacional de qualquer recomendação de investimento.',
+    whyItMatters:
+      'A leitura anterior relacionou a comunicação oficial ao planejamento financeiro, considerando objetivos, prazo, liquidez e tolerância a oscilações. O conteúdo permaneceu educacional e não apresentou promessa de resultado ou indicação de compra e venda.',
+    whatToWatch: [
+      'Acompanhe os comunicados oficiais e compare o contexto novo com a leitura anterior antes de revisar o planejamento.',
+      'Observe os próximos desdobramentos e mantenha a análise separada de decisões individuais de investimento.',
     ],
   };
 }
@@ -156,6 +227,100 @@ describe('validateEdition', () => {
     const { value, context: validation } = quietContext();
 
     expect(validateEdition(value, validation)).toEqual(value);
+  });
+
+  it('rejects a deterministic briefing that differs from the approved facts', () => {
+    const { value, context: validation } = noNewsContext();
+    value.briefing = materialBriefing();
+
+    expect(() => validateEdition(value, validation)).toThrow(/briefing|deterministic/i);
+  });
+
+  it('rejects a news briefing copied from a recent material edition', () => {
+    const previous = previousEdition('2026-11-23');
+    previous.briefing = priorNewsBriefing();
+    const { value, context: validation } = newsContext([previous]);
+    value.title = 'Nova avaliação de liquidez altera o acompanhamento';
+    value.summary = 'A nota complementar apresenta critérios adicionais para a leitura educacional do mercado.';
+    value.items[0].headline = 'Copom detalha critérios de liquidez';
+    value.items[0].summary = 'A comunicação oficial acrescenta elementos de acompanhamento ao contexto dos juros.';
+    value.items[0].whyItMatters = 'O investidor pode relacionar os novos critérios ao planejamento sem tratá-los como recomendação.';
+    value.briefing!.whatHappened = previous.briefing!.whatHappened;
+
+    expect(() => validateEdition(value, validation)).toThrow(/briefing|section|duplicate|delta/i);
+  });
+
+  it('rejects an event that does not match the approved calendar', () => {
+    const { value, context: validation } = eventContext();
+    value.event!.title = 'Reunião alterada do Copom';
+
+    expect(() => validateEdition(value, validation)).toThrow(/event|calendar/i);
+  });
+
+  it('rejects an event date that differs from the edition date', () => {
+    const { value, context: validation } = eventContext();
+    value.event!.date = '2026-11-23';
+
+    expect(() => validateEdition(value, validation)).toThrow(/event.*date|date.*event/i);
+  });
+
+  it('allows recurring deterministic explanations when the factual differential changes', () => {
+    const previousCollected = inputs('2026-11-23');
+    previousCollected.bcb.dolar = [
+      { value: 5.05, date: '2026-11-23' },
+      { value: 4.99, date: '2026-11-20' },
+    ];
+    const previous = draft('2026-11-23', previousCollected, vault());
+    const { value, context: validation } = noNewsContext('2026-11-24', [previous]);
+
+    expect(value.briefing).toEqual(previous.briefing);
+    expect(validateEdition(value, validation)).toEqual(value);
+  });
+
+  it('rejects repeated no-news material editions with the same factual differential', () => {
+    const { value: previous, context: previousContext } = noNewsContext('2026-11-23');
+    const measured: Edition['snapshot']['measured'] = {
+      selic: { value: 13.75, observedOn: '2026-11-20', origin: 'stale' },
+      cdi: { value: 13.65, observedOn: '2026-11-20', origin: 'stale' },
+      ipca12m: { value: 4.63, observedOn: '2026-10-01', origin: 'stale' },
+      dolar: { value: 5, observedOn: '2026-11-20', origin: 'stale' },
+    };
+    const staleFields: Edition['snapshot']['staleFields'] = ['selic', 'cdi', 'ipca12m', 'dolar'];
+    previous.snapshot = { status: 'stale', measured, staleFields, dollarChangePct: null };
+    previous.decision = { status: 'material', reasonCodes: ['dollar-trigger'], newsClusterIds: [] };
+    previous.briefing = buildDeterministicBriefing(previous, previousContext.vault);
+
+    const collected = inputs('2026-11-24');
+    collected.bcb = {};
+    const decision = previous.decision;
+    const selection = buildSelection(collected, decision, previousContext.vault, [previous]);
+    const snapshot = buildBcbSnapshot(collected, [previous]);
+    const base = {
+      ...previous,
+      id: 'diario-2026-11-24',
+      date: '2026-11-24',
+      generatedAt: collected.retrievedAt,
+      title: 'O investidor acompanha o câmbio com prudência',
+      summary: 'A leitura educacional destaca liquidez e planejamento sem antecipar movimentos futuros.',
+      snapshot,
+      decision,
+    };
+    const value: Edition = { ...base, briefing: buildDeterministicBriefing(base, previousContext.vault) };
+    const validation = {
+      vault: previousContext.vault,
+      selection,
+      evidence: [],
+      collected,
+      previousEditions: [previous],
+    };
+    expect(value.snapshot).toEqual(previous.snapshot);
+
+    const decisionSpy = vi.spyOn(curation, 'decideEdition').mockReturnValue(decision);
+    try {
+      expect(() => validateEdition(value, validation)).toThrow(/factual|differential|duplicate|delta/i);
+    } finally {
+      decisionSpy.mockRestore();
+    }
   });
 
   it('rejects a snapshot that does not match the collected BCB evidence', () => {
@@ -331,7 +496,7 @@ describe('validateEdition', () => {
   it('rejects a material or quiet status that was not recomputed from evidence', () => {
     const { value, context: validation } = quietContext();
     value.decision.status = 'material';
-    value.briefing = materialBriefing();
+    value.briefing = buildDeterministicBriefing(value, validation.vault);
 
     expect(() => validateEdition(value, validation)).toThrow(/decision|status/i);
   });
@@ -464,10 +629,12 @@ describe('validateEdition', () => {
 
 function withLesson(date: string, lessonId: string): Edition {
   const value = previousEdition(date);
+  const approvedVault = vault();
   value.decision = { status: 'material', reasonCodes: ['monday-lesson'], lessonId, newsClusterIds: [] };
-  value.lesson = vault().lessons.find((lesson) => lesson.id === lessonId);
+  value.lesson = approvedVault.lessons.find((lesson) => lesson.id === lessonId);
   value.items = [];
   value.sources = [];
+  value.briefing = buildDeterministicBriefing(value, approvedVault);
   return value;
 }
 
