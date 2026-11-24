@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { buildDeterministicBriefing } from '../../src/lib/diario/briefing';
 import { verifyGovernance } from '../../src/lib/diario/governance';
-import { parseEdition, parseEditorialBriefing } from '../../src/lib/diario/schema';
+import { parseCalendarEvent, parseEdition, parseEditorialBriefing } from '../../src/lib/diario/schema';
 import type { CalendarEvent, Edition } from '../../src/lib/diario/types';
 import { DATE, draft, inputs, source, vault } from './fixtures';
 
@@ -72,6 +72,30 @@ describe('buildDeterministicBriefing', () => {
     expect(briefing.whatHappened).toContain(event.title);
     expect(briefing.whatHappened).toMatch(/infla[cç][aã]o/iu);
     expect(JSON.stringify(briefing)).not.toMatch(/\p{N}/u);
+  });
+
+  it('uses a safe topical reference when an approved event title is not prose-safe', () => {
+    const event: CalendarEvent = {
+      id: 'ipca-2026-11-24',
+      date: '2026-11-24',
+      title: 'IPCA 2026 <dados>',
+      sourceUrl: 'https://www.ibge.gov.br/estatisticas/indices/precos/ipca',
+    };
+    expect(parseCalendarEvent(event, 'event')).toEqual(event);
+    const approvedVault = vault();
+    const edition = eventEdition({ ...event, title: 'Divulgação do IPCA' });
+    edition.event = event;
+    approvedVault.calendar = [event];
+    const parsedEdition = parseEdition(edition);
+    expect(parsedEdition.event).toEqual(event);
+
+    const briefing = buildDeterministicBriefing(parsedEdition, approvedVault);
+
+    expect(parseEditorialBriefing(briefing)).toEqual(briefing);
+    expect(JSON.stringify(briefing)).not.toMatch(/\p{N}/u);
+    expect(JSON.stringify(briefing)).not.toMatch(/<|>|&(?:#\d+|#x[\da-f]+|[a-z][a-z\d]+);/iu);
+    expect(briefing.whatHappened).not.toContain(event.title);
+    expect(briefing.whatHappened).toMatch(/infla[cç][aã]o/iu);
   });
 
   it('uses the approved lesson in a monday-lesson briefing', () => {

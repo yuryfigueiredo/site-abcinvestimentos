@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildDeterministicBriefing } from '../../src/lib/diario/briefing';
 import { buildBcbSnapshot, buildSelection, decideEdition, publicPolicy } from '../../src/lib/diario/curate';
@@ -21,6 +21,7 @@ try {
     : decideEdition(context.collected, context.previousEditions, context.vault);
   const selection = parseSelection(buildSelection(context.collected, decision, context.vault, context.previousEditions));
   const path = join(context.root, '.cache/diario', date, 'selection.json');
+  const briefingPath = join(context.root, '.cache/diario', date, 'briefing.json');
   mkdirSync(join(path, '..'), { recursive: true });
   writeFileSync(path, `${JSON.stringify(selection, null, 2)}\n`, 'utf8');
   if (decision.status === 'material' && decision.newsClusterIds.length === 0) {
@@ -52,8 +53,9 @@ try {
       },
     };
     const briefing = parseEditorialBriefing(buildDeterministicBriefing(edition, context.vault));
-    const briefingPath = join(context.root, '.cache/diario', date, 'briefing.json');
     writeFileSync(briefingPath, `${JSON.stringify(briefing, null, 2)}\n`, 'utf8');
+  } else {
+    rmSync(briefingPath, { force: true });
   }
   console.log(`Curadoria concluída: ${date}; ${decision.status}; ${selection.selectedSources.length} fontes selecionadas.`);
 } catch (error) {

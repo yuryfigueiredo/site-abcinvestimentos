@@ -98,9 +98,12 @@ function boundedExcerpt(value: string, maximum: number): string {
 function eventBriefing(edition: Edition, vault: Vault): EditorialBriefing {
   const { event, topic } = approvedEvent(edition, vault);
   const context = TOPIC_CONTEXT[topic];
+  const titleIsProseSafe = !/\p{N}/u.test(event.title) &&
+    !/<|>|&(?:#\d+|#x[\da-f]+|[a-z][a-z\d]+);/iu.test(event.title);
+  const eventReference = titleIsProseSafe ? `"${event.title}"` : `um evento sobre ${context.subject}`;
   return {
     whatHappened:
-      `O calendário aprovado registra "${event.title}" nesta data. A curadoria usa o evento como fato central da edição e mantém a leitura restrita ao título, à data e à fonte oficial cadastrados no cofre. O resultado não é presumido: o acompanhamento parte do comunicado oficial e da evidência que vier a ser publicada. O tema ${context.subject} organiza a explicação, sem acrescentar números, previsões ou recomendações de investimento.`,
+      `O calendário aprovado registra ${eventReference} nesta data. A curadoria usa o evento como fato central da edição e mantém a leitura restrita ao título, à data e à fonte oficial cadastrados no cofre. O resultado não é presumido: o acompanhamento parte do comunicado oficial e da evidência que vier a ser publicada. O tema ${context.subject} organiza a explicação, sem acrescentar números, previsões ou recomendações de investimento.`,
     whyItMatters: context.whyItMatters,
     whatToWatch: [
       'Acompanhe a fonte oficial do evento e compare o conteúdo divulgado com o registro aprovado, sem presumir um resultado antes da publicação.',
