@@ -63,3 +63,58 @@ A execução final de mutações também expôs uma lacuna no teste de valor sta
 - Validação sem publicação: aprovada.
 - Publicação exclusiva: `src/data/diario/edicoes/2026-11-23.json`.
 - Nenhum push realizado.
+
+## Task 6 — briefing, superfícies e prompt da automação
+
+Data de execução: 2026-11-24. BASE: `35d85f0bd2a61167ae4f65490e62850f2aad16ca`.
+
+Comando de execução:
+
+```bash
+node .superpowers/sdd/2026-11-23-diario-briefing-completo/run-task-6-mutations.mjs
+```
+
+As 14 mutações foram aplicadas isoladamente com substituição textual exata e única. Cada teste direcionado falhou com o código mutado; o conteúdo original foi restaurado em `finally`, com SHA-256 igual antes/depois e `git diff --exit-code -- <arquivo>` com código zero. O runner não usa `checkout`, `restore`, `reset`, `clean` ou `stash`.
+
+| Mutação deliberada | Teste que falhou | Resultado observado |
+|---|---|---|
+| Remover a seção “O que aconteceu” | `surface.test.ts > renders the complete briefing only in the article variant` | Ausência de `briefing.whatHappened`; 1 falha / 18 skips |
+| Remover a seção “Por que importa” | `surface.test.ts > renders the complete briefing only in the article variant` | Ausência de `briefing.whyItMatters`; 1 falha / 18 skips |
+| Remover a seção “O que observar” | `surface.test.ts > renders the complete briefing only in the article variant` | Ausência de `briefing.whatToWatch`; 1 falha / 18 skips |
+| Desligar a rejeição de dígitos na prosa | `schema.test.ts > rejects digits and HTML in every briefing prose field` | Parser não lançou erro; 1 falha / 72 skips |
+| Desligar a rejeição de HTML na prosa | `schema.test.ts > rejects digits and HTML in every briefing prose field` | Parser não lançou erro; 1 falha / 72 skips |
+| Aceitar apenas um item em “O que observar” | `schema.test.ts > rejects fewer than two or more than four watch items` | Parser não lançou erro; 1 falha / 72 skips |
+| Aceitar briefing em edição morna | `schema.test.ts > rejects a briefing in a quiet edition` | Parser não lançou erro; 1 falha / 72 skips |
+| Ignorar a reconstrução do briefing determinístico | `validate.test.ts > rejects a deterministic briefing that differs from the approved facts` | Validador não lançou erro; 1 falha / 39 skips |
+| Aceitar seção de briefing copiada de edição material recente | `validate.test.ts > rejects a news briefing copied from a recent material edition` | Validador não lançou erro; 1 falha / 39 skips |
+| Aceitar evento divergente do calendário aprovado | `validate.test.ts > rejects an event that does not match the approved calendar` | Validador não lançou erro; 1 falha / 39 skips |
+| Ocultar indicador indisponível | `surface.test.ts > renders all four indicators including unavailable values without inventing freshness` | Sumiu o tratamento de valor nulo; 1 falha / 18 skips |
+| Ocultar variação arquivada do dólar | `surface.test.ts > passes the archived dollar change and enables the BCB series note only in the archive` | Sumiu o bloco de `dollarChangePct`; 1 falha / 18 skips |
+| Permitir reescrita de status e downgrade no prompt | `automation-prompt.test.ts > forbids schema drift, status rewriting and vault edits` | Sumiu a proibição de alterar `decision.status`; 1 falha / 9 skips |
+| Rebaixar o schema do prompt para a versão 1 | `automation-prompt.test.ts > exige schema 2, briefing apenas em material e metadados factuais separados` | Prompt deixou de conter `schemaVersion: 2`; 1 falha / 9 skips |
+
+Resultado: **14 de 14 mutações detectadas e 14 de 14 restauradas**, sem diff residual nos arquivos mutados. Verificação focal após a restauração: **4 arquivos / 142 testes aprovados**. Evidência: `task-6-mutation-results.json`, `task-6-mutations-run.log` e os 14 logs `task-6-mutation-<id>.log` em `.superpowers/sdd/2026-11-23-diario-briefing-completo/`.
+
+A inspeção dos frames encontrou um defeito adicional: o mapa do arquivo material omitia `key` nas linhas medidas e no fallback indisponível, removendo os nomes das quatro séries. O teste de superfície foi reforçado, o RED foi observado e o mapa passou a devolver `{ key, ...(measured[key] ?? fallback) }`. GREEN: 19/19 na superfície e 534/534 na suíte serial; build de 90 páginas e `diario:verify-build` aprovados. Os nove frames foram recapturados e o HTML final confirmou os rótulos Selic, CDI, IPCA acumulado e Dólar / PTAX.
+
+## Revisão final, mutações adicionais e dry-run real
+
+A revisão final da branch contra `dfe117986e8cde1a199aa18f3d07ca3d11e2520c` foi executada em dois eixos independentes. Standards aprovou sem achados críticos/importantes e recomendou quatro endurecimentos menores; Spec apontou dois minors iniciais. O primeiro RED da correção focalizada produziu 3 falhas / 26 passes: ausência de `git diff --cached --check`, de `role="list"` e de balanceamento em “Fontes”. A segunda rodada encontrou o título do painel sem balanceamento e uma regra global que poderia alterar o hub; ambas foram movidas para o escopo do artigo. Revisão final: **Standards PASS e Spec PASS, sem achados restantes**.
+
+Duas mutações adicionais comprovaram os testes reforçados:
+
+| Mutação deliberada | Teste que falhou | Resultado observado |
+|---|---|---|
+| Trocar a série do dólar de `1 (Dólar / PTAX)` para `2 (Dólar / PTAX)` | `surface.test.ts > enables the exact BCB series note only in the archive` | A frase exata não foi encontrada; falha focal esperada |
+| Trocar `diario-2026-11-23-briefing-v2` por `diario-2026-11-24-briefing-v2` | `automation-prompt.test.ts > fixa a versão exata e a operação no Mac às 19:00 BRT` | Dois tokens de versão distintos detectados; falha focal esperada |
+
+Ambas foram restauradas byte a byte. As correções finais preservaram a semântica da lista com `role="list"`, tornaram os balanceamentos de títulos article-scoped, fixaram a versão exata do prompt e incluíram `git diff --cached --check` depois do staging explícito. Verificação fresca: TypeScript limpo, **534/534 testes**, build de **90 páginas**, `diario:verify-build` e `git diff --check` aprovados. Nove frames desktop/mobile foram recapturados e inspecionados: hub, seed sem notícias, metodologia, artigo rico sintético e menu mobile; **zero erros de console** e fixture temporária removida.
+
+### Dry-run real de 2026-11-24, sem publicação
+
+- Coleta: 54 candidatos allowlisted — 29 do BCB e 25 da The Conversation Brasil; somente feeds e metadados/excerpts limitados.
+- Janela de 24 horas: sete candidatos. A única notícia oficial recente do BCB tratava de cooperação entre bancos centrais e não casou com os tópicos editoriais atuais; os seis itens recentes da The Conversation são CC BY-ND e não podem ser parafraseados pela IA.
+- Decisão real: `material` por `dollar-trigger`; zero clusters e zero fontes de notícia selecionadas.
+- Snapshot bruto: dólar `5.8573` em 2026-11-24 contra `5.9708` em 2026-11-23, variação de **-1,9009178%**; CDI `13,65%`; IPCA-12m `4,63%`; Selic com data futura e portanto não publicada como medição atual.
+- Briefing: os três blocos determinísticos foram gerados em cache, coerentes com a queda do dólar e sem dígitos ou recomendação.
+- Limite editorial: o dry-run prova o caminho conservador e factual, mas **não prova a qualidade de um briefing rico escrito por IA com notícias**, pois a configuração atual não selecionou notícia financeira utilizável. Nenhuma edição foi publicada, nenhum arquivo do cofre mudou e nenhum push foi realizado.

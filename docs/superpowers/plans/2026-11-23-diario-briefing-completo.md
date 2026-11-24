@@ -428,7 +428,7 @@ git commit -m "docs(diario): atualiza metodologia e prompt do schema 2"
 - Consumes: todas as tasks anteriores.
 - Produces: evidência de mutação, frames desktop/mobile, revisão e handoff sem push.
 
-- [ ] **Step 1: Rodar a suíte completa e o build.**
+- [x] **Step 1: Rodar a suíte completa e o build.**
 
 ```bash
 npx tsc --noEmit
@@ -440,7 +440,7 @@ git diff --check
 
 Expected: TypeScript limpo, todos os testes passam, build sem erro, dist com headings do briefing e nenhuma URL morna.
 
-- [ ] **Step 2: Executar e registrar mutações novas.**
+- [x] **Step 2: Executar e registrar mutações novas.**
 
 Seguir o padrão do ledger existente, restaurando cada arquivo em `finally`. Registrar as mutações explícitas do design, isoladas uma a uma:
 
@@ -456,7 +456,7 @@ Seguir o padrão do ledger existente, restaurando cada arquivo em `finally`. Reg
 
 Expected: cada mutação produz falha no teste correspondente; nenhuma mutação permanece no código.
 
-- [ ] **Step 3: Capturar frames locais.**
+- [x] **Step 3: Capturar frames locais.**
 
 Subir o servidor local e capturar em desktop e mobile:
 
@@ -468,15 +468,15 @@ Subir o servidor local e capturar em desktop e mobile:
 
 Remover a fixture temporária após as capturas e antes do build final. Conferir zero erros de console.
 
-- [ ] **Step 4: Apresentar os frames e aguardar aprovação visual.**
+- [x] **Step 4: Apresentar os frames e aguardar aprovação visual.**
 
 Entregar os caminhos das imagens ao dono. Não fazer push. Se houver ajuste visual, corrigir com teste primeiro quando houver comportamento testável e repetir a captura.
 
-- [ ] **Step 5: Fazer revisão final da branch.**
+- [x] **Step 5: Fazer revisão final da branch.**
 
 Usar `code-review` com ponto fixo anterior à Task 0, spec novo e plano novo em eixos separados de standards/spec. Corrigir achados críticos/importantes com RED→GREEN e repetir a suíte serial. Registrar minors deferidos.
 
-- [ ] **Step 6: Commitar evidência e encerrar sem publicar.**
+- [x] **Step 6: Commitar evidência e encerrar sem publicar.**
 
 ```bash
 git add docs/diario/mutation-ledger.md
