@@ -62,9 +62,30 @@ const pageJsonLd = {
             <span class="methodology__eyebrow">Arquitetura editorial</span>
             <h2>Uma URL viva, arquivo seletivo</h2>
             <p>
-              O hub <a href="/diario-do-investidor/">Diário do Investidor</a> mostra a última edição e os
-              indicadores ao vivo. Uma edição <strong>material</strong> ganha página própria e entra no arquivo.
-              Uma edição <strong>morna</strong> permanece no hub e no endpoint, sem criar uma URL fina.
+              O hub compacto <a href="/diario-do-investidor/">Diário do Investidor</a> mostra a última
+              edição e os indicadores ao vivo, sem repetir o briefing completo. Uma edição
+              <strong>material</strong> ganha página própria e entra no arquivo.
+            </p>
+            <p>
+              O arquivo datado preserva o snapshot da edição e oferece a leitura completa. Uma edição
+              <strong>morna</strong> permanece no hub e no endpoint, sem criar uma URL fina.
+            </p>
+          </section>
+
+          <section>
+            <span class="methodology__eyebrow">Leitura da edição</span>
+            <h2>Três blocos, uma base factual</h2>
+            <p>
+              Toda edição material organiza a leitura em <strong>O que aconteceu</strong>,
+              <strong>Por que importa</strong> e <strong>O que observar</strong>. O primeiro bloco relata
+              o fato com sobriedade; o segundo explica seu contexto educacional; o terceiro aponta
+              desdobramentos e perguntas para acompanhar, sem apresentar recomendações.
+            </p>
+            <p>
+              O painel factual reúne Selic, CDI, IPCA e Dólar/PTAX com valor, data de observação e
+              origem quando disponíveis. Um indicador ausente aparece como <strong>Indisponível</strong>,
+              e a variação cambial só é mostrada quando existe no snapshot. A prosa não contém
+              algarismos nem HTML: os números ficam separados nesse painel ou nos metadados factuais.
             </p>
           </section>
 
@@ -95,6 +116,11 @@ const pageJsonLd = {
               Quando uma fonte exige licença, o trecho é literal, curto e atribuído. Conteúdo sob
               CC BY-ND não é parafraseado, resumido ou traduzido pela IA.
             </p>
+            <p>
+              Quando a decisão aponta para um evento, o cartão usa o evento aprovado no cofre.
+              O título, data e link do evento são metadados factuais preservados exatamente; a prosa
+              não presume resultado nem acrescenta informação ao calendário.
+            </p>
           </section>
 
           <section>
@@ -111,9 +137,17 @@ const pageJsonLd = {
             <span class="methodology__eyebrow">Operação e limites</span>
             <h2>Automação diária, responsabilidade editorial</h2>
             <p>
-              A rotina prevista é às dezenove horas de Brasília, todos os dias. Se a coleta falhar ou
-              não houver substância, a automação deve preferir uma edição morna a preencher espaço.
-              Em caso de dúvida de lastro, não publica a notícia.
+              A rotina prevista é às dezenove horas de Brasília, todos os dias, com a data da edição
+              definida por <code>America/Sao_Paulo</code>. Se a coleta falhar, a execução para. Em
+              uma edição material sem notícias, o fallback determinístico gera os três blocos a
+              partir dos fatos aprovados e do snapshot; a automação copia o artefato validado do
+              cache, e o validador exige que ele permaneça idêntico.
+            </p>
+            <p>
+              Em dúvida de lastro, a automação descarta a fonte e recalcula a seleção determinística.
+              A queda para uma edição morna só acontece quando essa camada não encontra razão
+              material. Um material inválido interrompe a execução: não é rebaixado em silêncio nem
+              publicado incompleto.
             </p>
             <p>
               O Diário é educacional. Não analisa a situação individual do leitor, não é recomendação

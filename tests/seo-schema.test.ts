@@ -164,4 +164,27 @@ describe('Descoberta e metadados do Diário', () => {
     expect(methodology).toContain('recomendação');
     expect(methodology).toContain('SITE_CONFIG.legalDisclaimer');
   });
+
+  it('explica os três blocos do briefing e separa o hub compacto do arquivo completo', () => {
+    const methodology = source('src/pages/diario-do-investidor/metodologia.astro');
+    expect(methodology).toContain('O que aconteceu');
+    expect(methodology).toContain('Por que importa');
+    expect(methodology).toContain('O que observar');
+    expect(methodology).toContain('hub compacto');
+    expect(methodology).toContain('arquivo datado');
+  });
+
+  it('explica painel factual, evento do cofre, fallback determinístico e parada de material inválido', () => {
+    const methodology = source('src/pages/diario-do-investidor/metodologia.astro');
+    expect(methodology).toContain('painel factual');
+    expect(methodology).toContain('Selic');
+    expect(methodology).toContain('CDI');
+    expect(methodology).toContain('IPCA');
+    expect(methodology).toContain('Dólar/PTAX');
+    expect(methodology).toContain('Indisponível');
+    expect(methodology).toContain('evento aprovado no cofre');
+    expect(methodology).toContain('fallback determinístico');
+    expect(methodology).toContain('material inválido');
+    expect(methodology).toContain('interrompe a execução');
+  });
 });

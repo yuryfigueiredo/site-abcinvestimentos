@@ -27,6 +27,13 @@ Fora destas rotas, por decisão de 2026-11-16: `matt-wayfinder`, `matt-chief-of-
 - Commit com caminhos explícitos, nunca `git add -A`.
 - `vercel`/`gh` CLI não existem no Mac; variáveis de ambiente, logs de deployment e Search Console são trabalho de navegador (painel dele).
 
+## Diário e schema
+
+- Automação do Diário: seguir `docs/diario/automation-prompt.md`, versão `diario-2026-11-23-briefing-v2`.
+- Edições usam `schemaVersion: 2`; `briefing` é obrigatório em material e proibido em morno.
+- O cofre em `src/data/diario/curadoria/` é imutável pela automação.
+- Rascunho material inválido interrompe a execução; nunca rebaixar, editar `decision.status` ou publicar incompleto.
+
 ## Deploy keys
 
 - Chaves são por repositório (regra do GitHub) e ficam em `~/.ssh/` no Mac com alias `Host github.com-<apelido>` + `IdentitiesOnly yes`.
