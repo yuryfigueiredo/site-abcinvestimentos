@@ -85,5 +85,7 @@ describe('Planilha ABC (.xlsx) — Auditoria Automatizada de Qualidade', () => {
       expect(Number(ano30Nominal.result)).toBeGreaterThan(1000000);
       expect(ano30Status.result).toBe('1º MILHÃO ALCANÇADO!');
     }
-  }, 15000);
+  // Três .xlsx reais, célula por célula: medido em 5,7s, e o limite padrão de 5s
+  // fazia a suíte inteira cair em máquina ocupada.
+  }, 20_000);
 });
