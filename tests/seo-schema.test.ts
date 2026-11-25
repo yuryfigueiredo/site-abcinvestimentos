@@ -131,7 +131,40 @@ describe('Descoberta e metadados do Diário', () => {
     const header = source('src/components/Header.astro');
     expect(header.match(/href="\/diario-do-investidor"/gu)).toHaveLength(2);
     expect(header).toContain('isDiarioActive');
-    expect(header).toContain('aria-current={isDiarioActive ? \'page\' : undefined}');
+    expect(header.match(/aria-current=\{isDiarioActive \? 'page' : undefined\}/gu)).toHaveLength(2);
+  });
+
+  it('nomeia o hub por extenso nos dois menus', () => {
+    const header = source('src/components/Header.astro');
+    expect(header.match(/>\s*Diário do Investidor\s*</gu)).toHaveLength(2);
+  });
+
+  it('posiciona o Diário antes do Guia ABC no menu desktop', () => {
+    const header = source('src/components/Header.astro');
+    const desktopNav = header.match(/<nav class="main-nav"[\s\S]*?<\/nav>/u)?.[0] ?? '';
+    const diarioIndex = desktopNav.indexOf('href="/diario-do-investidor"');
+    const guiaIndex = desktopNav.indexOf('href="/guia"');
+    expect(diarioIndex).toBeGreaterThanOrEqual(0);
+    expect(guiaIndex).toBeGreaterThan(diarioIndex);
+  });
+
+  it('destaca o hub nos menus desktop e mobile', () => {
+    const header = source('src/components/Header.astro');
+    expect(header).toMatch(/href="\/diario-do-investidor" class:list=\{\['nav-link', 'nav-link--diario'/u);
+    expect(header).toMatch(/href="\/diario-do-investidor" class:list=\{\['mobile-nav-row', 'mobile-nav-row--diario'/u);
+    expect(header).toContain('background: color-mix(in srgb, var(--brand-blue) 14%, transparent);');
+    expect(header).toContain('border: 1px solid color-mix(in srgb, var(--brand-blue) 42%, transparent);');
+    expect(header).toContain('background: color-mix(in srgb, var(--brand-blue) 14%, var(--bg-elevated));');
+    expect(header).toContain('.nav-link--diario:focus-visible');
+    expect(header).toContain('.mobile-nav-row--diario:focus-visible');
+  });
+
+  it('compacta o header intermediário sem remover a navegação desktop', () => {
+    const header = source('src/components/Header.astro');
+    expect(header).toMatch(
+      /@media \(max-width: 1200px\) \{\s*\.header-inner \{\s*gap: 1rem;\s*\}\s*\.main-nav \{\s*gap: 1rem;\s*\}\s*\.header-cta-btn \{\s*display: none;\s*\}\s*\}/u,
+    );
+    expect(header).toContain('@media (max-width: 860px)');
   });
 
   it('oferece o hub no footer e na home', () => {
