@@ -8,7 +8,6 @@ interface VercelResponse {
   end(body?: string): void;
 }
 
-const SITE_URL = 'https://www.abcinvestimentos.com.br';
 // 432 Meta Selic, 4389 CDI, 13522 IPCA 12m, 1 Dólar: as mesmas séries do build.
 const SERIE_CODES = [432, 4389, 13522, 1];
 
@@ -56,6 +55,11 @@ function latestRealizedDate(dates: Array<string | null>): string | null {
  * Cron diário: o site é estático, então taxas novas só entram no HTML com um
  * rebuild. O build já busca o BCB, logo basta disparar o Deploy Hook.
  *
+ * O rebuild é de garantia: acontece sempre que o BCB responde, mesmo sem
+ * observação nova, para o hub vivo não envelhecer entre uma publicação e a
+ * seguinte. Só a indisponibilidade do BCB interrompe o ciclo, porque nesse
+ * caso o build publicaria os defaults hardcoded no lugar das taxas.
+ *
  * Este arquivo não importa nada do projeto de propósito. Cada arquivo em api/ é
  * compilado como função isolada pela Vercel: importar de outra função ou de src/
  * quebra em runtime (src/config/site.ts usa import.meta.env, que não existe aqui).
@@ -86,24 +90,6 @@ export default async function handler(request: VercelRequest, response: VercelRe
     // Rebuildar agora trocaria as taxas publicadas pelos defaults hardcoded.
     json(response, 200, { skipped: 'bcb-indisponivel' });
     return;
-  }
-
-  // A entrega do cron é best-effort e pode repetir o mesmo agendamento, e em fins
-  // de semana o BCB não publica série nova. Só rebuilda quando a data mudou.
-  try {
-    const current = await fetch(`${SITE_URL}/api/indicadores.json`, {
-      headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout(8000),
-    });
-    if (current.ok) {
-      const published = (await current.json()) as { updatedAt?: string };
-      if (published.updatedAt === freshDate) {
-        json(response, 200, { skipped: 'sem-dados-novos', updatedAt: freshDate });
-        return;
-      }
-    }
-  } catch {
-    // Sem o valor publicado não dá para comparar; rebuildar é o lado seguro.
   }
 
   // Somados ao fetch do BCB, os timeouts ficam abaixo do maxDuration de 30s.

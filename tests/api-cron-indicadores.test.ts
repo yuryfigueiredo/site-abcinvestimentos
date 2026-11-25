@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const HOOK = 'https://api.vercel.com/v1/integrations/deploy/TEST';
-const PUBLISHED_URL = 'https://www.abcinvestimentos.com.br/api/indicadores.json';
+const SITE = 'https://www.abcinvestimentos.com.br';
 const SECRET = 'segredo-de-teste-1234';
 
 interface CronPayload {
@@ -34,20 +34,25 @@ async function callHandler(authorization?: string) {
   return { statusCode, payload: payload! };
 }
 
-/** Roteia o fetch por destino: séries do BCB, JSON publicado e Deploy Hook. */
-function stubFetch(options: { bcbOk: boolean; publishedDate: string; hookStatus?: number }) {
+/** Roteia o fetch por destino: séries do BCB e Deploy Hook. */
+function stubFetch(options: { bcbOk: boolean; hookStatus?: number; failedSeries?: string }) {
   const hookCalls: string[] = [];
+  const siteCalls: string[] = [];
   const fetchMock = vi.fn(async (url: string | URL | Request) => {
     const target = String(url);
     if (target === HOOK) {
       hookCalls.push(target);
       return new Response('{"job":{"id":"abc"}}', { status: options.hookStatus ?? 200 });
     }
-    if (target === PUBLISHED_URL) {
-      return new Response(JSON.stringify({ updatedAt: options.publishedDate }), { status: 200 });
+    if (target.startsWith(SITE)) {
+      siteCalls.push(target);
+      throw new Error(`destino inesperado: ${target}`);
     }
     if (target.includes('api.bcb.gov.br')) {
       if (!options.bcbOk) return new Response('offline', { status: 503 });
+      if (options.failedSeries && target.includes(options.failedSeries)) {
+        return new Response('offline', { status: 503 });
+      }
       // A Meta Selic vem com data futura; o CDI é a observação realizada.
       const body = target.includes('bcdata.sgs.432')
         ? [{ data: '09/12/2026', valor: '13.75' }]
@@ -57,7 +62,7 @@ function stubFetch(options: { bcbOk: boolean; publishedDate: string; hookStatus?
     throw new Error(`destino inesperado: ${target}`);
   });
   vi.stubGlobal('fetch', fetchMock);
-  return { fetchMock, hookCalls };
+  return { fetchMock, hookCalls, siteCalls };
 }
 
 describe('api/cron/indicadores — rebuild diário das taxas', () => {
@@ -84,7 +89,7 @@ describe('api/cron/indicadores — rebuild diário das taxas', () => {
   });
 
   it('rejeita quem não apresenta o CRON_SECRET, sem tocar na rede', async () => {
-    const { fetchMock } = stubFetch({ bcbOk: true, publishedDate: '11/11/2026' });
+    const { fetchMock } = stubFetch({ bcbOk: true });
 
     const semHeader = await callHandler();
     const headerErrado = await callHandler('Bearer chute');
@@ -96,7 +101,7 @@ describe('api/cron/indicadores — rebuild diário das taxas', () => {
 
   it('falha como erro de servidor quando CRON_SECRET não está configurado', async () => {
     delete process.env.CRON_SECRET;
-    const { fetchMock } = stubFetch({ bcbOk: true, publishedDate: '11/11/2026' });
+    const { fetchMock } = stubFetch({ bcbOk: true });
 
     const { statusCode, payload } = await callHandler(`Bearer ${SECRET}`);
 
@@ -105,8 +110,8 @@ describe('api/cron/indicadores — rebuild diário das taxas', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('dispara o rebuild quando o BCB tem observação mais nova que o publicado', async () => {
-    const { hookCalls } = stubFetch({ bcbOk: true, publishedDate: '11/11/2026' });
+  it('dispara o rebuild quando o BCB responde', async () => {
+    const { hookCalls, siteCalls } = stubFetch({ bcbOk: true });
 
     const { statusCode, payload } = await callHandler(`Bearer ${SECRET}`);
 
@@ -115,20 +120,22 @@ describe('api/cron/indicadores — rebuild diário das taxas', () => {
     // Ignora a data futura da Meta Selic e usa a observação realizada do CDI.
     expect(payload.updatedAt).toBe('12/11/2026');
     expect(hookCalls).toEqual([HOOK]);
+    expect(siteCalls).toEqual([]);
   });
 
-  it('não rebuilda quando a data publicada já é a mais recente (entrega duplicada / fim de semana)', async () => {
-    const { hookCalls } = stubFetch({ bcbOk: true, publishedDate: '12/11/2026' });
+  it('rebuilda mesmo sem observação nova do BCB, para manter o hub vivo', async () => {
+    const { hookCalls } = stubFetch({ bcbOk: true });
 
     const { statusCode, payload } = await callHandler(`Bearer ${SECRET}`);
 
     expect(statusCode).toBe(200);
-    expect(payload.skipped).toBe('sem-dados-novos');
-    expect(hookCalls).toEqual([]);
+    expect(payload.rebuilt).toBe(true);
+    expect(payload.skipped).toBeUndefined();
+    expect(hookCalls).toEqual([HOOK]);
   });
 
   it('não rebuilda com o BCB fora, para não publicar os defaults hardcoded', async () => {
-    const { hookCalls } = stubFetch({ bcbOk: false, publishedDate: '11/11/2026' });
+    const { hookCalls } = stubFetch({ bcbOk: false });
 
     const { statusCode, payload } = await callHandler(`Bearer ${SECRET}`);
 
@@ -137,33 +144,19 @@ describe('api/cron/indicadores — rebuild diário das taxas', () => {
     expect(hookCalls).toEqual([]);
   });
 
-  it('rebuilda mesmo sem conseguir ler o JSON publicado', async () => {
-    const { hookCalls } = stubFetch({ bcbOk: true, publishedDate: '12/11/2026' });
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (url: string | URL | Request) => {
-        const target = String(url);
-        if (target === PUBLISHED_URL) throw new Error('timeout');
-        if (target === HOOK) {
-          hookCalls.push(target);
-          return new Response('{}', { status: 200 });
-        }
-        const body = target.includes('bcdata.sgs.432')
-          ? [{ data: '09/12/2026', valor: '13.75' }]
-          : [{ data: '12/11/2026', valor: '13.65' }];
-        return new Response(JSON.stringify(body), { status: 200 });
-      })
-    );
+  it('rebuilda mesmo quando uma das séries do BCB falha', async () => {
+    const { hookCalls } = stubFetch({ bcbOk: true, failedSeries: 'bcdata.sgs.432' });
 
     const { statusCode, payload } = await callHandler(`Bearer ${SECRET}`);
 
     expect(statusCode).toBe(200);
     expect(payload.rebuilt).toBe(true);
+    expect(payload.updatedAt).toBe('12/11/2026');
     expect(hookCalls).toEqual([HOOK]);
   });
 
   it('reporta falha quando o Deploy Hook recusa', async () => {
-    stubFetch({ bcbOk: true, publishedDate: '11/11/2026', hookStatus: 403 });
+    stubFetch({ bcbOk: true, hookStatus: 403 });
 
     const { statusCode, payload } = await callHandler(`Bearer ${SECRET}`);
 
@@ -173,7 +166,7 @@ describe('api/cron/indicadores — rebuild diário das taxas', () => {
 
   it('avisa quando o Deploy Hook não está configurado', async () => {
     delete process.env.VERCEL_DEPLOY_HOOK_URL;
-    const { fetchMock } = stubFetch({ bcbOk: true, publishedDate: '11/11/2026' });
+    const { fetchMock } = stubFetch({ bcbOk: true });
 
     const { statusCode, payload } = await callHandler(`Bearer ${SECRET}`);
 
