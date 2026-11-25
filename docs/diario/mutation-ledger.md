@@ -140,6 +140,24 @@ O arquivo mutado foi restaurado em `finally`; o SHA-256 de `allowlist.json` foi 
 - Verificações: `npx tsc --noEmit` limpo; suíte serial **535/535 testes**; build de **90 páginas**; `diario:verify-build` aprovado com hub, um arquivo material e zero edições mornas sem URL; `git diff --check` aprovado.
 - `src/data/diario/edicoes/2026-11-23.json` permaneceu byte-idêntico à base `0e1993e`. Nenhum push foi realizado.
 
+## Verificação end-to-end — 2026-11-25
+
+Comandos e resultados, todos no worktree `feat/diario-do-investidor`:
+
+| Verificação | Resultado |
+|---|---|
+| `npx tsc --noEmit` | limpo |
+| `npx vitest run` | **534/534 testes**, 23 arquivos |
+| `npm run build` | **90 páginas** em `dist/` |
+| `npm run diario:verify-build` | hub, 1 arquivo material, 0 edição morna sem URL, endpoint alinhado |
+| `git diff --check` | limpo |
+
+Rotas no preview local (`astro preview`): hub **200**, arquivo material `2026-11-23` **200**, data quiet `2026-11-22` **404**, metodologia **200**, `/api/diario/edicao.json` **200**. O sitemap local traz hub, arquivo material e metodologia; a data quiet não vira URL. O HTML arquivado preserva o snapshot da edição (`13,65`, `4,63`, `5,9708`) em vez dos valores vivos.
+
+Navegador por CDP (Chromium headless, desktop 1440 e mobile 390): hub, arquivo e metodologia **sem erro de console**. O menu mobile alterna `aria-expanded` de `false` para `true` e a navegação fica visível. O único 404 é `/_vercel/insights/script.js`, presente também nas páginas já publicadas — é artefato do preview local, não regressão.
+
+Comparação com o site no ar: as 86 URLs já publicadas permanecem idênticas no sitemap local; as 3 URLs novas são só do Diário. A home conserva canonical, título e os três blocos de JSON-LD (`WebSite`, `Organization`, `Person`); a diferença no HTML é a navegação e os cards do Diário. Nenhum push foi realizado.
+
 ## Task 6 do plano — rebuild diário de garantia
 
 Data de execução: 2026-11-25. BASE: `762ac8d`.
