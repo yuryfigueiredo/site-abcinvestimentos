@@ -172,6 +172,24 @@ describe('Descoberta e metadados do Diário', () => {
     expect(source('src/pages/index.astro')).toContain('href="/diario-do-investidor/"');
   });
 
+  it('separa o Diário do Guia ABC em colunas próprias no rodapé', () => {
+    const footer = source('src/components/Footer.astro');
+    const diarioColumn = footer.match(/<div>\s*<h4>Diário do Investidor<\/h4>[\s\S]*?<\/div>/u)?.[0] ?? '';
+    const guideColumn = footer.match(/<div>\s*<h4>Guia ABC<\/h4>[\s\S]*?<\/div>/u)?.[0] ?? '';
+    expect(diarioColumn).toContain('href="/diario-do-investidor/"');
+    expect(diarioColumn).toContain('href="/diario-do-investidor/metodologia/"');
+    expect(guideColumn).not.toContain('href="/diario-do-investidor/"');
+    expect(footer.indexOf('<h4>Diário do Investidor</h4>')).toBeLessThan(footer.indexOf('<h4>Guia ABC</h4>'));
+  });
+
+  it('resume o Guia ABC no rodapé e preserva acesso ao acervo', () => {
+    const footer = source('src/components/Footer.astro');
+    const guideColumn = footer.match(/<div>\s*<h4>Guia ABC<\/h4>[\s\S]*?<\/div>/u)?.[0] ?? '';
+    expect(guideColumn).toContain('href="/guia"');
+    expect(guideColumn).not.toContain('GUIDES.map');
+    expect(guideColumn.match(/href="\/guia\/[^"]+"/gu)).toHaveLength(4);
+  });
+
   it('mantém canonical e breadcrumb no hub e no arquivo material', () => {
     const hub = source('src/pages/diario-do-investidor/index.astro');
     const archive = source('src/pages/diario-do-investidor/[date].astro');
