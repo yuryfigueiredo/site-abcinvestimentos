@@ -139,3 +139,9 @@ O arquivo mutado foi restaurado em `finally`; o SHA-256 de `allowlist.json` foi 
 - A seleção prova que o novo feed produz notícia econômica utilizável. O briefing rico ainda não foi escrito ou validado por IA nesta etapa; a curadoria não publicou uma edição datada nova.
 - Verificações: `npx tsc --noEmit` limpo; suíte serial **535/535 testes**; build de **90 páginas**; `diario:verify-build` aprovado com hub, um arquivo material e zero edições mornas sem URL; `git diff --check` aprovado.
 - `src/data/diario/edicoes/2026-11-23.json` permaneceu byte-idêntico à base `0e1993e`. Nenhum push foi realizado.
+
+## Revisão final da expansão
+
+- **Standards:** nenhuma violação dura de `AGENTS.md`. Um achado Minor de duplicação: a lista exata de fontes habilitadas é afirmada tanto no snapshot verificado quanto na seed bruta em `governance.test.ts`. Fica diferido porque ambas as asserções protegem contratos distintos e a repetição não altera comportamento.
+- **Spec:** PASS, sem achados Critical, Important ou Minor. A revisão independente confirmou os dois feeds novos, as fontes excluídas, as versões, o hash canônico, a referência do plano, a coleta somente de feeds e a edição anterior intacta.
+- Não houve achados Critical ou Important; nenhuma rodada adicional de correção foi necessária. Nenhum push foi realizado.
