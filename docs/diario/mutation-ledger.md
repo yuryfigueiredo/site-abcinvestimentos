@@ -118,3 +118,24 @@ Ambas foram restauradas byte a byte. As correções finais preservaram a semânt
 - Snapshot bruto: dólar `5.8573` em 2026-11-24 contra `5.9708` em 2026-11-23, variação de **-1,9009178%**; CDI `13,65%`; IPCA-12m `4,63%`; Selic com data futura e portanto não publicada como medição atual.
 - Briefing: os três blocos determinísticos foram gerados em cache, coerentes com a queda do dólar e sem dígitos ou recomendação.
 - Limite editorial: o dry-run prova o caminho conservador e factual, mas **não prova a qualidade de um briefing rico escrito por IA com notícias**, pois a configuração atual não selecionou notícia financeira utilizável. Nenhuma edição foi publicada, nenhum arquivo do cofre mudou e nenhum push foi realizado.
+
+## Expansão mínima das fontes — 2026-11-24
+
+Commit do cofre: `ea48609ca196a7b6f9393cc8d2909cf3ebcf0595`. A expansão adicionou somente notas técnicas do BCB e o feed econômico da Câmara; Senado, atos e comunicados do BCB, CVM, IBGE, Tesouro, governo federal e mídia adicional continuam desabilitados e sem feeds.
+
+O GREEN encontrou um acoplamento não previsto no plano: `parseApproval` fixava o caminho do plano anterior. A correção foi limitada a `APPROVED_INSTRUCTION_REF`, com teste novo do caminho aprovado e rejeição do caminho anterior; RED observado antes da correção e GREEN depois. A forma do schema, o parser, os thresholds, o coletor e a UI não mudaram.
+
+| Mutação deliberada | Teste que falhou | Resultado observado |
+|---|---|---|
+| Trocar o URL da Câmara de `ECONOMIA` para `OUTRA` | Hash do cofre e seed exato da Câmara em `governance.test.ts` | 4 falhas / 34 passes |
+
+O arquivo mutado foi restaurado em `finally`; o SHA-256 de `allowlist.json` foi `97fabd47176e7328cad8dab0bd9530b0d8cf837d2bc248120336fb549968d087` antes e depois. Governança focal: **38/38 testes** após a restauração e após o commit.
+
+### Coleta e curadoria reais, sem publicação
+
+- `npm run diario:collect -- 2026-11-24`: **73 candidatos** — 38 do BCB, 10 da Câmara e 25 da The Conversation Brasil. Os caminhos canônicos confirmaram **9 candidatos de notas técnicas do BCB**; nenhum corpo de artigo foi requisitado.
+- `npm run diario:curate -- 2026-11-24`: decisão `material`, motivos `dollar-trigger` e `official-news`, um cluster de `juros` e uma fonte oficial selecionada.
+- Fonte selecionada: Câmara dos Deputados, “Motta vê ajuste fiscal como essencial para avançar com investimentos em 2027”, publicada em 2026-11-24; excerpt limitado “Presidente cobrou, porém, mais medidas para conter juros e dólar”.
+- A seleção prova que o novo feed produz notícia econômica utilizável. O briefing rico ainda não foi escrito ou validado por IA nesta etapa; a curadoria não publicou uma edição datada nova.
+- Verificações: `npx tsc --noEmit` limpo; suíte serial **535/535 testes**; build de **90 páginas**; `diario:verify-build` aprovado com hub, um arquivo material e zero edições mornas sem URL; `git diff --check` aprovado.
+- `src/data/diario/edicoes/2026-11-23.json` permaneceu byte-idêntico à base `0e1993e`. Nenhum push foi realizado.
