@@ -1,7 +1,7 @@
 {
-  "bundleSha256": "6a64f728c5445883d1e777401f2d80bf62ea22b0d2dec9fb8a78ab7385733eb1",
-  "charterVersion": "1.0.2",
-  "approvedAt": "2026-11-23T21:11:39Z",
+  "bundleSha256": "15d4ed90f7c75e76b6dbf1d01eda478fcb344ef0f0b88ab6ae5743fd994dde35",
+  "charterVersion": "1.0.3",
+  "approvedAt": "2026-11-25T00:07:43Z",
   "approvedBy": "Yury Figueiredo",
-  "instructionRef": "docs/superpowers/plans/2026-11-23-diario-do-investidor.md"
+  "instructionRef": "docs/superpowers/plans/2026-11-24-diario-expansao-fontes.md"
 }

@@ -82,14 +82,18 @@ describe('verifyGovernance', () => {
     const snapshot = verifyGovernance(root);
 
     expect(snapshot).toMatchObject({
-      charterVersion: '1.0.2',
-      allowlistVersion: '1.1.0',
+      charterVersion: '1.0.3',
+      allowlistVersion: '1.2.0',
       bundleSha256: readJson<Approval>('approval.json').bundleSha256,
+      approval: {
+        instructionRef: 'docs/superpowers/plans/2026-11-24-diario-expansao-fontes.md',
+      },
       calendar: [],
     });
     expect(snapshot.allowlist).toHaveLength(readJson<AllowlistFile>('allowlist.json').sources.length);
     expect(snapshot.allowlist.filter((item) => item.enabled).map((item) => item.id)).toEqual([
       'bcb',
+      'camara',
       'the-conversation-brasil',
     ]);
     expect(snapshot.lessons).toHaveLength(12);
@@ -143,14 +147,14 @@ describe('verifyGovernance', () => {
     const approval = readJson<Approval>('approval.json');
     if (record === 'charter') {
       const charter = readFileSync(join(vault, 'carta.md'), 'utf8').replace(
-        'Versão da carta: 1.0.2',
+        'Versão da carta: 1.0.3',
         'Versão da carta: 2.0.0',
       );
       writeFileSync(join(vault, 'carta.md'), charter, 'utf8');
       approval.charterVersion = '2.0.0';
       writeJson('approval.json', approval);
     } else {
-      const changelog = readFileSync(join(vault, 'changelog.md'), 'utf8').replace('## 1.0.2', '## 2.0.0');
+      const changelog = readFileSync(join(vault, 'changelog.md'), 'utf8').replace('## 1.0.3', '## 2.0.0');
       writeFileSync(join(vault, 'changelog.md'), changelog, 'utf8');
     }
     refreshApprovalHash();
@@ -192,7 +196,8 @@ describe('verifyGovernance', () => {
     ['approvedBy', '\u0000Yury Figueiredo'],
     ['approvedBy', ''],
     ['approvedBy', 'a'.repeat(121)],
-    ['instructionRef', '../plans/2026-11-23-diario-do-investidor.md'],
+    ['instructionRef', '../plans/2026-11-24-diario-expansao-fontes.md'],
+    ['instructionRef', 'docs/superpowers/plans/2026-11-23-diario-do-investidor.md'],
   ])('invalid approval field %s with value %j fails', (field, value) => {
     const approval = readJson<Record<string, unknown>>('approval.json');
     approval[field] = value;
@@ -250,11 +255,12 @@ describe('verifyGovernance', () => {
 });
 
 describe('safe vault seed', () => {
-  it('enables exactly the verified BCB and The Conversation feeds with their terms and license', () => {
+  it('enables exactly the verified BCB, Câmara and The Conversation feeds with their terms and license', () => {
     const allowlist = readJson<AllowlistFile>('allowlist.json');
-    expect(allowlist.version).toBe('1.1.0');
+    expect(allowlist.version).toBe('1.2.0');
     expect(allowlist.sources.map((item) => item.id)).toEqual([
       'bcb',
+      'camara',
       'ibge',
       'cvm',
       'tesouro-nacional',
@@ -265,6 +271,7 @@ describe('safe vault seed', () => {
     ]);
     expect(allowlist.sources.filter((item) => item.enabled).map((item) => item.id)).toEqual([
       'bcb',
+      'camara',
       'the-conversation-brasil',
     ]);
     expect(allowlist.sources.find((item) => item.id === 'bcb')).toEqual({
@@ -286,7 +293,22 @@ describe('safe vault seed', () => {
           url: 'https://www.bcb.gov.br/api/feed/sitebcb/sitefeeds/comunicadoscopom',
           topics: ['renda-fixa', 'juros'],
         },
+        {
+          url: 'https://www.bcb.gov.br/api/feed/sitebcb/sitefeeds/notastecnicas',
+          topics: VERIFIED_TOPICS,
+        },
       ],
+    });
+    expect(allowlist.sources.find((item) => item.id === 'camara')).toEqual({
+      id: 'camara',
+      publisher: 'Câmara dos Deputados',
+      kind: 'official',
+      termsUrl: 'https://www2.camara.leg.br/termo-de-uso-e-politica-de-privacidade',
+      enabled: true,
+      feeds: [{
+        url: 'https://www.camara.leg.br/noticias/rss/dinamico/ECONOMIA',
+        topics: VERIFIED_TOPICS,
+      }],
     });
     expect(allowlist.sources.find((item) => item.id === 'the-conversation-brasil')).toEqual({
       id: 'the-conversation-brasil',
@@ -307,9 +329,9 @@ describe('safe vault seed', () => {
 
   it('records the owner and committed plan on the activation approval', () => {
     expect(readJson<Approval>('approval.json')).toMatchObject({
-      charterVersion: '1.0.2',
+      charterVersion: '1.0.3',
       approvedBy: 'Yury Figueiredo',
-      instructionRef: 'docs/superpowers/plans/2026-11-23-diario-do-investidor.md',
+      instructionRef: 'docs/superpowers/plans/2026-11-24-diario-expansao-fontes.md',
     });
     expect(readJson<Approval>('approval.json').approvedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/u);
   });

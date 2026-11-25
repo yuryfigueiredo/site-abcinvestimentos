@@ -21,3 +21,10 @@
 - A verificação dos feeds ocorreu em 2026-11-23, sem requisitar artigos. Termos do Banco Central: https://www.bcb.gov.br/acessoinformacao/politicaprivacidade. Termos do The Conversation Brasil: https://theconversation.com/br/republishing-guidelines.
 - O The Conversation Brasil declara CC BY-ND (https://creativecommons.org/licenses/by-nd/4.0/); o excerpt é citação literal e não pode alimentar paráfrase, resumo ou tradução pela IA.
 - A evidência passou a preservar autor e licença opcionais, e o coletor passou a identificar-se com User-Agent transparente e a usar `content` Atom apenas como fallback normalizado do excerpt.
+
+## 1.0.3 — 2026-11-24
+
+- Por ordem explícita do dono, a ativação governada ampliou o Banco Central com o feed de notas técnicas e habilitou o feed RSS econômico da Câmara dos Deputados; a ativação passa a cobrir quatro feeds do Banco Central, um da Câmara e o Atom da The Conversation Brasil.
+- A verificação foi feita em 2026-11-24 sem requisitar corpos de artigos. O feed de notas técnicas do Banco Central e o feed econômico da Câmara responderam com XML válido, itens recentes e links HTTPS. Termos da Câmara: https://www2.camara.leg.br/termo-de-uso-e-politica-de-privacidade.
+- Senado, atos e comunicados do Banco Central, CVM, IBGE, Tesouro Nacional, governo federal, Valor Investe, InfoMoney e Agência Pública continuam desabilitados e sem feeds. O Senado geral produziu falso positivo de relevância; a CVM exige política de links HTTP e tratamento de licença; a Agência Pública não autoriza resumo automatizado sem reprodução integral ou contato prévio.
+- A allowlist passou para 1.2.0; a carta e o changelog passaram para 1.0.3, com novo hash e approval vinculados ao plano `docs/superpowers/plans/2026-11-24-diario-expansao-fontes.md`.

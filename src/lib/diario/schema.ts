@@ -51,7 +51,7 @@ const REASON_CODES: readonly ReasonCode[] = [
 ];
 const EVENT_KINDS: readonly Thresholds['events'][number][] = ['copom', 'ipca', 'igp-m', 'payroll', 'fomc'];
 
-export const APPROVED_INSTRUCTION_REF = 'docs/superpowers/plans/2026-11-23-diario-do-investidor.md';
+export const APPROVED_INSTRUCTION_REF = 'docs/superpowers/plans/2026-11-24-diario-expansao-fontes.md';
 
 type Fields = Map<string, unknown>;
 
