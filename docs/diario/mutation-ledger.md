@@ -140,6 +140,43 @@ O arquivo mutado foi restaurado em `finally`; o SHA-256 de `allowlist.json` foi 
 - Verificações: `npx tsc --noEmit` limpo; suíte serial **535/535 testes**; build de **90 páginas**; `diario:verify-build` aprovado com hub, um arquivo material e zero edições mornas sem URL; `git diff --check` aprovado.
 - `src/data/diario/edicoes/2026-11-23.json` permaneceu byte-idêntico à base `0e1993e`. Nenhum push foi realizado.
 
+## Task 6 do plano — rebuild diário de garantia
+
+Data de execução: 2026-11-25. BASE: `762ac8d`.
+
+Comando de execução:
+
+```bash
+node .superpowers/sdd/2026-11-23-diario-do-investidor/run-task-6-cron-mutations.mjs
+```
+
+As mutações foram aplicadas isoladamente com substituição textual exata e única; cada teste focal falhou com o código mutado e o arquivo original foi restaurado em seguida, com SHA-256 igual antes e depois.
+
+| Mutação deliberada | Teste que falhou | Resultado observado |
+|---|---|---|
+| Reintroduzir a comparação com `/api/indicadores.json` e o skip `sem-dados-novos` | `rebuilda de garantia sempre que o BCB responde, sem comparar com o publicado` | 1 falha / 6 passes |
+| Remover a guarda que interrompe o rebuild quando o BCB não responde | `não rebuilda quando uma das séries do BCB falha, para não publicar referência como medição` | 1 falha / 6 passes |
+| Aceitar falha parcial do BCB | `não rebuilda com o BCB fora, para não publicar os defaults hardcoded` e `não rebuilda quando uma das séries do BCB falha, para não publicar referência como medição` | 2 falhas / 5 passes |
+
+Resultado: **3 de 3 mutações detectadas**, com o arquivo restaurado byte a byte.
+
+### Revisão em dois eixos do commit do cron
+
+Standards: nenhuma violação dura de `AGENTS.md`; os achados foram de evidência e de legibilidade. Spec: o comportamento pedido foi cumprido, com um achado médio sobre a falha parcial do BCB.
+
+Rulings:
+
+- **Falha parcial interrompe o rebuild.** O código anterior reconstruía com uma série do BCB fora e o build publicava a referência de configuração sob uma data fresca, sem rótulo. O cron agora exige as quatro séries, e o skip passa a reportar `failedSeries` para o operador distinguir queda total de série única.
+- **Nomenclatura `freshDate`/`updatedAt` mantida.** `updatedAt` é o nome de contrato do payload publicado em `/api/indicadores.json` e do ticker; renomear a chave só dentro da resposta do cron mudaria o nome sem mudar o que o consumidor vê.
+- **Teste duplicado removido.** O caso “rebuilda mesmo sem observação nova do BCB” exercitava o mesmo caminho do caso base depois que o double deixou de modelar a data publicada. A cobertura distintiva ficou em um caso só, com `skipped` indefinido e nenhuma chamada fora do BCB e do Deploy Hook.
+- **Host de produção fora do teste.** O stub agora registra qualquer destino fora do BCB e do Deploy Hook como inesperado, o que é mais forte do que fixar o domínio do site no teste.
+- **Ponteiro de duplicação corrigido.** A lógica de data duplicada pelo cron está em `src/lib/bcb.ts`, não em `src/lib/indicators.ts`.
+
+### Achado aberto, fora do escopo deste commit
+
+- O ticker global (`src/components/Ticker.astro`) mostra os valores do `/api/indicadores.json` e a data de `updatedAt`, mas não lê `origins`. Se uma série do BCB cair durante o build, o ticker exibe a referência de configuração ao lado de uma data fresca, sem rótulo. As superfícies do Diário rotulam a origem (`Referência de configuração` em `src/components/diario/IndicatorGrid.astro`). A janela é do build, que busca o BCB de forma independente; o rebuild diário de garantia apenas aumenta o número de builds. Fica registrado para task dedicada de rotulagem no ticker.
+- Meta Selic com data futura: o build publica a observação datada para o próximo período do Copom como Selic corrente, enquanto o snapshot curado do Diário descarta datas futuras. Alinhamento pendente e já conhecido.
+
 ## Revisão final da expansão
 
 - **Standards:** nenhuma violação dura de `AGENTS.md`. Um achado Minor de duplicação: a lista exata de fontes habilitadas é afirmada tanto no snapshot verificado quanto na seed bruta em `governance.test.ts`. Fica diferido porque ambas as asserções protegem contratos distintos e a repetição não altera comportamento.

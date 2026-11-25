@@ -55,15 +55,16 @@ function latestRealizedDate(dates: Array<string | null>): string | null {
  * Cron diário: o site é estático, então taxas novas só entram no HTML com um
  * rebuild. O build já busca o BCB, logo basta disparar o Deploy Hook.
  *
- * O rebuild é de garantia: acontece sempre que o BCB responde, mesmo sem
- * observação nova, para o hub vivo não envelhecer entre uma publicação e a
- * seguinte. Só a indisponibilidade do BCB interrompe o ciclo, porque nesse
- * caso o build publicaria os defaults hardcoded no lugar das taxas.
+ * O rebuild é de garantia: acontece sempre que as quatro séries do BCB
+ * respondem, mesmo sem observação nova, para o hub vivo não envelhecer entre
+ * uma publicação e a seguinte. Qualquer série fora interrompe o ciclo, porque
+ * nesse caso o build publicaria a referência de configuração como se fosse
+ * medição do dia.
  *
  * Este arquivo não importa nada do projeto de propósito. Cada arquivo em api/ é
  * compilado como função isolada pela Vercel: importar de outra função ou de src/
  * quebra em runtime (src/config/site.ts usa import.meta.env, que não existe aqui).
- * A lógica de data duplica a de src/lib/indicators.ts -- se mudar uma, mude outra.
+ * A lógica de data duplica a de src/lib/bcb.ts -- se mudar uma, mude outra.
  */
 export default async function handler(request: VercelRequest, response: VercelResponse): Promise<void> {
   const cronSecret = process.env.CRON_SECRET;
@@ -85,10 +86,13 @@ export default async function handler(request: VercelRequest, response: VercelRe
   }
 
   const observed = await Promise.all(SERIE_CODES.map(lastObservation));
+  const failedSeries = SERIE_CODES.filter((_, index) => observed[index] === null);
   const freshDate = latestRealizedDate(observed);
-  if (!freshDate) {
-    // Rebuildar agora trocaria as taxas publicadas pelos defaults hardcoded.
-    json(response, 200, { skipped: 'bcb-indisponivel' });
+  if (failedSeries.length > 0 || !freshDate) {
+    // Rebuildar agora trocaria as taxas publicadas pelos defaults hardcoded. Com
+    // uma série só fora, o build publicaria a referência de configuração
+    // também como se fosse medição do dia.
+    json(response, 200, { skipped: 'bcb-indisponivel', failedSeries });
     return;
   }
 

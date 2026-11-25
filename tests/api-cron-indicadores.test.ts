@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const HOOK = 'https://api.vercel.com/v1/integrations/deploy/TEST';
-const SITE = 'https://www.abcinvestimentos.com.br';
 const SECRET = 'segredo-de-teste-1234';
 
 interface CronPayload {
   rebuilt?: boolean;
   skipped?: string;
   updatedAt?: string;
+  failedSeries?: number[];
   error?: string;
 }
 
@@ -34,19 +34,15 @@ async function callHandler(authorization?: string) {
   return { statusCode, payload: payload! };
 }
 
-/** Roteia o fetch por destino: séries do BCB e Deploy Hook. */
+/** Roteia o fetch por destino: séries do BCB e Deploy Hook. Qualquer outro destino é erro. */
 function stubFetch(options: { bcbOk: boolean; hookStatus?: number; failedSeries?: string }) {
   const hookCalls: string[] = [];
-  const siteCalls: string[] = [];
+  const unexpectedCalls: string[] = [];
   const fetchMock = vi.fn(async (url: string | URL | Request) => {
     const target = String(url);
     if (target === HOOK) {
       hookCalls.push(target);
       return new Response('{"job":{"id":"abc"}}', { status: options.hookStatus ?? 200 });
-    }
-    if (target.startsWith(SITE)) {
-      siteCalls.push(target);
-      throw new Error(`destino inesperado: ${target}`);
     }
     if (target.includes('api.bcb.gov.br')) {
       if (!options.bcbOk) return new Response('offline', { status: 503 });
@@ -59,10 +55,11 @@ function stubFetch(options: { bcbOk: boolean; hookStatus?: number; failedSeries?
         : [{ data: '12/11/2026', valor: '13.65' }];
       return new Response(JSON.stringify(body), { status: 200 });
     }
+    unexpectedCalls.push(target);
     throw new Error(`destino inesperado: ${target}`);
   });
   vi.stubGlobal('fetch', fetchMock);
-  return { fetchMock, hookCalls, siteCalls };
+  return { fetchMock, hookCalls, unexpectedCalls };
 }
 
 describe('api/cron/indicadores — rebuild diário das taxas', () => {
@@ -110,8 +107,8 @@ describe('api/cron/indicadores — rebuild diário das taxas', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('dispara o rebuild quando o BCB responde', async () => {
-    const { hookCalls, siteCalls } = stubFetch({ bcbOk: true });
+  it('rebuilda de garantia sempre que o BCB responde, sem comparar com o publicado', async () => {
+    const { hookCalls, unexpectedCalls } = stubFetch({ bcbOk: true });
 
     const { statusCode, payload } = await callHandler(`Bearer ${SECRET}`);
 
@@ -119,19 +116,10 @@ describe('api/cron/indicadores — rebuild diário das taxas', () => {
     expect(payload.rebuilt).toBe(true);
     // Ignora a data futura da Meta Selic e usa a observação realizada do CDI.
     expect(payload.updatedAt).toBe('12/11/2026');
-    expect(hookCalls).toEqual([HOOK]);
-    expect(siteCalls).toEqual([]);
-  });
-
-  it('rebuilda mesmo sem observação nova do BCB, para manter o hub vivo', async () => {
-    const { hookCalls } = stubFetch({ bcbOk: true });
-
-    const { statusCode, payload } = await callHandler(`Bearer ${SECRET}`);
-
-    expect(statusCode).toBe(200);
-    expect(payload.rebuilt).toBe(true);
     expect(payload.skipped).toBeUndefined();
     expect(hookCalls).toEqual([HOOK]);
+    // Nenhuma consulta fora do BCB e do Deploy Hook: o cron não decide pelo publicado.
+    expect(unexpectedCalls).toEqual([]);
   });
 
   it('não rebuilda com o BCB fora, para não publicar os defaults hardcoded', async () => {
@@ -141,18 +129,19 @@ describe('api/cron/indicadores — rebuild diário das taxas', () => {
 
     expect(statusCode).toBe(200);
     expect(payload.skipped).toBe('bcb-indisponivel');
+    expect(payload.failedSeries).toEqual([432, 4389, 13522, 1]);
     expect(hookCalls).toEqual([]);
   });
 
-  it('rebuilda mesmo quando uma das séries do BCB falha', async () => {
+  it('não rebuilda quando uma das séries do BCB falha, para não publicar referência como medição', async () => {
     const { hookCalls } = stubFetch({ bcbOk: true, failedSeries: 'bcdata.sgs.432' });
 
     const { statusCode, payload } = await callHandler(`Bearer ${SECRET}`);
 
     expect(statusCode).toBe(200);
-    expect(payload.rebuilt).toBe(true);
-    expect(payload.updatedAt).toBe('12/11/2026');
-    expect(hookCalls).toEqual([HOOK]);
+    expect(payload.skipped).toBe('bcb-indisponivel');
+    expect(payload.failedSeries).toEqual([432]);
+    expect(hookCalls).toEqual([]);
   });
 
   it('reporta falha quando o Deploy Hook recusa', async () => {
