@@ -532,9 +532,10 @@ function parseFeed(xml: string, source: AllowlistSource, retrievedAt: string): P
     if (!item) continue;
     const title = normalizedMetadata(item.title, MAX_TITLE_LENGTH);
     const url = canonicalUrl(alternateLink(item));
-    if (!title || !url) continue;
     const primaryExcerpt = normalizedExcerpt(item.description ?? item.summary);
     const excerpt = atom && !primaryExcerpt ? normalizedAtomContentExcerpt(item.content) : primaryExcerpt;
+    // O schema recusa excerpt vazio: item sem corpo sairia do cache e derrubaria a rodada inteira.
+    if (!title || !url || !excerpt) continue;
     const author = normalizedAuthor(item, atom, atom ? [] : [...rssNamespaceScopes, item]);
     const id = `src-${createHash('sha256').update(`${source.id}\0${url}`, 'utf8').digest('hex').slice(0, 24)}`;
     candidates.push({
