@@ -134,8 +134,12 @@ export async function fetchBcbRecentValues(
 export async function fetchBcbLastValue(
   serieCode: number,
   fetchImpl: typeof fetch = fetch,
+  now: Date = new Date(),
 ): Promise<BcbObservation | null> {
-  return (await fetchBcbRecentValues(serieCode, 1, fetchImpl))[0] ?? null;
+  const observations = await fetchBcbRecentValues(serieCode, 10, fetchImpl);
+  if (!(now instanceof Date) || !Number.isFinite(now.getTime())) return null;
+  const today = now.toISOString().slice(0, 10);
+  return observations.find((observation) => observation.date <= today) ?? null;
 }
 
 export function latestRealizedDate(

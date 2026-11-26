@@ -1,0 +1,383 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import CalcDisclaimer from '../../components/CalcDisclaimer.astro';
+import { SITE_CONFIG } from '../../config/site';
+import { absUrl, breadcrumbSchema } from '../../lib/seo';
+
+const methodologyUrl = absUrl('/diario-do-investidor/metodologia');
+const pageJsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'WebPage',
+      name: 'Metodologia do Diário do Investidor',
+      description: 'Como a curadoria automática decide o que merece uma página datada e como o cofre protege essa política.',
+      url: methodologyUrl,
+      inLanguage: 'pt-BR',
+      isPartOf: { '@type': 'WebSite', '@id': `${SITE_CONFIG.url}/#website` },
+      publisher: { '@id': `${SITE_CONFIG.url}/#organization` },
+    },
+    breadcrumbSchema([
+      { name: 'Início', path: '/' },
+      { name: 'Diário do Investidor', path: '/diario-do-investidor' },
+      { name: 'Metodologia' },
+    ]),
+  ],
+};
+---
+
+<BaseLayout
+  title="Metodologia do Diário do Investidor"
+  description="Entenda as fontes, o critério material ou morno, a automação e o cofre que protegem a curadoria do Diário do Investidor."
+  canonical="/diario-do-investidor/metodologia"
+>
+  <script type="application/ld+json" set:html={JSON.stringify(pageJsonLd)} />
+
+  <article class="methodology">
+    <div class="container">
+      <nav class="breadcrumb" aria-label="Navegação estrutural">
+        <a href="/">Início</a> <span>/</span>
+        <a href="/diario-do-investidor/">Diário do Investidor</a> <span>/</span>
+        <strong>Metodologia</strong>
+      </nav>
+
+      <header class="methodology__hero">
+        <span class="badge-pill">Metodologia · curadoria automática</span>
+        <h1>O que merece virar notícia no Diário</h1>
+        <p>
+          O Diário não publica uma página por obrigação de calendário. Ele mantém uma leitura viva,
+          arquiva apenas o que tem substância nova e deixa claro quando não houve alteração relevante.
+        </p>
+      </header>
+
+      <div class="methodology__flow" aria-label="Etapas da curadoria">
+        <div><span>01</span><strong>Coletar</strong><p>Dados do Banco Central e feeds da allowlist.</p></div>
+        <div><span>02</span><strong>Decidir</strong><p>Regras determinísticas separam material de morno.</p></div>
+        <div><span>03</span><strong>Validar</strong><p>Fontes, snapshot e política passam por um gate final.</p></div>
+      </div>
+
+      <div class="methodology__grid">
+        <div class="methodology__content">
+          <section>
+            <span class="methodology__eyebrow">Arquitetura editorial</span>
+            <h2>Uma URL viva, arquivo seletivo</h2>
+            <p>
+              O hub compacto <a href="/diario-do-investidor/">Diário do Investidor</a> mostra a última
+              edição e os indicadores ao vivo, sem repetir o briefing completo. Uma edição
+              <strong>material</strong> ganha página própria e entra no arquivo.
+            </p>
+            <p>
+              O arquivo datado preserva o snapshot da edição e oferece a leitura completa. Uma edição
+              <strong>morna</strong> permanece no hub e no endpoint, sem criar uma URL fina.
+            </p>
+          </section>
+
+          <section>
+            <span class="methodology__eyebrow">Leitura da edição</span>
+            <h2>Três blocos, uma base factual</h2>
+            <p>
+              Toda edição material organiza a leitura em <strong>O que aconteceu</strong>,
+              <strong>Por que importa</strong> e <strong>O que observar</strong>. O primeiro bloco relata
+              o fato com sobriedade; o segundo explica seu contexto educacional; o terceiro aponta
+              desdobramentos e perguntas para acompanhar, sem apresentar recomendações.
+            </p>
+            <p>
+              O painel factual reúne Selic, CDI, IPCA e Dólar/PTAX com valor, data de observação e
+              origem quando disponíveis. Um indicador ausente aparece como <strong>Indisponível</strong>,
+              e a variação cambial só é mostrada quando existe no snapshot. A prosa não contém
+              algarismos nem HTML: os números ficam separados nesse painel ou nos metadados factuais.
+            </p>
+          </section>
+
+          <section>
+            <span class="methodology__eyebrow">Materialidade</span>
+            <h2>O que justifica uma página datada</h2>
+            <ul>
+              <li>Evento de calendário com fonte oficial verificada.</li>
+              <li>Variação do dólar que atinge o limiar aprovado de um por cento.</li>
+              <li>Notícia oficial com lastro suficiente no período de coleta.</li>
+              <li>Notícia de mídia corroborada por dois veículos independentes.</li>
+            </ul>
+            <p>
+              A decisão é determinística e não depende do texto gerado pela IA. Todo número editorial
+              vem do snapshot da edição; a prosa não inventa valores.
+            </p>
+          </section>
+
+          <section>
+            <span class="methodology__eyebrow">Fontes e reuso</span>
+            <h2>Curadoria com lastro, sem copiar matérias</h2>
+            <p>
+              A coleta usa dados oficiais do Banco Central e uma allowlist pequena de fontes verificadas.
+              Não buscamos corpo de matéria atrás de paywall. A edição publica links, títulos, datas e
+              metadados de atribuição, não o texto integral das notícias.
+            </p>
+            <p>
+              Quando uma fonte exige licença, o trecho é literal, curto e atribuído. Conteúdo sob
+              CC BY-ND não é parafraseado, resumido ou traduzido pela IA.
+            </p>
+            <p>
+              Quando a decisão aponta para um evento, o cartão usa o evento aprovado no cofre.
+              O título, data e link do evento são metadados factuais preservados exatamente; a prosa
+              não presume resultado nem acrescenta informação ao calendário.
+            </p>
+          </section>
+
+          <section>
+            <span class="methodology__eyebrow">Governança</span>
+            <h2>O cofre protege a política de curadoria</h2>
+            <p>
+              Carta, allowlist, limites, calendário, lições e changelog formam um cofre versionado.
+              Um hash de aprovação amarra esses arquivos. Mudar a política exige ordem explícita do dono,
+              registro no changelog, nova aprovação e testes.
+            </p>
+          </section>
+
+          <section>
+            <span class="methodology__eyebrow">Operação e limites</span>
+            <h2>Automação diária, responsabilidade editorial</h2>
+            <p>
+              A rotina prevista é às dezenove horas de Brasília, todos os dias, com a data da edição
+              definida por <code>America/Sao_Paulo</code>. Se a coleta falhar, a execução para. Em
+              uma edição material sem notícias, o fallback determinístico gera os três blocos a
+              partir dos fatos aprovados e do snapshot; a automação copia o artefato validado do
+              cache, e o validador exige que ele permaneça idêntico.
+            </p>
+            <p>
+              Em dúvida de lastro, a automação descarta a fonte e recalcula a seleção determinística.
+              A queda para uma edição morna só acontece quando essa camada não encontra razão
+              material. Um material inválido interrompe a execução: não é rebaixado em silêncio nem
+              publicado incompleto.
+            </p>
+            <p>
+              O Diário é educacional. Não analisa a situação individual do leitor, não é recomendação
+              de compra ou venda e não substitui orientação profissional.
+            </p>
+          </section>
+        </div>
+
+        <aside class="methodology__aside">
+          <div class="methodology__note">
+            <span>Regra de segurança</span>
+            <strong>Sem substância, sem página nova.</strong>
+            <p>O hub continua útil mesmo nos dias quiet. Isso evita conteúdo fino e duplicado.</p>
+          </div>
+          <div class="methodology__legal">
+            <h2>Aviso legal</h2>
+            <p>{SITE_CONFIG.legalDisclaimer}</p>
+            <CalcDisclaimer />
+          </div>
+          <a class="btn btn-primary" href="/diario-do-investidor/">Ler o Diário →</a>
+        </aside>
+      </div>
+    </div>
+  </article>
+</BaseLayout>
+
+<style>
+  .methodology {
+    padding-block: 2.25rem 4rem;
+  }
+
+  .breadcrumb {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-block-end: 1.25rem;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+  }
+
+  .methodology__hero {
+    max-inline-size: 860px;
+    margin-block-end: 2rem;
+  }
+
+  .methodology__hero h1 {
+    margin-block: 0.8rem 1rem;
+    font-size: clamp(2.1rem, 5vw, 3.8rem);
+    line-height: 1.05;
+    letter-spacing: -0.06em;
+  }
+
+  .methodology__hero > p {
+    max-inline-size: 720px;
+    color: var(--text-secondary);
+    font-size: 1.05rem;
+    line-height: 1.8;
+  }
+
+  .methodology__flow {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    margin-block-end: 3rem;
+    border-block: 1px solid var(--border-card);
+  }
+
+  .methodology__flow > div {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.3rem 0.8rem;
+    padding: 1.25rem;
+    border-inline-end: 1px solid var(--border-card);
+  }
+
+  .methodology__flow > div:last-child {
+    border-inline-end: 0;
+  }
+
+  .methodology__flow span {
+    grid-row: span 2;
+    color: var(--brand-blue);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+  }
+
+  .methodology__flow strong {
+    font-size: 0.92rem;
+  }
+
+  .methodology__flow p {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    line-height: 1.6;
+  }
+
+  .methodology__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 330px);
+    gap: clamp(2rem, 5vw, 4rem);
+    align-items: start;
+  }
+
+  .methodology__content {
+    display: grid;
+    gap: 2.5rem;
+  }
+
+  .methodology__content section {
+    padding-block-end: 2.5rem;
+    border-block-end: 1px solid var(--border-subtle);
+  }
+
+  .methodology__content section:last-child {
+    padding-block-end: 0;
+    border-block-end: 0;
+  }
+
+  .methodology__eyebrow {
+    color: var(--brand-blue);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .methodology__content h2 {
+    margin-block: 0.45rem 1rem;
+    font-size: clamp(1.35rem, 2.6vw, 1.8rem);
+    line-height: 1.25;
+    letter-spacing: -0.035em;
+  }
+
+  .methodology__content p,
+  .methodology__content li {
+    color: var(--text-secondary);
+    line-height: 1.85;
+  }
+
+  .methodology__content p + p {
+    margin-block-start: 1rem;
+  }
+
+  .methodology__content ul {
+    display: grid;
+    gap: 0.6rem;
+    margin-block: 1rem 1.25rem;
+    padding-inline-start: 1.2rem;
+    list-style: square;
+  }
+
+  .methodology__content a {
+    text-underline-offset: 0.2em;
+  }
+
+  .methodology__aside {
+    display: grid;
+    gap: 1rem;
+    position: sticky;
+    top: 6.5rem;
+  }
+
+  .methodology__note,
+  .methodology__legal {
+    padding: 1.25rem;
+    border: 1px solid var(--border-card);
+    background: var(--bg-surface);
+  }
+
+  .methodology__note {
+    border-inline-start: 3px solid var(--brand-positive);
+  }
+
+  .methodology__note > span {
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.64rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .methodology__note strong {
+    display: block;
+    margin-block: 0.6rem 0.45rem;
+    font-size: 1rem;
+  }
+
+  .methodology__note p,
+  .methodology__legal p {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    line-height: 1.7;
+  }
+
+  .methodology__legal h2 {
+    margin-block-end: 0.65rem;
+    font-size: 1rem;
+  }
+
+  .methodology__legal :global(.abc-text-sm) {
+    margin-block-start: 1rem;
+  }
+
+  .methodology__aside .btn {
+    min-block-size: 48px;
+  }
+
+  @media (max-width: 900px) {
+    .methodology__grid {
+      grid-template-columns: 1fr;
+    }
+
+    .methodology__aside {
+      position: static;
+      grid-row: 1;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .methodology__flow {
+      grid-template-columns: 1fr;
+    }
+
+    .methodology__flow > div {
+      border-inline-end: 0;
+      border-block-end: 1px solid var(--border-card);
+    }
+
+    .methodology__flow > div:last-child {
+      border-block-end: 0;
+    }
+  }
+</style>

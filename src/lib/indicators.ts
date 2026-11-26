@@ -12,6 +12,12 @@ export interface Indicators {
   ipca12m: number;
   dolar: number;
   updatedAt: string;
+  observedOn: {
+    selic: string | null;
+    cdi: string | null;
+    ipca12m: string | null;
+    dolar: string | null;
+  };
   origins: {
     selic: IndicatorOrigin;
     cdi: IndicatorOrigin;
@@ -57,6 +63,12 @@ async function load(): Promise<Indicators> {
     ipca12m: ipca12m?.value ?? SITE_CONFIG.defaultIndicators.ipca12m,
     dolar: dolar?.value ?? SITE_CONFIG.defaultIndicators.dolar,
     updatedAt: latestRealizedDate([selic, cdi, ipca12m, dolar]) ?? SITE_CONFIG.defaultIndicators.updatedAt,
+    observedOn: {
+      selic: selic?.date ?? null,
+      cdi: cdi?.date ?? null,
+      ipca12m: ipca12m?.date ?? null,
+      dolar: dolar?.date ?? null,
+    },
     origins: {
       selic: originOf(selic),
       cdi: originOf(cdi),

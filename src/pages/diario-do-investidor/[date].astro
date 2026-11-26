@@ -1,0 +1,260 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import DiarioByline from '../../components/diario/DiarioByline.astro';
+import EditionBody from '../../components/diario/EditionBody.astro';
+import IndicatorGrid from '../../components/diario/IndicatorGrid.astro';
+import type { IndicatorRow } from '../../components/diario/IndicatorGrid.astro';
+import { absUrl, breadcrumbSchema } from '../../lib/seo';
+import { materialEditions, readEditions } from '../../lib/diario/store';
+import type { Edition, MeasuredKey } from '../../lib/diario/types';
+import { SITE_CONFIG } from '../../config/site';
+
+export function getStaticPaths() {
+  return materialEditions(readEditions()).map((edition) => ({
+    params: { date: edition.date },
+    props: { edition },
+  }));
+}
+
+interface Props {
+  edition: Edition;
+}
+
+const { edition } = Astro.props;
+const measured = edition.snapshot.measured;
+const indicatorKeys: MeasuredKey[] = ['selic', 'cdi', 'ipca12m', 'dolar'];
+const indicatorRows = indicatorKeys.map((key): IndicatorRow => ({
+  key,
+  ...(measured[key] ?? {
+    value: null,
+    observedOn: null,
+    origin: 'unavailable',
+  }),
+}));
+const editionDate = new Date(`${edition.date}T12:00:00`).toLocaleDateString('pt-BR', {
+  day: '2-digit',
+  month: 'long',
+  year: 'numeric',
+});
+const articleUrl = absUrl(Astro.url.pathname);
+const articleJsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Article',
+      headline: edition.title,
+      description: edition.summary,
+      image: [new URL('/og-image.png', SITE_CONFIG.url).toString()],
+      datePublished: edition.generatedAt,
+      dateModified: edition.generatedAt,
+      isAccessibleForFree: true,
+      inLanguage: 'pt-BR',
+      author: {
+        '@type': 'Organization',
+        '@id': `${SITE_CONFIG.url}/#organization`,
+        name: SITE_CONFIG.name,
+        url: SITE_CONFIG.url,
+      },
+      publisher: { '@id': `${SITE_CONFIG.url}/#organization` },
+      isPartOf: { '@type': 'WebSite', '@id': `${SITE_CONFIG.url}/#website` },
+      mainEntityOfPage: { '@type': 'WebPage', '@id': articleUrl },
+    },
+    breadcrumbSchema([
+      { name: 'Início', path: '/' },
+      { name: 'Diário do Investidor', path: '/diario-do-investidor' },
+      { name: edition.title },
+    ]),
+  ],
+};
+---
+
+<BaseLayout
+  title={`${edition.title} | Diário do Investidor`}
+  description={edition.summary}
+  canonical={`/diario-do-investidor/${edition.date}`}
+  ogType="article"
+  publishedTime={edition.generatedAt}
+  modifiedTime={edition.generatedAt}
+>
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(articleJsonLd)} />
+
+  <article class="diario-article">
+    <div class="container">
+      <nav class="breadcrumb" aria-label="Navegação estrutural">
+        <a href="/">Início</a> <span>/</span>
+        <a href="/diario-do-investidor/">Diário do Investidor</a> <span>/</span>
+        <strong>{editionDate}</strong>
+      </nav>
+
+      <header class="diario-article__header">
+        <div class="diario-article__meta">
+          <span class="badge-pill">Edição material</span>
+          <time datetime={edition.date}>{editionDate}</time>
+        </div>
+        <h1>{edition.title}</h1>
+        <DiarioByline />
+        <p class="diario-article__summary">{edition.summary}</p>
+      </header>
+
+      <div class="diario-article__grid">
+        <div class="abc-card diario-article__body">
+          <EditionBody edition={edition} variant="article" showSummary={false} />
+        </div>
+        <aside class="diario-article__aside">
+          <IndicatorGrid
+            title="Snapshot desta edição"
+            rows={indicatorRows}
+            dollarChangePct={edition.snapshot.dollarChangePct}
+            showBcbSource={true}
+            note="Estes valores pertencem à edição e não mudam quando o hub recebe dados novos."
+          />
+          <a class="diario-article__back" href="/diario-do-investidor/">← Voltar ao hub vivo</a>
+        </aside>
+      </div>
+    </div>
+  </article>
+</BaseLayout>
+
+<style>
+  .diario-article {
+    padding-block: 2.25rem 4rem;
+  }
+
+  .breadcrumb {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-block-end: 1.25rem;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+  }
+
+  .breadcrumb a {
+    white-space: nowrap;
+  }
+
+  .diario-article__header {
+    max-inline-size: 850px;
+    margin-block-end: 1.8rem;
+  }
+
+  .diario-article__meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+  }
+
+  .diario-article__header h1 {
+    max-inline-size: 22ch;
+    margin-block: 0.8rem 0.9rem;
+    font-size: clamp(2rem, 4.5vw, 3.35rem);
+    line-height: 1.08;
+    letter-spacing: -0.055em;
+    text-wrap: balance;
+  }
+
+  .diario-article__summary {
+    max-inline-size: 70ch;
+    margin-block-start: 1.1rem;
+    color: var(--text-secondary);
+    font-size: clamp(1.12rem, 2vw, 1.24rem);
+    line-height: 1.8;
+    text-wrap: pretty;
+  }
+
+  .diario-article__aside :global(.indicator-panel h2) {
+    text-wrap: balance;
+  }
+
+  .diario-article__aside :global(.indicator-row dd strong),
+  .diario-article__aside :global(.indicator-panel__variation strong),
+  .diario-article__aside :global(.indicator-row dd span),
+  .diario-article__aside :global(.indicator-row dd time) {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .diario-article__aside :global(.indicator-row__origin),
+  .diario-article__aside :global(.indicator-row dd span),
+  .diario-article__aside :global(.indicator-row dd time),
+  .diario-article__aside :global(.indicator-panel__variation span),
+  .diario-article__aside :global(.indicator-panel__note),
+  .diario-article__aside :global(.indicator-panel__source) {
+    font-size: 0.88rem;
+    line-height: 1.6;
+  }
+
+  .diario-article :global(a):focus-visible {
+    border-radius: 2px;
+    outline: 2px solid var(--brand-blue);
+    outline-offset: 3px;
+  }
+
+  .diario-article__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+    gap: 1.5rem;
+    align-items: start;
+  }
+
+  .diario-article__body {
+    min-inline-size: 0;
+    padding: clamp(1.25rem, 3vw, 2rem);
+    border-inline-start: 3px solid var(--brand-blue);
+  }
+
+  .diario-article__aside {
+    display: grid;
+    gap: 1rem;
+    position: sticky;
+    top: 6.5rem;
+  }
+
+  .diario-article__back {
+    display: inline-block;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--border-card);
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-align: center;
+    text-decoration: none;
+  }
+
+  .diario-article__back:hover {
+    border-color: var(--border-hover);
+    color: var(--brand-blue);
+  }
+
+  @media (max-width: 900px) {
+    .diario-article__grid {
+      grid-template-columns: 1fr;
+    }
+
+    .diario-article__aside {
+      position: static;
+      grid-row: 1;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .diario-article {
+      padding-block: 1.5rem 3rem;
+    }
+
+    .diario-article__header {
+      margin-block-end: 1.4rem;
+    }
+
+    .diario-article__summary {
+      font-size: 1.08rem;
+    }
+
+    .diario-article__body {
+      padding: 1.1rem;
+    }
+  }
+</style>

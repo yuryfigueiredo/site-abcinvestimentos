@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 2,
+  "id": "diario-2026-11-26",
+  "date": "2026-11-26",
+  "generatedAt": "2026-11-26T20:19:15.708Z",
+  "title": "Diário do Investidor: pausa editorial preserva a continuidade histórica",
+  "summary": "O histórico editorial ficou temporariamente indisponível após duas noites sem registro. Para não publicar material sem lastro comparativo, a edição de hoje registra apenas os indicadores disponíveis e mantém a curadoria em modo conservador.",
+  "snapshot": {
+    "status": "unavailable",
+    "measured": {
+      "cdi": {
+        "value": 13.65,
+        "observedOn": "2026-11-25",
+        "origin": "bcb-sgs"
+      },
+      "ipca12m": {
+        "value": 4.63,
+        "observedOn": "2026-10-01",
+        "origin": "bcb-sgs"
+      },
+      "dolar": {
+        "value": 5.7446,
+        "observedOn": "2026-11-26",
+        "origin": "bcb-sgs"
+      }
+    },
+    "staleFields": [],
+    "dollarChangePct": -2.3442413939651527
+  },
+  "decision": {
+    "status": "morno",
+    "reasonCodes": [
+      "history-unavailable"
+    ],
+    "newsClusterIds": []
+  },
+  "items": [],
+  "sources": [],
+  "relatedCalculatorSlug": "renda-fixa",
+  "policy": {
+    "charterVersion": "1.0.3",
+    "allowlistVersion": "1.2.0",
+    "thresholdsVersion": "1.0.0",
+    "sourceIds": [
+      "bcb",
+      "camara",
+      "the-conversation-brasil"
+    ],
+    "allowedHosts": [
+      "theconversation.com",
+      "www.bcb.gov.br",
+      "www.camara.leg.br"
+    ]
+  },
+  "provenance": {
+    "generator": "qoder-diario",
+    "promptVersion": "diario-2026-11-26-preflight-v3",
+    "disclaimerKey": "educacional-nao-e-recomendacao"
+  }
+}

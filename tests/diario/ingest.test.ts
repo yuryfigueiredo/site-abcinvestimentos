@@ -190,6 +190,26 @@ describe('BCB transport', () => {
     ]);
   });
 
+  it('fetchBcbLastValue descarta observação futura e devolve a última realizada', async () => {
+    const fetchMock = mockFetch(() => new Response(JSON.stringify([
+      { data: '24/11/2026', valor: '13.75' },
+      { data: '23/11/2026', valor: '13.65' },
+    ]), { status: 200 }));
+
+    await expect(fetchBcbLastValue(432, fetchMock as unknown as typeof fetch, NOW)).resolves.toEqual({
+      value: 13.65,
+      date: '2026-11-23',
+    });
+  });
+
+  it('fetchBcbLastValue não publica uma série que só tem data futura', async () => {
+    const fetchMock = mockFetch(() => new Response(JSON.stringify([
+      { data: '24/11/2026', valor: '13.75' },
+    ]), { status: 200 }));
+
+    await expect(fetchBcbLastValue(432, fetchMock as unknown as typeof fetch, NOW)).resolves.toBeNull();
+  });
+
   it('every BCB request uses redirect manual', async () => {
     const fetchMock = mockFetch(() => bcbPayload(432, 1));
 
@@ -303,7 +323,7 @@ describe('BCB transport', () => {
   it.each([
     ['malformed Location', 'http://['],
     ['forbidden redirect target', 'https://api.bcb.gov.br.evil.test/serie'],
-    ['redirect loop', '/dados/serie/bcdata.sgs.432/dados/ultimos/1?formato=json'],
+    ['redirect loop', '/dados/serie/bcdata.sgs.432/dados/ultimos/10?formato=json'],
   ])('cancels an unread BCB redirect body on %s', async (_label, location) => {
     const { response, cancel } = trackedResponse(['redirect'], { status: 302, headers: { location } }, false);
     const fetchMock = mockFetch(() => response);

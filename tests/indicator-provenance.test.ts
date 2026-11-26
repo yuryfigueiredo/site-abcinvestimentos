@@ -32,7 +32,7 @@ const REALIZED = '30/10/2026';
 type IndicatorsModule = typeof import('../src/lib/indicators');
 
 /** Coleta com fetch simulado: `values` diz o valor por código de série; ausente = série fora do ar. */
-async function collect(values: Record<number, string>): Promise<{
+async function collect(values: Record<number, string | Array<{ data: string; valor: string }>>): Promise<{
   ind: Awaited<ReturnType<IndicatorsModule['getIndicators']>>;
   calls: number[];
   requests: RequestInit[];
@@ -48,7 +48,8 @@ async function collect(values: Record<number, string>): Promise<{
       requests.push(init ?? {});
       const valor = values[code];
       if (valor === undefined) return new Response('offline', { status: 503 });
-      return new Response(JSON.stringify([{ data: REALIZED, valor }]), { status: 200 });
+      const payload = typeof valor === 'string' ? [{ data: REALIZED, valor }] : valor;
+      return new Response(JSON.stringify(payload), { status: 200 });
     })
   );
 
@@ -88,6 +89,33 @@ describe('proveniência dos indicadores publicados', () => {
       dolar: 'config-fallback',
       poupanca: 'formula',
     });
+  });
+
+  it('cada serie carrega sua propria data ISO de observacao', async () => {
+    const { ind } = await collect({
+      432: [{ data: '25/11/2026', valor: '13.75' }],
+      4389: [{ data: '19/11/2026', valor: '13.65' }],
+      13522: [{ data: '01/10/2026', valor: '4.58' }],
+      1: [{ data: '26/11/2026', valor: '5.42' }],
+    });
+
+    expect(ind.observedOn).toEqual({
+      selic: '2026-11-25',
+      cdi: '2026-11-19',
+      ipca12m: '2026-10-01',
+      dolar: '2026-11-26',
+    });
+  });
+
+  it('serie sem observacao realizada nao recebe data de outra serie', async () => {
+    const { ind } = await collect({
+      ...ALL_LIVE,
+      432: [{ data: '09/12/2026', valor: '13.75' }],
+    });
+
+    expect(ind.origins.selic).toBe('config-fallback');
+    expect(ind.observedOn.selic).toBeNull();
+    expect(ind.observedOn.cdi).toBe('2026-10-30');
   });
 
   it('poupanca sempre traz a regra que a gerou', async () => {
@@ -150,6 +178,18 @@ describe('superficie publicada', () => {
   it('nenhum valor de taxa sai hardcoded na barra', () => {
     const src = readFileSync('src/components/Ticker.astro', 'utf8');
     expect(src).not.toMatch(/poupanca \|\| 7\.12/);
+  });
+
+  it('hub usa a data de cada serie em vez da data global do ticker', () => {
+    const src = readFileSync('src/pages/diario-do-investidor/index.astro', 'utf8');
+    expect(src).toContain('observedOn: indicators.observedOn[key]');
+    expect(src).not.toContain('observedOn: indicators.updatedAt');
+  });
+
+  it('carimbo global do ticker identifica somente a observacao mais recente', () => {
+    const src = readFileSync('src/components/Ticker.astro', 'utf8');
+    expect(src).toContain('Observação mais recente do Banco Central do Brasil (SGS): ${d.updatedAt}');
+    expect(src).not.toContain('Indicadores do Banco Central do Brasil (SGS) referentes a');
   });
 
   // Um dos cinco itens e formula, entao o rotulo do conjunto nao pode morena-los como medição.
