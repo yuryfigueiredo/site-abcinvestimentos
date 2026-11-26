@@ -9,6 +9,7 @@ import { computeCurationBundleHash, verifyGovernance } from '../../src/lib/diari
 import { parseEdition, parseSelection } from '../../src/lib/diario/schema';
 import type { CollectedInputs, Edition, EditorialBriefing, Selection, Vault } from '../../src/lib/diario/types';
 import {
+  loadPreviousEditions,
   loadValidationContext,
   validateAndPublish,
   validateEdition,
@@ -680,31 +681,56 @@ describe('validateAndPublish', () => {
     expect(() => validateAndPublish(DATE, root)).toThrow(/bundleSha256|hash|governance/i);
   });
 
-  it('marks history unavailable when a daily edition is missing instead of proving novelty', () => {
+  it('marks history unavailable when two nights are missing after the most recent edition', () => {
     const root = tempRoot();
     const approvedVault = verifyGovernance(root);
-    const first = draft('2026-11-21', inputs('2026-11-21'), approvedVault);
-    const third = draft('2026-11-23', inputs('2026-11-23'), approvedVault, [first]);
-    writeJson(join(root, 'src/data/diario/edicoes/2026-11-21.json'), first);
-    writeJson(join(root, 'src/data/diario/edicoes/2026-11-23.json'), third);
+    const older = draft('2026-11-21', inputs('2026-11-21'), approvedVault);
+    const newest = draft('2026-11-23', inputs('2026-11-23'), approvedVault, [older]);
+    writeJson(join(root, 'src/data/diario/edicoes/2026-11-21.json'), older);
+    writeJson(join(root, 'src/data/diario/edicoes/2026-11-23.json'), newest);
 
-    const collected = inputs('2026-11-24');
+    const collected = inputs('2026-11-26');
     collected.lessons = approvedVault.lessons;
     const selection: Selection = {
-      date: '2026-11-24',
+      date: '2026-11-26',
       decision: { status: 'morno', reasonCodes: ['history-unavailable'], newsClusterIds: [] },
       clusters: [],
       selectedSources: [],
     };
-    const value = draft('2026-11-24', collected, approvedVault);
+    const value = draft('2026-11-26', collected, approvedVault);
     value.decision = selection.decision;
-    writeRun(root, '2026-11-24', collected, selection, value);
+    writeRun(root, '2026-11-26', collected, selection, value);
 
-    const loaded = loadValidationContext('2026-11-24', root);
+    const loaded = loadValidationContext('2026-11-26', root);
 
     expect(loaded.historyUnavailable).toBe(true);
     expect(loaded.previousEditions).toEqual([]);
     expect(validateEdition(value, loaded)).toEqual(value);
+  });
+
+  it('forgives the single night the automation itself missed', () => {
+    const root = tempRoot();
+    const approvedVault = verifyGovernance(root);
+    writeJson(join(root, 'src/data/diario/edicoes/2026-11-23.json'), draft('2026-11-23', inputs('2026-11-23'), approvedVault));
+
+    const loaded = loadPreviousEditions('2026-11-25', root);
+
+    expect(loaded.unavailable).toBe(false);
+    expect(loaded.editions.map((edition) => edition.date)).toEqual(['2026-11-23']);
+  });
+
+  it('ignores a gap older than the most recent edition when proving the chain', () => {
+    const root = tempRoot();
+    const approvedVault = verifyGovernance(root);
+    const oldest = draft('2026-11-20', inputs('2026-11-20'), approvedVault);
+    const newest = draft('2026-11-23', inputs('2026-11-23'), approvedVault);
+    writeJson(join(root, 'src/data/diario/edicoes/2026-11-20.json'), oldest);
+    writeJson(join(root, 'src/data/diario/edicoes/2026-11-23.json'), newest);
+
+    const loaded = loadPreviousEditions('2026-11-24', root);
+
+    expect(loaded.unavailable).toBe(false);
+    expect(loaded.editions.map((edition) => edition.date)).toEqual(['2026-11-20', '2026-11-23']);
   });
 
   it('fails with an actionable error for malformed cached JSON', () => {

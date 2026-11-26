@@ -100,11 +100,11 @@ export function loadPreviousEditions(date: string, root = process.cwd()): Histor
   }
   if (!historyIsValid(editions, date)) return unavailableHistory();
 
-  let cursor = editions.map((edition) => edition.date).sort()[0];
-  while (cursor < date) {
-    if (!dates.has(cursor)) return unavailableHistory();
-    cursor = nextDate(cursor);
-  }
+  const newest = editions.map((edition) => edition.date).sort().at(-1) as string;
+  const dayAfterNewest = nextDate(newest);
+  // A corrente vale da edicao mais recente para frente, e uma unica noite perdida e perdoada;
+  // dois dias sem registro deixam de provar novidade e a rodada fecha morna por seguranca.
+  if (dayAfterNewest !== date && nextDate(dayAfterNewest) !== date) return unavailableHistory();
   return { editions, unavailable: false };
 }
 
