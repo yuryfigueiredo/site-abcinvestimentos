@@ -21,14 +21,31 @@ function expectInOrder(...fragments: string[]): void {
 
 describe('Prompt da automação do Diário', () => {
   it('fixa a versão exata e a operação no Mac às 19:00 BRT', () => {
-    const expectedVersion = 'diario-2026-11-23-briefing-v2';
-    const versionTokens = prompt.match(/diario-\d{4}-\d{2}-\d{2}-briefing-v\d+/gu) ?? [];
+    const expectedVersion = 'diario-2026-11-26-preflight-v3';
+    const versionTokens = prompt.match(/diario-\d{4}-\d{2}-\d{2}-preflight-v\d+/gu) ?? [];
     expect(new Set(versionTokens)).toEqual(new Set([expectedVersion]));
     expect(normalized).toContain(`Versão obrigatória: \`${expectedVersion}\``);
     expect(normalized).toContain(`\`provenance.promptVersion\` como \`${expectedVersion}\``);
     expect(normalized).toContain('19:00 BRT');
     expect(normalized).toContain('America/Sao_Paulo');
     expect(normalized).toContain('Mac');
+  });
+
+  it('executa o preflight antes do lock e para sem procurar outra pasta', () => {
+    expectInOrder(
+      'test "$(pwd -P)" = "/home/yury/Documentos/Projeto/abcinvestimentos"',
+      'npm run diario:preflight',
+      'automation.lock',
+      'trap',
+      'git pull --ff-only origin main',
+    );
+    expect(normalized).toMatch(/preflight.*(?:falha|divergência)/iu);
+    expect(normalized).toMatch(/não procure outra pasta/iu);
+    expect(normalized).toMatch(/não tente corrigir (?:a )?(?:pasta|branch|remote)/iu);
+    expect(normalized.match(/npm run diario:preflight/gu)).toHaveLength(2);
+    const postPullPreflight = normalized.indexOf('Rode novamente `npm run diario:preflight`');
+    expect(postPullPreflight).toBeGreaterThan(normalized.indexOf('git pull --ff-only origin main'));
+    expect(postPullPreflight).toBeLessThan(normalized.indexOf('npm run diario:collect'));
   });
 
   it('adquire o lock antes do pull, para em árvore suja e preserva arquivos alheios', () => {
@@ -43,6 +60,9 @@ describe('Prompt da automação do Diário', () => {
     expect(normalized).toMatch(/nunca (?:remove|apaga) lock (?:alheio|stale) automaticamente/iu);
     expect(normalized).toMatch(/rmdir/u);
     expect(normalized).not.toMatch(/rm\s+-rf/iu);
+    expect(normalized).toContain('git rev-parse HEAD');
+    expect(normalized).toContain('git rev-parse refs/remotes/origin/main');
+    expect(normalized).toMatch(/hashes.*diferentes.*interrompe/iu);
   });
 
   it('coleta, recura e deixa o lock durante validação, build e commit', () => {
@@ -53,12 +73,14 @@ describe('Prompt da automação do Diário', () => {
       'npm run diario:validate -- --publish',
       'npm test',
       'npm run build',
+      'npm run diario:verify-build',
       'git diff --check',
       'git commit',
     );
     expect(normalized.lastIndexOf('trap')).toBeGreaterThan(normalized.indexOf('git commit'));
     expect(normalized).toMatch(/lock (?:permanece|mantido).*(?:validação|build).*(?:commit)/iu);
     expect(normalized).toMatch(/cleanup .*finally-style/iu);
+    expect(normalized).toContain('npm run diario:verify-build -- --online');
   });
 
   it('escreve título e resumo específicos e usa apenas selection.json nas notícias', () => {
@@ -121,16 +143,18 @@ describe('Prompt da automação do Diário', () => {
     expect(normalized).toMatch(/n[úu]meros editoriais.*snapshot/iu);
   });
 
-  it('commita caminhos explícitos e não confunde validação com publicação antecipada', () => {
+  it('commita caminhos explícitos e publica automaticamente somente após todos os portões', () => {
     expect(normalized).toMatch(/git add src\/data\/diario\/edicoes\/<date>\.json/u);
     expect(normalized).toContain('git diff --cached --check');
     expect(normalized).toMatch(/git commit/u);
     expect(normalized).toMatch(/git push origin main/u);
-    expect(normalized).toMatch(/push.*aprova[çc][ãa]o expl[íi]cita/u);
+    expect(normalized).toMatch(/publicação automática.*todos os portões/iu);
+    expect(normalized).not.toMatch(/push.*aprova[çc][ãa]o expl[íi]cita/iu);
     expectInOrder(
       'npm run diario:validate -- --publish',
       'npm test',
       'npm run build',
+      'npm run diario:verify-build',
       'git diff --check',
       'git add src/data/diario/edicoes/<date>.json',
       'git diff --cached --check',

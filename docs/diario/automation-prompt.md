@@ -1,10 +1,11 @@
 # Prompt da automação — Diário do Investidor
 
-Versão obrigatória: `diario-2026-11-23-briefing-v2`.
+Versão obrigatória: `diario-2026-11-26-preflight-v3`.
 
 Use este prompt no Qoder Automations do Mac, no repositório canônico, todos os dias às
-**19:00 BRT**. A data da edição é a data corrente em `America/Sao_Paulo`. O prompt não autoriza
-publicação por si só: o push depende de aprovação explícita do dono.
+**19:00 BRT**. A data da edição é a data corrente em `America/Sao_Paulo`. A publicação automática
+já foi autorizada pelo dono e vale somente depois que todos os portões estiverem verdes; isso não
+autoriza religar o Diário enquanto a superfície pública estiver offline.
 
 ## Contrato editorial e técnico
 
@@ -19,7 +20,7 @@ publicação por si só: o push depende de aprovação explícita do dono.
   com título, data e link preservados. A lição referenciada por `decision.lessonId` também deve ser
   copiada do registro aprovado, sem alteração.
 - Defina `provenance.generator` como `qoder-diario`, `provenance.promptVersion` como
-  `diario-2026-11-23-briefing-v2` e `provenance.disclaimerKey` como
+  `diario-2026-11-26-preflight-v3` e `provenance.disclaimerKey` como
   `educacional-nao-e-recomendacao`. Preserve o aviso educacional fixo.
 - Nunca altere `decision.status`: a materialidade pertence à camada determinística. Nunca rebaixe
   material inválido para contornar o validador.
@@ -37,6 +38,20 @@ publicação por si só: o push depende de aprovação explícita do dono.
 
 ## Workflow operacional
 
+### 0. Provar o checkout canônico antes de qualquer escrita
+
+O primeiro comando da execução é:
+
+```bash
+test "$(pwd -P)" = "/home/yury/Documentos/Projeto/abcinvestimentos" && npm run diario:preflight
+```
+
+Se o teste de caminho ou o preflight falhar, interrompe o run imediatamente. Não procure outra
+pasta e não tente corrigir a pasta, branch ou remote. O preflight confirma a raiz física, a raiz
+Git, a ausência de worktree, a branch `main`, os remotes de pull e push, os arquivos do cofre e as
+rotas públicas. A ausência de qualquer rota mantém a automação desarmada enquanto o Diário estiver
+offline. Nenhum lock, pull, coleta ou escrita pode acontecer antes desse portão.
+
 ### 1. Adquirir o lock antes de qualquer pull
 
 1. Garanta `mkdir -p .cache/diario` e crie atomicamente o diretório
@@ -53,8 +68,12 @@ publicação por si só: o push depende de aprovação explícita do dono.
 1. Ainda sob o lock, rode `git status --porcelain`. Se houver árvore suja, interrompe o run.
 2. Preserve arquivos alheios: não faça stash, reset, checkout ou limpeza para contornar a sujeira.
 3. Rode `git pull --ff-only origin main`. Qualquer divergência ou falha interrompe o run.
-4. Confirme que `src/data/diario/edicoes/<date>.json` ainda não existe. A sobrescrita do mesmo dia é
+4. Compare `git rev-parse HEAD` com `git rev-parse refs/remotes/origin/main`. Se os hashes forem diferentes,
+   interrompe o run: não publique commits locais anteriores nem os descarte.
+5. Confirme que `src/data/diario/edicoes/<date>.json` ainda não existe. A sobrescrita do mesmo dia é
    proibida; se a edição já existir, pare sem alterá-la.
+6. Rode novamente `npm run diario:preflight` sobre o checkout já atualizado. Se a superfície, o
+   cofre, a branch ou o remote mudarem no pull, interrompe o run antes de coletar ou escrever.
 
 ### 3. Verificar o cofre, coletar e recurar
 
@@ -128,15 +147,17 @@ Rode nesta ordem:
 npm run diario:validate -- --publish
 npm test
 npm run build
+npm run diario:verify-build -- --online
 git diff --check
 ```
 
 O comando de validação confirma schema, cofre, decisão, seleção, fontes, snapshot, briefing,
 evento, duplicação e imutabilidade antes de gravar a edição. Um rascunho material inválido
 interrompe a execução e não é publicado. Qualquer falha nos testes, no build ou no diff check
-também interrompe o run: não commite nem publique.
+também interrompe o run: não commite nem publique. O `diario:verify-build` precisa confirmar a
+superfície publicada esperada; qualquer Diário fora do contrato interrompe a execução.
 
-### 7. Commitar e publicar somente com autorização
+### 7. Commitar e publicar automaticamente após todos os portões
 
 1. Com todos os portões verdes, adicione somente a edição do dia:
 
@@ -147,10 +168,11 @@ também interrompe o run: não commite nem publique.
    ```
 
 2. A checagem staged inclui a nova edição, que o `git diff --check` anterior não consegue ver.
-   Qualquer falha interrompe o run antes do commit. O lock permanece até o fim do commit. Não use
+   Qualquer falha interrompe o run antes do commit. O lock permanece até o fim do push. Não use
    `git add -A` nem inclua cache, rascunho, cofre ou arquivos alheios.
-3. Faça `git push origin main` somente após aprovação explícita do dono para publicar. Sem essa
-   aprovação, encerre após o commit e relate que a edição ficou local.
+3. Com todos os portões verdes, faça `git push origin main`. A publicação automática autorizada
+   pelo dono não dispensa validação, teste, build, verify-build, diff check ou a igualdade entre
+   HEAD e `refs/remotes/origin/main` antes da edição do dia.
 
 ### 8. Liberar o lock em qualquer saída
 

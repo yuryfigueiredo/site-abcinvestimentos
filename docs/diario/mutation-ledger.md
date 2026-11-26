@@ -228,3 +228,57 @@ Rulings:
   zero `excerpt` vazio, curadoria concluiu e decidiu `morno` por `history-unavailable` (última edição 2026-11-23, três noites
   perdidas, além do perdão de uma). Câmara dos Deputados seguiu contribuindo 9 itens.
 - Suíte completa: 544 testes em 23 arquivos; `npm run build` e `npm run diario:verify-build` verdes. Nenhum push foi realizado.
+
+## Preflight da automação — 2026-11-26
+
+Prompt versionado: `diario-2026-11-26-preflight-v3`. O portão foi escrito com RED antes da
+implementação e cobre raiz física, worktree, branch, HEAD destacado, remotes de pull e push e os
+onze arquivos obrigatórios entre cofre e superfície pública.
+
+| Mutação deliberada | Teste que falhou | Resultado observado |
+|---|---|---|
+| Desligar a comparação da raiz física | `rejects a different physical root before reading Git metadata` | 1 falha / 17 skips |
+| Desligar a rejeição de worktree | `rejects a linked worktree even when its path and remote look valid` | 1 falha / 17 skips |
+| Desligar a exigência de `main` | `rejects a non-main branch` e `rejects detached HEAD` | 2 falhas / 16 skips |
+| Desligar a comparação do remote de pull | `rejects a different fetch remote` | 1 falha / 17 skips |
+| Desligar a comparação do remote de push | `rejects a different push remote` | 1 falha / 17 skips |
+| Desligar a exigência dos arquivos obrigatórios | Os onze casos `rejects a missing required file` | 11 falhas / 7 skips |
+
+Resultado: **6 de 6 mutações detectadas e restauradas**, sem `false &&` residual. O prompt também
+teve RED observado para versão, preflight antes do lock, `verify-build`, publicação condicionada,
+igualdade entre `HEAD` e `refs/remotes/origin/main` e segunda execução do preflight depois do pull.
+
+A leitura direta do checkout canônico ainda encontrou as rotas antigas, porque ele estava atrás de
+`origin/main`. Por isso o prompt repete o preflight depois do pull: se o pull retirar a superfície,
+a execução para antes da coleta. Nenhuma configuração do Qoder foi alterada.
+
+Verificação final: TypeScript limpo; **549/549 testes em 24 arquivos**; build de **87 páginas**;
+`diario:verify-build` confirmou o Diário offline; `git diff --check` limpo. Nenhum commit ou push foi
+realizado.
+
+### Correções da revisão do preflight — 2026-11-26
+
+A revisão independente encontrou quatro achados: portões finais incompatíveis entre offline e online,
+URLs adicionais de push, ref `origin/main` ambígua e worktree de teste em HEAD destacado. Todos foram
+corrigidos sem restaurar o Diário nem configurar o Qoder.
+
+| Mutação deliberada | Teste que falhou | Resultado observado |
+|---|---|---|
+| Aceitar a primeira URL de pull mesmo com URL adicional | `rejects an additional fetch URL` | 1 falha / 19 skips |
+| Aceitar a primeira URL de push mesmo com URL adicional | `rejects an additional push URL` | 1 falha / 19 skips |
+| Desligar o modo `--online` do verificador | `aceita hub, arquivo material e endpoint alinhados no modo online` | 1 falha / 17 skips |
+| Ignorar a igualdade entre endpoint e última edição | `rejeita endpoint divergente no modo online` | 1 falha / 17 skips |
+| Voltar a usar `origin/main` no prompt | `adquire o lock antes do pull...` | 1 falha / 10 skips |
+| Remover `--online` do comando no prompt | `coleta, recura e deixa o lock...` | 1 falha / 10 skips |
+
+Resultado: **6 de 6 novas mutações detectadas e restauradas**. O teste de superfície agora acompanha o
+modo real do checkout e o verificador tem padrão offline explícito; o prompt usa o modo online somente
+quando a superfície pública estiver restaurada. O fixture de worktree usa `main`, com branch e remote
+aparentemente válidos, provando que a rejeição vem do vínculo de worktree.
+
+A revisão independente encontrou um achado Important no fixture online: ele copiava todas as edições
+do repositório, mas montava página e endpoint apenas para a edição fixa. Com uma edição posterior
+temporária, o teste `aceita hub, arquivo material e endpoint alinhados no modo online` falhou com
+`Arquivo material ausente: 2026-11-24`. O fixture passou a copiar somente a edição fixa para um diretório
+isolado; o mesmo teste ficou GREEN mesmo com a edição posterior presente. A edição temporária foi
+removida e não entrou no diff.

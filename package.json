@@ -10,6 +10,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "build:planilha": "node scripts/build-planilha-abc.mjs",
+    "diario:preflight": "tsx scripts/diario/preflight.ts",
     "diario:collect": "tsx scripts/diario/collect.ts",
     "diario:curate": "tsx scripts/diario/curate.ts",
     "diario:validate": "tsx scripts/diario/validate.ts",
