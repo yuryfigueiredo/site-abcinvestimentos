@@ -200,3 +200,31 @@ Rulings:
 - **Standards:** nenhuma violação dura de `AGENTS.md`. Um achado Minor de duplicação: a lista exata de fontes habilitadas é afirmada tanto no snapshot verificado quanto na seed bruta em `governance.test.ts`. Fica diferido porque ambas as asserções protegem contratos distintos e a repetição não altera comportamento.
 - **Spec:** PASS, sem achados Critical, Important ou Minor. A revisão independente confirmou os dois feeds novos, as fontes excluídas, as versões, o hash canônico, a referência do plano, a coleta somente de feeds e a edição anterior intacta.
 - Não houve achados Critical ou Important; nenhuma rodada adicional de correção foi necessária. Nenhum push foi realizado.
+
+## Conserto de 2026-11-26 — item sem corpo e corrente de continuidade
+
+Dois portões novos, cada um escrito como teste RED antes da mudança de código e executado
+isoladamente com restauração em seguida.
+
+| Mutação deliberada | Teste que falhou | Resultado observado |
+|---|---|---|
+| `if (!title \|\| !url) continue` (portão novo removido) | `discards an RSS item with an empty description / no description at all` e os cinco testes de corpo rejeitado | 7 falhas / 170 passes |
+| Conferir `primaryExcerpt` em vez de `excerpt` (mata o fallback Atom) | Seis testes de fallback de conteúdo Atom em `ingest.test.ts` | 6 falhas / 171 passes |
+| Corrente voltando a começar no arquivo mais antigo | `ignores a gap older than the most recent edition when proving the chain` | 1 falha / 41 passes |
+| Exigir a véspera, sem perdoar noite perdida | `forgives the single night the automation itself missed` | 1 falha / 41 passes |
+| Remover o portão de continuidade | `marks history unavailable when two nights are missing after the most recent edition` | 1 falha / 41 passes |
+
+Rulings:
+
+- **Quatro testes reescritos, não enfraquecidos.** `rejects unknown Atom content types`, `rejects Atom XHTML content`,
+  `rejects inherited object names used as HTML entities` e `does not treat RSS content:encoded as an Atom content fallback`
+  afirmavam `excerpt: ''` — exatamente o estado que o schema recusa e que derrubou a rodada de 25/11. Passaram a afirmar que
+  o item não chega ao cache, mantendo a asserção do sentinela ausente no JSON persistido.
+- **Teste renomeado.** `marks history unavailable when a daily edition is missing instead of proving novelty` virou
+  `... when two nights are missing after the most recent edition`; a linha antiga deste ledger aponta para o nome anterior.
+- **F fixtures de título sem `description`.** Nove fixtures de parsing de título/URL ganharam corpo porque, sem ele, o item
+  deixou de ser candidato; a asserção original sobre título e URL permaneceu.
+- **Evidência real, fora da árvore canônica:** coleta de 2026-11-26 reproduzida em cópia do repo — 73 fontes no cache,
+  zero `excerpt` vazio, curadoria concluiu e decidiu `morno` por `history-unavailable` (última edição 2026-11-23, três noites
+  perdidas, além do perdão de uma). Câmara dos Deputados seguiu contribuindo 9 itens.
+- Suíte completa: 544 testes em 23 arquivos; `npm run build` e `npm run diario:verify-build` verdes. Nenhum push foi realizado.
