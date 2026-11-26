@@ -1,4 +1,4 @@
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -99,19 +99,12 @@ describe('edition selectors', () => {
   });
 });
 
-describe('Diário static routes', () => {
-  it('keeps live indicator collection out of the dated archive', () => {
-    const source = readFileSync(join(process.cwd(), 'src/pages/diario-do-investidor/[date].astro'), 'utf8');
-
-    expect(source).not.toMatch(/getIndicators/);
-    expect(source).toMatch(/edition\.snapshot\.measured/);
-    expect(source).toMatch(/materialEditions\(readEditions\(\)\)/);
+describe('Diário static routes offline', () => {
+  it('não publica o arquivo datado', () => {
+    expect(existsSync(join(process.cwd(), 'src/pages/diario-do-investidor/[date].astro'))).toBe(false);
   });
 
-  it('serves the latest edition with no-store semantics', () => {
-    const source = readFileSync(join(process.cwd(), 'src/pages/api/diario/edicao.json.ts'), 'utf8');
-
-    expect(source).toMatch(/latestEdition\(readEditions\(\)\)/);
-    expect(source).toMatch(/['"]no-store['"]/);
+  it('não publica o endpoint da última edição', () => {
+    expect(existsSync(join(process.cwd(), 'src/pages/api/diario/edicao.json.ts'))).toBe(false);
   });
 });

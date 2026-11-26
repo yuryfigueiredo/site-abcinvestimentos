@@ -1,53 +1,41 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { isDeepStrictEqual } from 'node:util';
-import { latestEdition, materialEditions, readEditions } from '../../src/lib/diario/store';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { extname, join, relative } from 'node:path';
 
-const BRIEFING_HEADINGS = ['O que aconteceu', 'Por que importa', 'O que observar'] as const;
+function filesUnder(root: string): string[] {
+  return readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(root, entry.name);
+    return entry.isDirectory() ? filesUnder(path) : [path];
+  });
+}
 
 try {
   const root = process.cwd();
   const dist = join(root, 'dist');
-  const editions = readEditions(root);
-  const latest = latestEdition(editions);
-  const material = materialEditions(editions);
-  const hubPath = join(dist, 'diario-do-investidor', 'index.html');
-  const endpointPath = join(dist, 'api', 'diario', 'edicao.json');
+  const hubPath = join(dist, 'diario-do-investidor');
+  const endpointsPath = join(dist, 'api', 'diario');
 
-  if (!existsSync(hubPath)) throw new Error('Hub do Diário ausente em dist/diario-do-investidor/index.html');
-  if (!existsSync(endpointPath)) throw new Error('Endpoint do Diário ausente em dist/api/diario/edicao.json');
+  if (!existsSync(dist)) throw new Error('Build ausente: dist não existe.');
+  if (existsSync(hubPath)) throw new Error('Diário publicado: dist/diario-do-investidor existe.');
+  if (existsSync(endpointsPath)) throw new Error('Endpoints do Diário publicados: dist/api/diario existe.');
 
-  const hub = readFileSync(hubPath, 'utf8');
-  if (!hub.includes('rel="canonical"') || !hub.includes('application/ld+json') || !hub.includes('CollectionPage')) {
-    throw new Error('Hub do Diário está sem canonical ou JSON-LD CollectionPage');
-  }
+  for (const file of filesUnder(dist)) {
+    const extension = extname(file);
+    if (extension !== '.html' && extension !== '.xml') continue;
 
-  for (const edition of editions) {
-    const datedPath = join(dist, 'diario-do-investidor', edition.date, 'index.html');
-    if (edition.decision.status === 'material') {
-      if (!existsSync(datedPath)) throw new Error(`Arquivo material ausente: ${edition.date}`);
-      const html = readFileSync(datedPath, 'utf8');
-      if (!html.includes('rel="canonical"') || !html.includes('application/ld+json') || !html.includes('"@type":"Article"')) {
-        throw new Error(`Arquivo material ${edition.date} está sem canonical ou JSON-LD Article`);
-      }
-      const renderedHeadings = [...html.matchAll(/<h2\b[^>]*>([\s\S]*?)<\/h2>/gu)]
-        .map((match) => match[1].trim());
-      for (const heading of BRIEFING_HEADINGS) {
-        if (!renderedHeadings.includes(heading)) {
-          throw new Error(`Arquivo material ${edition.date} está sem o bloco "${heading}" do briefing.`);
-        }
-      }
-    } else if (existsSync(datedPath)) {
-      throw new Error(`Edição morna virou URL datada: ${edition.date}`);
+    const content = readFileSync(file, 'utf8');
+    const displayPath = relative(root, file);
+    if (extension === '.xml' && (content.includes('/diario-do-investidor') || content.includes('/api/diario/'))) {
+      throw new Error(`Diário no sitemap: ${displayPath}`);
+    }
+    if (
+      extension === '.html' &&
+      (content.includes('/diario-do-investidor') || content.includes('/api/diario/') || content.includes('Diário do Investidor'))
+    ) {
+      throw new Error(`Referência ao Diário em HTML: ${displayPath}`);
     }
   }
 
-  const endpoint = JSON.parse(readFileSync(endpointPath, 'utf8')) as unknown;
-  if (!isDeepStrictEqual(endpoint, latest)) {
-    throw new Error('Endpoint não corresponde à última edição, inclusive uma edição morna');
-  }
-
-  console.log(`Diário verificado: hub, ${material.length} arquivo(s) material(is), ${editions.length - material.length} edição(ões) morna(s) sem URL e endpoint alinhado.`);
+  console.log('Diário offline verificado: páginas, endpoint, sitemap e links públicos ausentes.');
 } catch (error) {
   console.error(error instanceof Error ? error.message : 'Falha desconhecida na verificação do build do Diário.');
   process.exitCode = 1;
