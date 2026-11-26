@@ -222,8 +222,8 @@ Rulings:
   o item não chega ao cache, mantendo a asserção do sentinela ausente no JSON persistido.
 - **Teste renomeado.** `marks history unavailable when a daily edition is missing instead of proving novelty` virou
   `... when two nights are missing after the most recent edition`; a linha antiga deste ledger aponta para o nome anterior.
-- **F fixtures de título sem `description`.** Nove fixtures de parsing de título/URL ganharam corpo porque, sem ele, o item
-  deixou de ser candidato; a asserção original sobre título e URL permaneceu.
+- **Onze fixtures em sete testes ganharam corpo.** Itens de parsing de título e URL em `ingest.test.ts` não tinham
+  `description` e, sem corpo, deixaram de ser candidato; a asserção original sobre título e URL permaneceu.
 - **Evidência real, fora da árvore canônica:** coleta de 2026-11-26 reproduzida em cópia do repo — 73 fontes no cache,
   zero `excerpt` vazio, curadoria concluiu e decidiu `morno` por `history-unavailable` (última edição 2026-11-23, três noites
   perdidas, além do perdão de uma). Câmara dos Deputados seguiu contribuindo 9 itens.
