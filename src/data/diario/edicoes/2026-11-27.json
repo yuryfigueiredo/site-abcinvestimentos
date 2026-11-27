@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 2,
+  "id": "diario-2026-11-27",
+  "date": "2026-11-27",
+  "generatedAt": "2026-11-27T05:03:58.365Z",
+  "title": "Diário do Investidor: câmbio repete a última observação e o dia fecha morno",
+  "summary": "A última observação cambial disponível já consta na edição anterior, e a camada determinística não encontrou notícia com lastro suficiente para abrir leitura material. O painel factual preserva as medições conhecidas, marcando cada campo repetido, e a curadoria fecha morna: leitura educacional, sem recomendação de compra, venda ou aplicação.",
+  "snapshot": {
+    "status": "stale",
+    "measured": {
+      "cdi": {
+        "value": 13.65,
+        "observedOn": "2026-11-25",
+        "origin": "stale"
+      },
+      "ipca12m": {
+        "value": 4.63,
+        "observedOn": "2026-10-01",
+        "origin": "stale"
+      },
+      "dolar": {
+        "value": 5.7446,
+        "observedOn": "2026-11-26",
+        "origin": "stale"
+      }
+    },
+    "staleFields": [
+      "cdi",
+      "ipca12m",
+      "dolar"
+    ],
+    "dollarChangePct": null
+  },
+  "decision": {
+    "status": "morno",
+    "reasonCodes": [
+      "no-substantive-delta"
+    ],
+    "newsClusterIds": []
+  },
+  "items": [],
+  "sources": [],
+  "relatedCalculatorSlug": "renda-fixa",
+  "policy": {
+    "charterVersion": "1.0.3",
+    "allowlistVersion": "1.2.0",
+    "thresholdsVersion": "1.0.0",
+    "sourceIds": [
+      "bcb",
+      "camara",
+      "the-conversation-brasil"
+    ],
+    "allowedHosts": [
+      "theconversation.com",
+      "www.bcb.gov.br",
+      "www.camara.leg.br"
+    ]
+  },
+  "provenance": {
+    "generator": "qoder-diario",
+    "promptVersion": "diario-2026-11-26-preflight-v3",
+    "disclaimerKey": "educacional-nao-e-recomendacao"
+  }
+}
