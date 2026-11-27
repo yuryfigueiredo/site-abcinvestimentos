@@ -23,17 +23,18 @@ export function sha256(value: string): string {
 
 export function thresholds(): Thresholds {
   return {
-    version: '1.0.0',
+    version: '1.1.0',
     timezone: 'America/Sao_Paulo',
     runLocal: '19:00',
     dollarAbsChangePct: 1,
     lessonWeekday: 1,
     maxLessonsPerIsoWeek: 1,
     lessonOnlyWhenQuiet: true,
-    newsWindowHours: 24,
+    newsWindowHours: 30,
+    weekendNewsWindowHours: 72,
     minMediaSources: 2,
     maxItems: 3,
-    topics: ['renda-fixa', 'juros', 'inflacao', 'cambio', 'bolsa-fiis', 'regulacao'],
+    topics: ['renda-fixa', 'juros', 'inflacao', 'cambio', 'bolsa-fiis', 'regulacao', 'pagamentos-credito', 'trabalho-renda', 'consumo'],
     events: ['copom', 'ipca', 'igp-m', 'payroll', 'fomc'],
   };
 }
@@ -49,15 +50,20 @@ function allowlistSource(
     publisher: id === 'bcb' ? 'Banco Central do Brasil' : id === 'the-conversation-brasil' ? 'The Conversation Brasil' : id,
     kind,
     enabled: true,
-    feeds: [{ url: `https://${host}/feed`, topics: thresholds().topics }],
+    feeds: [{
+      url: id === 'bcb'
+        ? 'https://www.bcb.gov.br/api/feed/sitebcb/sitefeeds/noticias?ano=2024'
+        : `https://${host}/feed`,
+      topics: thresholds().topics,
+    }],
     ...(licenseUrl === undefined ? {} : { licenseUrl }),
   };
 }
 
 export function vault(): Vault {
   return {
-    charterVersion: '1.0.2',
-    allowlistVersion: '1.1.0',
+    charterVersion: '1.0.4',
+    allowlistVersion: '1.3.0',
     allowlist: [
       allowlistSource('bcb', 'official', 'www.bcb.gov.br'),
       allowlistSource('alpha', 'media', 'alpha.example.test'),
@@ -83,10 +89,10 @@ export function vault(): Vault {
     bundleSha256: 'a'.repeat(64),
     approval: {
       bundleSha256: 'a'.repeat(64),
-      charterVersion: '1.0.2',
-      approvedAt: '2026-11-23T21:00:00Z',
+      charterVersion: '1.0.4',
+      approvedAt: '2026-11-27T22:00:00Z',
       approvedBy: 'Yury Figueiredo',
-      instructionRef: 'docs/superpowers/plans/2026-11-23-diario-do-investidor.md',
+      instructionRef: 'docs/superpowers/plans/2026-11-27-diario-cobertura-simulacao.md',
     },
   };
 }
@@ -123,6 +129,7 @@ export function source(overrides: Partial<SourceCandidate> = {}): SourceCandidat
     publisher: 'Banco Central do Brasil',
     title: 'Copom mantém avaliação de juros',
     canonicalUrl: 'https://www.bcb.gov.br/publicacoes/comunicados/copom',
+    feedUrl: 'https://www.bcb.gov.br/api/feed/sitebcb/sitefeeds/noticias?ano=2024',
     publishedAt: `${DATE}T10:00:00Z`,
     retrievedAt: RETRIEVED_AT,
     excerpt: 'O comunicado oficial descreve a avaliação atual da política monetária.',
@@ -149,6 +156,7 @@ export function mediaSource(id: 'alpha' | 'beta', overrides: Partial<SourceCandi
     publisher: id,
     title: 'Copom e juros dominam o noticiário financeiro',
     canonicalUrl: `https://${id}.example.test/noticias/copom`,
+    feedUrl: `https://${id}.example.test/feed`,
     excerpt: 'O noticiário destaca a avaliação do Copom sobre juros e inflação.',
     ...overrides,
   });
@@ -172,6 +180,7 @@ export function conversationSource(overrides: Partial<SourceCandidate> = {}): So
     sourceId: 'the-conversation-brasil',
     publisher: 'The Conversation Brasil',
     canonicalUrl: 'https://theconversation.com/br/copom-juros',
+    feedUrl: 'https://theconversation.com/feed',
     author: 'Ana Silva',
     licenseUrl: LICENSE_URL,
     ...overrides,
@@ -187,7 +196,7 @@ export function conversationSourceForDate(date: string, overrides: Partial<Sourc
 }
 
 export function sourceRef(candidate: SourceCandidate): SourceRef {
-  const { excerpt: _excerpt, excerptSha256: _hash, clusterId: _clusterId, topic: _topic, ...ref } = candidate as SourceCandidate & {
+  const { excerpt: _excerpt, excerptSha256: _hash, feedUrl: _feedUrl, clusterId: _clusterId, topic: _topic, ...ref } = candidate as SourceCandidate & {
     clusterId?: string;
     topic?: string;
   };

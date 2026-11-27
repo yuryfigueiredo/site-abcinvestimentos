@@ -1,6 +1,6 @@
 # Diário do Investidor — Carta da Curadoria
 
-Versão da carta: 1.0.3
+Versão da carta: 1.0.4
 
 ## Nome e propósito
 
@@ -8,13 +8,13 @@ O **Diário do Investidor** é uma publicação educacional de macroeconomia e f
 
 ## Escopo tradicional
 
-O escopo é renda fixa, juros, inflação, câmbio, bolsa e fundos imobiliários e regulação. Cripto fica fora. O conteúdo é educacional, nunca recomendação de compra ou venda, e toda edição carrega o aviso fixo de que conteúdo educacional não é recomendação.
+O escopo é renda fixa, juros, inflação, câmbio, bolsa e fundos imobiliários, regulação, pagamentos e crédito, trabalho e renda e consumo. Cripto fica fora. O conteúdo é educacional, nunca recomendação de compra ou venda, e toda edição carrega o aviso fixo de que conteúdo educacional não é recomendação.
 
 ## Política de fontes
 
 A curadoria usa fontes oficiais do Banco Central, IBGE, CVM, Tesouro Nacional, Câmara dos Deputados e governo federal, além de uma pequena allowlist de mídia confiável. Somente feeds explicitamente habilitados e verificados entram na coleta. Toda requisição usa HTTPS, host exato e redirect manual; cada destino é revalidado antes de ser requisitado. O coletor se identifica com User-Agent transparente. Paywall, cópia do corpo da matéria e fonte sem lastro não são aceitos.
 
-A ativação verificada cobre exclusivamente os quatro feeds do Banco Central, o feed econômico RSS da Câmara dos Deputados e o feed Atom do The Conversation Brasil. O excerpt usa `description` ou `summary`; na ausência deles, pode usar `content` do Atom, normalizado como texto e limitado a seiscentos caracteres. O artigo nunca é requisitado. A evidência preserva autor quando o feed oferece Atom `author/name` ou RSS `dc:creator`, além do publisher e da licença HTTPS declarada na allowlist. A Câmara declara suas informações em domínio público e exige citação da fonte e da autoria quando houver.
+A ativação verificada cobre exclusivamente os cinco feeds do Banco Central, incluindo o feed anual de normativos, o feed econômico RSS da Câmara dos Deputados e o feed Atom do The Conversation Brasil. O excerpt usa `description` ou `summary`; na ausência deles, pode usar `content` do Atom, normalizado como texto e limitado a seiscentos caracteres. O artigo nunca é requisitado. A evidência preserva autor quando o feed oferece Atom `author/name` ou RSS `dc:creator`, além do publisher e da licença HTTPS declarada na allowlist. A Câmara declara suas informações em domínio público e exige citação da fonte e da autoria quando houver.
 
 O The Conversation Brasil usa CC BY-ND. Seu excerpt é evidência de citação literal, nunca insumo para paráfrase, resumo ou tradução pela IA. Até existir superfície de citação literal aprovada, essa fonte pode ser coletada, mas não pode ser a única base de notícia editorial autoral. Qualquer superfície pública futura deve apresentar juntos manchete, trecho literal, autor, publisher, link do artigo e link da licença.
 
@@ -32,7 +32,7 @@ Todos os números editoriais publicados vêm exclusivamente do snapshot BCB da e
 
 ## Cadência e automação
 
-A automação prevista roda às **19:00** no fuso **America/Sao_Paulo**, com lock exclusivo e verificação do cofre antes da coleta. A data da edição segue o fuso de São Paulo. A lição semanal pode sair às segundas, no máximo uma por semana ISO, e somente quando não há notícia, evento ou gatilho.
+A automação roda diariamente às **19:00** no fuso **America/Sao_Paulo**, com lock exclusivo e verificação do cofre antes da coleta. A data da edição segue o fuso de São Paulo. A janela de notícias é de trinta horas de segunda a sexta e de setenta e duas horas no fim de semana; a idade é medida pela referência editorial, mas nenhum item publicado depois da coleta real pode entrar. A lição semanal pode sair às segundas, no máximo uma por semana ISO, e somente quando não há notícia, evento ou gatilho.
 
 A automação lê o cofre, mas nunca o altera. O rebuild diário de garantia mantém o hub vivo mesmo sem observação nova do BCB; indisponibilidade não é apresentada como dado de hoje.
 

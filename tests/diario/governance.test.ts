@@ -14,6 +14,8 @@ const APPROVAL_FIELDS = ['bundleSha256', 'charterVersion', 'approvedAt', 'approv
 type ThresholdFile = {
   version: string;
   dollarAbsChangePct: number;
+  newsWindowHours: number;
+  weekendNewsWindowHours: number;
   topics: string[];
 };
 
@@ -22,7 +24,17 @@ type AllowlistFile = {
   sources: AllowlistSource[];
 };
 
-const VERIFIED_TOPICS = ['renda-fixa', 'juros', 'inflacao', 'cambio', 'bolsa-fiis', 'regulacao'];
+const VERIFIED_TOPICS = [
+  'renda-fixa',
+  'juros',
+  'inflacao',
+  'cambio',
+  'bolsa-fiis',
+  'regulacao',
+  'pagamentos-credito',
+  'trabalho-renda',
+  'consumo',
+];
 
 let root: string;
 let vault: string;
@@ -82,11 +94,11 @@ describe('verifyGovernance', () => {
     const snapshot = verifyGovernance(root);
 
     expect(snapshot).toMatchObject({
-      charterVersion: '1.0.3',
-      allowlistVersion: '1.2.0',
+      charterVersion: '1.0.4',
+      allowlistVersion: '1.3.0',
       bundleSha256: readJson<Approval>('approval.json').bundleSha256,
       approval: {
-        instructionRef: 'docs/superpowers/plans/2026-11-24-diario-expansao-fontes.md',
+        instructionRef: 'docs/superpowers/plans/2026-11-27-diario-cobertura-simulacao.md',
       },
       calendar: [],
     });
@@ -97,7 +109,12 @@ describe('verifyGovernance', () => {
       'the-conversation-brasil',
     ]);
     expect(snapshot.lessons).toHaveLength(12);
-    expect(snapshot.thresholds.timezone).toBe('America/Sao_Paulo');
+    expect(snapshot.thresholds).toMatchObject({
+      timezone: 'America/Sao_Paulo',
+      newsWindowHours: 30,
+      weekendNewsWindowHours: 72,
+      topics: VERIFIED_TOPICS,
+    });
 
     const allowlist = readJson<AllowlistFile>('allowlist.json');
     allowlist.sources[0].enabled = false;
@@ -147,14 +164,14 @@ describe('verifyGovernance', () => {
     const approval = readJson<Approval>('approval.json');
     if (record === 'charter') {
       const charter = readFileSync(join(vault, 'carta.md'), 'utf8').replace(
-        'Versão da carta: 1.0.3',
+        /^Versão da carta:\s+\S+\s*$/mu,
         'Versão da carta: 2.0.0',
       );
       writeFileSync(join(vault, 'carta.md'), charter, 'utf8');
       approval.charterVersion = '2.0.0';
       writeJson('approval.json', approval);
     } else {
-      const changelog = readFileSync(join(vault, 'changelog.md'), 'utf8').replace('## 1.0.3', '## 2.0.0');
+      const changelog = readFileSync(join(vault, 'changelog.md'), 'utf8').replace('## 1.0.4', '## 2.0.0');
       writeFileSync(join(vault, 'changelog.md'), changelog, 'utf8');
     }
     refreshApprovalHash();
@@ -178,6 +195,15 @@ describe('verifyGovernance', () => {
     refreshApprovalHash();
 
     expect(() => verifyGovernance(root)).toThrow(/dollarAbsChangePct|thresholds/i);
+  });
+
+  it('rejects weekend window drift even when the changed bundle is reapproved', () => {
+    const thresholds = readJson<ThresholdFile>('thresholds.json');
+    thresholds.weekendNewsWindowHours = 48;
+    writeJson('thresholds.json', thresholds);
+    refreshApprovalHash();
+
+    expect(() => verifyGovernance(root)).toThrow(/weekendNewsWindowHours|thresholds/i);
   });
 
   it.each(APPROVAL_FIELDS)('missing approval field %s fails', (field) => {
@@ -257,7 +283,7 @@ describe('verifyGovernance', () => {
 describe('safe vault seed', () => {
   it('enables exactly the verified BCB, Câmara and The Conversation feeds with their terms and license', () => {
     const allowlist = readJson<AllowlistFile>('allowlist.json');
-    expect(allowlist.version).toBe('1.2.0');
+    expect(allowlist.version).toBe('1.3.0');
     expect(allowlist.sources.map((item) => item.id)).toEqual([
       'bcb',
       'camara',
@@ -297,6 +323,10 @@ describe('safe vault seed', () => {
           url: 'https://www.bcb.gov.br/api/feed/sitebcb/sitefeeds/notastecnicas',
           topics: VERIFIED_TOPICS,
         },
+        {
+          url: 'https://www.bcb.gov.br/api/feed/app/normativos/normativos?ano=2026',
+          topics: ['pagamentos-credito', 'regulacao'],
+        },
       ],
     });
     expect(allowlist.sources.find((item) => item.id === 'camara')).toEqual({
@@ -329,11 +359,20 @@ describe('safe vault seed', () => {
 
   it('records the owner and committed plan on the activation approval', () => {
     expect(readJson<Approval>('approval.json')).toMatchObject({
-      charterVersion: '1.0.3',
+      charterVersion: '1.0.4',
       approvedBy: 'Yury Figueiredo',
-      instructionRef: 'docs/superpowers/plans/2026-11-24-diario-expansao-fontes.md',
+      instructionRef: 'docs/superpowers/plans/2026-11-27-diario-cobertura-simulacao.md',
     });
     expect(readJson<Approval>('approval.json').approvedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/u);
+  });
+
+  it('pins the adaptive news windows and expanded taxonomy', () => {
+    expect(readJson<ThresholdFile>('thresholds.json')).toMatchObject({
+      version: '1.1.0',
+      newsWindowHours: 30,
+      weekendNewsWindowHours: 72,
+      topics: VERIFIED_TOPICS,
+    });
   });
 
   it('keeps the calendar empty because no macro date was officially verified', () => {

@@ -38,7 +38,17 @@ const SHA256 = /^[a-f0-9]{64}$/;
 const UTC_TIMESTAMP = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2}):(\d{2})Z$/;
 const ISO_TIMESTAMP = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/;
 
-const TOPICS: readonly Topic[] = ['renda-fixa', 'juros', 'inflacao', 'cambio', 'bolsa-fiis', 'regulacao'];
+const TOPICS: readonly Topic[] = [
+  'renda-fixa',
+  'juros',
+  'inflacao',
+  'cambio',
+  'bolsa-fiis',
+  'regulacao',
+  'pagamentos-credito',
+  'trabalho-renda',
+  'consumo',
+];
 const MEASURED_KEYS: readonly MeasuredKey[] = ['selic', 'cdi', 'ipca12m', 'dolar'];
 const REASON_CODES: readonly ReasonCode[] = [
   'calendar-event',
@@ -51,7 +61,7 @@ const REASON_CODES: readonly ReasonCode[] = [
 ];
 const EVENT_KINDS: readonly Thresholds['events'][number][] = ['copom', 'ipca', 'igp-m', 'payroll', 'fomc'];
 
-export const APPROVED_INSTRUCTION_REF = 'docs/superpowers/plans/2026-11-24-diario-expansao-fontes.md';
+export const APPROVED_INSTRUCTION_REF = 'docs/superpowers/plans/2026-11-27-diario-cobertura-simulacao.md';
 
 type Fields = Map<string, unknown>;
 
@@ -259,9 +269,11 @@ export function parseSourceCandidate(value: unknown, path = 'source'): SourceCan
   const fields = objectFields(value, path);
   checkKeys(fields, [
     'id', 'sourceId', 'kind', 'publisher', 'title', 'canonicalUrl', 'publishedAt', 'retrievedAt',
-    'author', 'licenseUrl', 'excerpt', 'excerptSha256',
+    'author', 'licenseUrl', 'feedUrl', 'excerpt', 'excerptSha256',
   ], path);
-  const reference = Object.fromEntries([...fields].filter(([key]) => key !== 'excerpt' && key !== 'excerptSha256'));
+  const reference = Object.fromEntries(
+    [...fields].filter(([key]) => key !== 'feedUrl' && key !== 'excerpt' && key !== 'excerptSha256'),
+  );
   const excerpt = normalizedEvidenceExcerpt(required(fields, 'excerpt', path), `${path}.excerpt`);
   const excerptSha256 = required(fields, 'excerptSha256', path);
   if (typeof excerptSha256 !== 'string' || !SHA256.test(excerptSha256)) {
@@ -269,7 +281,12 @@ export function parseSourceCandidate(value: unknown, path = 'source'): SourceCan
   }
   const actualHash = createHash('sha256').update(excerpt, 'utf8').digest('hex');
   if (excerptSha256 !== actualHash) throw new Error(`${path}.excerptSha256 does not match the normalized excerpt`);
-  return { ...parseSourceRef(reference, path), excerpt, excerptSha256 };
+  return {
+    ...parseSourceRef(reference, path),
+    feedUrl: parseHttpsUrl(required(fields, 'feedUrl', path), `${path}.feedUrl`),
+    excerpt,
+    excerptSha256,
+  };
 }
 
 function parseLesson(value: unknown, path: string): Lesson {
@@ -443,7 +460,7 @@ export function parseSelection(value: unknown): Selection {
       const selectedFields = objectFields(entry, path);
       checkKeys(selectedFields, [
         'id', 'sourceId', 'kind', 'publisher', 'title', 'canonicalUrl', 'publishedAt', 'retrievedAt',
-        'author', 'licenseUrl', 'excerpt', 'excerptSha256', 'clusterId', 'topic',
+        'author', 'licenseUrl', 'feedUrl', 'excerpt', 'excerptSha256', 'clusterId', 'topic',
       ], path);
       const reference = Object.fromEntries(
         [...selectedFields].filter(([key]) => key !== 'excerpt' && key !== 'excerptSha256' && key !== 'clusterId' && key !== 'topic'),
@@ -601,11 +618,18 @@ export function parseEdition(value: unknown): Edition {
 
 export function parseCollectedInputs(value: unknown): CollectedInputs {
   const fields = objectFields(value, 'inputs');
-  checkKeys(fields, ['date', 'retrievedAt', 'bcb', 'sources', 'events', 'lessons', 'previousEditions'], 'inputs');
+  checkKeys(fields, ['date', 'retrievedAt', 'referenceAt', 'bcb', 'sources', 'events', 'lessons', 'previousEditions'], 'inputs');
   const date = parseCalendarDate(required(fields, 'date', 'inputs'), 'inputs.date');
   const retrievedAt = parseIsoTimestamp(required(fields, 'retrievedAt', 'inputs'), 'inputs.retrievedAt');
-  if (date !== currentDateBrt(new Date(retrievedAt))) {
-    throw new Error('inputs.date must match the America/Sao_Paulo date of inputs.retrievedAt');
+  const referenceAt = fields.has('referenceAt')
+    ? parseIsoTimestamp(fields.get('referenceAt'), 'inputs.referenceAt')
+    : undefined;
+  if (referenceAt !== undefined && Date.parse(referenceAt) < Date.parse(retrievedAt)) {
+    throw new Error('inputs.referenceAt must not be earlier than inputs.retrievedAt');
+  }
+  const editorialDate = currentDateBrt(new Date(referenceAt ?? retrievedAt));
+  if (date !== editorialDate) {
+    throw new Error('inputs.date must match the America/Sao_Paulo date of inputs.referenceAt or inputs.retrievedAt');
   }
   const bcbFields = objectFields(required(fields, 'bcb', 'inputs'), 'inputs.bcb');
   const bcb: Partial<Record<MeasuredKey, BcbObservation[]>> = {};
@@ -636,7 +660,7 @@ export function parseCollectedInputs(value: unknown): CollectedInputs {
   const previousEditions = arrayValue(required(fields, 'previousEditions', 'inputs'), 'inputs.previousEditions', 1000).map(
     (entry) => parseEdition(entry),
   );
-  return { date, retrievedAt, bcb, sources, events, lessons, previousEditions };
+  return { date, retrievedAt, ...(referenceAt === undefined ? {} : { referenceAt }), bcb, sources, events, lessons, previousEditions };
 }
 
 function parseAllowlistFeed(value: unknown, path: string): AllowlistFeed {
@@ -702,6 +726,7 @@ export function parseThresholds(value: unknown): Thresholds {
       'maxLessonsPerIsoWeek',
       'lessonOnlyWhenQuiet',
       'newsWindowHours',
+      'weekendNewsWindowHours',
       'minMediaSources',
       'maxItems',
       'topics',
@@ -715,6 +740,16 @@ export function parseThresholds(value: unknown): Thresholds {
   if (runLocal !== '19:00') throw new Error('thresholds.runLocal must be 19:00');
   const dollarAbsChangePct = finiteNumber(required(fields, 'dollarAbsChangePct', 'thresholds'), 'thresholds.dollarAbsChangePct');
   if (dollarAbsChangePct <= 0) throw new Error('thresholds.dollarAbsChangePct must be positive');
+  const newsWindowHours = integer(required(fields, 'newsWindowHours', 'thresholds'), 'thresholds.newsWindowHours', 1, 168);
+  const weekendNewsWindowHours = integer(
+    required(fields, 'weekendNewsWindowHours', 'thresholds'),
+    'thresholds.weekendNewsWindowHours',
+    1,
+    168,
+  );
+  if (weekendNewsWindowHours < newsWindowHours) {
+    throw new Error('thresholds.weekendNewsWindowHours must not be smaller than thresholds.newsWindowHours');
+  }
   const events = arrayValue(required(fields, 'events', 'thresholds'), 'thresholds.events', EVENT_KINDS.length).map(
     (entry, index) => oneOf(entry, EVENT_KINDS, `thresholds.events[${index}]`),
   );
@@ -736,7 +771,8 @@ export function parseThresholds(value: unknown): Thresholds {
       required(fields, 'lessonOnlyWhenQuiet', 'thresholds'),
       'thresholds.lessonOnlyWhenQuiet',
     ),
-    newsWindowHours: integer(required(fields, 'newsWindowHours', 'thresholds'), 'thresholds.newsWindowHours', 1, 168),
+    newsWindowHours,
+    weekendNewsWindowHours,
     minMediaSources: integer(required(fields, 'minMediaSources', 'thresholds'), 'thresholds.minMediaSources', 1, 10),
     maxItems: integer(required(fields, 'maxItems', 'thresholds'), 'thresholds.maxItems', 1, 10),
     topics: parseTopics(required(fields, 'topics', 'thresholds'), 'thresholds.topics', 1),

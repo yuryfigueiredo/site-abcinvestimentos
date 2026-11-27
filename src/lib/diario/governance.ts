@@ -30,6 +30,7 @@ const PINNED_THRESHOLDS: Pick<
   | 'maxLessonsPerIsoWeek'
   | 'lessonOnlyWhenQuiet'
   | 'newsWindowHours'
+  | 'weekendNewsWindowHours'
   | 'minMediaSources'
   | 'maxItems'
   | 'topics'
@@ -41,10 +42,21 @@ const PINNED_THRESHOLDS: Pick<
   lessonWeekday: 1,
   maxLessonsPerIsoWeek: 1,
   lessonOnlyWhenQuiet: true,
-  newsWindowHours: 24,
+  newsWindowHours: 30,
+  weekendNewsWindowHours: 72,
   minMediaSources: 2,
   maxItems: 3,
-  topics: ['renda-fixa', 'juros', 'inflacao', 'cambio', 'bolsa-fiis', 'regulacao'],
+  topics: [
+    'renda-fixa',
+    'juros',
+    'inflacao',
+    'cambio',
+    'bolsa-fiis',
+    'regulacao',
+    'pagamentos-credito',
+    'trabalho-renda',
+    'consumo',
+  ],
   events: ['copom', 'ipca', 'igp-m', 'payroll', 'fomc'],
 };
 
@@ -130,6 +142,7 @@ function assertPinnedThresholds(thresholds: Thresholds): void {
   assertPinned('maxLessonsPerIsoWeek', thresholds.maxLessonsPerIsoWeek, PINNED_THRESHOLDS.maxLessonsPerIsoWeek);
   assertPinned('lessonOnlyWhenQuiet', thresholds.lessonOnlyWhenQuiet, PINNED_THRESHOLDS.lessonOnlyWhenQuiet);
   assertPinned('newsWindowHours', thresholds.newsWindowHours, PINNED_THRESHOLDS.newsWindowHours);
+  assertPinned('weekendNewsWindowHours', thresholds.weekendNewsWindowHours, PINNED_THRESHOLDS.weekendNewsWindowHours);
   assertPinned('minMediaSources', thresholds.minMediaSources, PINNED_THRESHOLDS.minMediaSources);
   assertPinned('maxItems', thresholds.maxItems, PINNED_THRESHOLDS.maxItems);
   assertPinned('topics', thresholds.topics, PINNED_THRESHOLDS.topics);

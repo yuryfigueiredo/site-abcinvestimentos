@@ -10,13 +10,13 @@ import type {
   Vault,
 } from './types';
 
-type TopicContext = {
+export type EducationalTopicContext = {
   subject: string;
   whyItMatters: string;
   whatToWatch: string;
 };
 
-const TOPIC_CONTEXT: Record<Topic, TopicContext> = {
+const TOPIC_CONTEXT: Record<Topic, EducationalTopicContext> = {
   juros: {
     subject: 'juros e política monetária',
     whyItMatters:
@@ -59,7 +59,32 @@ const TOPIC_CONTEXT: Record<Topic, TopicContext> = {
     whatToWatch:
       'Acompanhe os comunicados do regulador e confira as regras aplicáveis antes de revisar procedimentos, mantendo o estudo baseado em informação oficial e verificável.',
   },
+  'pagamentos-credito': {
+    subject: 'pagamentos, crédito e endividamento',
+    whyItMatters:
+      'A forma de pagar e as condições de crédito influenciam o custo financeiro e a organização do orçamento. Entender spread, financiamento e endividamento ajuda a comparar compromissos com a renda e o prazo, sem tratar uma notícia isolada como indicação de contratação ou aplicação.',
+    whatToWatch:
+      'Acompanhe as regras oficiais de pagamento e crédito e compare custos, prazos e compromissos antes de revisar seu planejamento.',
+  },
+  'trabalho-renda': {
+    subject: 'trabalho, emprego e renda',
+    whyItMatters:
+      'Emprego e renda afetam a capacidade de poupar e a estabilidade do planejamento financeiro. Acompanhar indicadores oficiais ajuda a entender mudanças no contexto de trabalho sem presumir efeitos automáticos sobre a renda individual ou recomendar decisões de investimento.',
+    whatToWatch:
+      'Acompanhe os indicadores oficiais de trabalho e renda e relacione o contexto com seu orçamento, sem presumir resultados individuais.',
+  },
+  consumo: {
+    subject: 'consumo, varejo e poder de compra',
+    whyItMatters:
+      'Consumo e preços influenciam o poder de compra e a forma como despesas são planejadas. Uma leitura educacional ajuda a distinguir promoção de necessidade e a comparar escolhas com o orçamento, sem tratar datas comerciais ou pesquisas de intenção como recomendação de compra.',
+    whatToWatch:
+      'Acompanhe informações oficiais e verificadas sobre consumo e preços, comparando-as com seu orçamento antes de assumir novos compromissos.',
+  },
 };
+
+export function educationalTopicContext(topic: Topic): EducationalTopicContext {
+  return { ...TOPIC_CONTEXT[topic] };
+}
 
 const REASON_LABELS: Record<ReasonCode, string> = {
   'calendar-event': 'evento do calendário aprovado',

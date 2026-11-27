@@ -9,7 +9,9 @@ import {
   latestRealizedDate,
   parseBcbDate,
 } from '../../src/lib/bcb';
-import { computeCurationBundleHash } from '../../src/lib/diario/governance';
+import { diarioCachePath } from '../../src/lib/diario/cache';
+import { curateCollectedInputs } from '../../src/lib/diario/curation';
+import { computeCurationBundleHash, verifyGovernance } from '../../src/lib/diario/governance';
 import { collectInputs } from '../../src/lib/diario/ingest';
 import { parseCollectedInputs } from '../../src/lib/diario/schema';
 import type { AllowlistSource, Approval, BcbObservation, CollectedInputs } from '../../src/lib/diario/types';
@@ -21,6 +23,7 @@ const ALPHA_FEED = 'https://feeds.example.test/alpha/rss';
 const BETA_FEED = 'https://feeds.example.test/beta/rss';
 const ARTICLE = 'https://news.example.test/story';
 const SUMMARY = 'Resumo curto da notícia.';
+const BCB_NORMATIVOS_FEED = 'https://www.bcb.gov.br/api/feed/app/normativos/normativos?ano=2026';
 
 type FetchMock = ReturnType<typeof vi.fn<(input: string | URL | Request, init?: RequestInit) => Promise<Response>>>;
 
@@ -387,6 +390,90 @@ describe('BCB transport', () => {
 });
 
 describe('allowlisted ingestion', () => {
+  it('isolates simulation inputs by cache scope and preserves the real retrieval instant', async () => {
+    setSources([source('alpha', ALPHA_FEED)]);
+    const referenceAt = '2026-11-24T01:00:00.000Z';
+    const fetchMock = mockFetch();
+
+    const result = await collectInputs(DATE, {
+      root,
+      now: NOW,
+      fetch: fetchMock as unknown as typeof fetch,
+      referenceAt,
+      cacheScope: 'simulation',
+    });
+
+    expect(result.retrievedAt).toBe(NOW.toISOString());
+    expect(result.referenceAt).toBe(referenceAt);
+    expect(diarioCachePath(root, DATE, 'simulation')).toBe(join(root, '.cache/diario/simulations', DATE));
+    expect(JSON.parse(readFileSync(join(diarioCachePath(root, DATE, 'simulation'), 'inputs.json'), 'utf8'))).toEqual(result);
+    expect(existsSync(join(diarioCachePath(root, DATE, 'edition'), 'inputs.json'))).toBe(false);
+  });
+
+  it('keeps the default cache scope compatible with edition collection', async () => {
+    setSources([source('alpha', ALPHA_FEED)]);
+
+    const result = await collect(mockFetch());
+
+    expect(diarioCachePath(root, DATE, 'edition')).toBe(join(root, '.cache/diario', DATE));
+    expect(cacheInputs()).toEqual(result);
+    expect(result).not.toHaveProperty('referenceAt');
+  });
+
+  it('collects the approved BCB regulations Atom feed as a fifth BCB source', async () => {
+    const allowlist = readJson<{ sources: AllowlistSource[] }>('allowlist.json');
+    const bcb = allowlist.sources.find((candidate) => candidate.id === 'bcb');
+    expect(bcb).toBeDefined();
+    setSources([bcb!]);
+    const fetchMock = mockFetch((input) => {
+      const url = new URL(String(input));
+      if (url.href === BCB_NORMATIVOS_FEED) {
+        return new Response(atomFeed([
+          '<entry><title>Norma amplia conta de pagamento</title><link href="https://www.bcb.gov.br/normativos/conta-pagamento" rel="alternate"/><summary>O Pix e o meio de pagamento ganham nova regra.</summary><published>2026-11-23T18:00:00Z</published></entry>',
+        ]), { status: 200 });
+      }
+      if (url.hostname === 'www.bcb.gov.br') return new Response(rss([]), { status: 200 });
+      return defaultHandler(input);
+    });
+
+    const result = await collect(fetchMock);
+
+    expect(requestedUrls(fetchMock).filter((url) => new URL(url).hostname === 'www.bcb.gov.br')).toHaveLength(5);
+    expect(requestedUrls(fetchMock)).toContain(BCB_NORMATIVOS_FEED);
+    expect(result.sources).toEqual([
+      expect.objectContaining({
+        sourceId: 'bcb',
+        title: 'Norma amplia conta de pagamento',
+        canonicalUrl: 'https://www.bcb.gov.br/normativos/conta-pagamento',
+        feedUrl: BCB_NORMATIVOS_FEED,
+      }),
+    ]);
+  });
+
+  it('enforces the topics declared by the originating BCB regulations feed', async () => {
+    const allowlist = readJson<{ sources: AllowlistSource[] }>('allowlist.json');
+    const bcb = allowlist.sources.find((candidate) => candidate.id === 'bcb');
+    setSources([bcb!]);
+    const fetchMock = mockFetch((input) => {
+      const url = new URL(String(input));
+      if (url.href === BCB_NORMATIVOS_FEED) {
+        return new Response(atomFeed([
+          '<entry><title>Norma amplia conta de pagamento</title><link href="https://www.bcb.gov.br/normativos/conta-pagamento" rel="alternate"/><summary>O Pix e o meio de pagamento ganham nova regra.</summary><published>2026-11-23T18:00:00Z</published></entry>',
+          '<entry><title>Black Friday aquece o consumo</title><link href="https://www.bcb.gov.br/normativos/consumo" rel="alternate"/><summary>O varejo registra aumento nas compras.</summary><published>2026-11-23T18:30:00Z</published></entry>',
+        ]), { status: 200 });
+      }
+      if (url.hostname === 'www.bcb.gov.br') return new Response(rss([]), { status: 200 });
+      return defaultHandler(input);
+    });
+
+    const collected = await collect(fetchMock);
+    const result = curateCollectedInputs(collected, [], verifyGovernance(root));
+
+    expect(collected.sources.map((item) => item.feedUrl)).toEqual([BCB_NORMATIVOS_FEED, BCB_NORMATIVOS_FEED]);
+    expect(result.selection.selectedSources.map((item) => item.title)).toEqual(['Norma amplia conta de pagamento']);
+    expect(result.diagnostics.find((item) => item.title === 'Black Friday aquece o consumo')?.reason).toBe('topic-not-allowed');
+  });
+
   it('verifies governance before any network request', async () => {
     setSources([source('alpha', ALPHA_FEED)]);
     const approval = readJson<Approval>('approval.json');
@@ -1231,7 +1318,7 @@ describe('allowlisted ingestion', () => {
     expect(result.sources[0]?.title).toBe('Juros e inflação');
   });
 
-  it('deduplicates titles after single-pass XML reference decoding', async () => {
+  it('preserves duplicate titles after single-pass XML reference decoding for curation', async () => {
     setSources([source('alpha', ALPHA_FEED)]);
     const fetchMock = mockFetch((input) => {
       if (String(input) === ALPHA_FEED) {
@@ -1248,7 +1335,10 @@ describe('allowlisted ingestion', () => {
 
     const result = await collect(fetchMock);
 
-    expect(result.sources.map((item) => item.canonicalUrl)).toEqual(['https://news.example.test/one']);
+    expect(result.sources.map((item) => item.canonicalUrl)).toEqual([
+      'https://news.example.test/one',
+      'https://news.example.test/two',
+    ]);
   });
 
   it('rejects nested RSS title elements instead of concatenating or dropping child text', async () => {
@@ -1431,7 +1521,7 @@ describe('allowlisted ingestion', () => {
     expect(result.sources.map((item) => item.sourceId)).toEqual(['beta']);
   });
 
-  it('deduplicates canonical URL and normalized title without collapsing independent publishers', async () => {
+  it('preserves canonical URL and normalized title duplicates for curation', async () => {
     setSources([source('alpha', ALPHA_FEED), source('beta', BETA_FEED)]);
     const fetchMock = mockFetch((input) => {
       if (String(input) === ALPHA_FEED) {
@@ -1452,8 +1542,32 @@ describe('allowlisted ingestion', () => {
 
     const result = await collect(fetchMock);
 
-    expect(result.sources.map((item) => item.sourceId)).toEqual(['alpha', 'beta']);
+    expect(result.sources.map((item) => item.sourceId)).toEqual(['alpha', 'alpha', 'alpha', 'beta']);
     expect(result.sources[0]?.canonicalUrl).toBe('https://news.example.test/story?a=1&b=2');
+    expect(result.sources[1]?.canonicalUrl).toBe('https://news.example.test/story?a=1&b=2');
+    expect(result.sources[2]?.canonicalUrl).toBe('https://news.example.test/other');
+    expect(result.sources[3]?.canonicalUrl).toBe('https://news.example.test/corroboration');
+  });
+
+  it('preserves duplicate candidates so curation records a terminal reason', async () => {
+    const feed = 'https://news.example.test/alpha/rss';
+    setSources([source('alpha', feed)]);
+    const fetchMock = mockFetch((input) => {
+      if (String(input) === feed) {
+        return new Response(rss([
+          rssItem({ title: 'Juros', link: 'https://news.example.test/juros-um' }),
+          rssItem({ title: 'Juros', link: 'https://news.example.test/juros-dois' }),
+        ]), { status: 200 });
+      }
+      return defaultHandler(input);
+    });
+
+    const collected = await collect(fetchMock);
+    const result = curateCollectedInputs(collected, [], verifyGovernance(root));
+
+    expect(collected.sources).toHaveLength(2);
+    expect(result.selection.selectedSources).toEqual([]);
+    expect(result.diagnostics.map((item) => item.reason)).toEqual(['duplicate-candidate', 'duplicate-candidate']);
   });
 
   it('parses Atom entries and normalizes timestamps and excerpts', async () => {

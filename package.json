@@ -13,6 +13,7 @@
     "diario:preflight": "tsx scripts/diario/preflight.ts",
     "diario:collect": "tsx scripts/diario/collect.ts",
     "diario:curate": "tsx scripts/diario/curate.ts",
+    "diario:simulate": "tsx scripts/diario/simulate.ts",
     "diario:validate": "tsx scripts/diario/validate.ts",
     "diario:verify-build": "tsx scripts/diario/verify-build.ts",
     "verify": "npm test && npm run build && npm run diario:verify-build",

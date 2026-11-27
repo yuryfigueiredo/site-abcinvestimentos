@@ -90,6 +90,22 @@ const pageJsonLd = {
           </section>
 
           <section>
+            <span class="methodology__eyebrow">Cobertura e janelas</span>
+            <h2>Mais pautas relevantes, sem baixar o rigor</h2>
+            <p>
+              A cobertura acompanha renda fixa, juros, inflação, câmbio, bolsa e fundos imobiliários,
+              regulação, pagamentos e crédito, trabalho e renda, além de consumo. O feed de normativos
+              do Banco Central amplia a fonte oficial sem acrescentar veículos não aprovados.
+            </p>
+            <p>
+              Em dias úteis, a curadoria considera notícias publicadas nas últimas 30 horas; em
+              sábados e domingos, nas últimas 72 horas. A janela usa o instante de referência
+              editorial, mas não aceita publicação posterior ao instante real da coleta. A deduplicação
+              continua obrigatória, e cada edição mantém no máximo três clusters selecionados.
+            </p>
+          </section>
+
+          <section>
             <span class="methodology__eyebrow">Materialidade</span>
             <h2>O que justifica uma página datada</h2>
             <ul>
@@ -115,6 +131,12 @@ const pageJsonLd = {
             <p>
               Quando uma fonte exige licença, o trecho é literal, curto e atribuído. Conteúdo sob
               CC BY-ND não é parafraseado, resumido ou traduzido pela IA.
+            </p>
+            <p>
+              O feed anual de normativos do Banco Central exige manutenção explícita no cofre; o
+              coletor não troca o ano silenciosamente. A curadoria também registra
+              <code>diagnostics.json</code> como auditoria interna dos descartes, sem excerpts. Esse
+              arquivo fica no cache e não é copiado para o rascunho ou para a edição pública.
             </p>
             <p>
               Quando a decisão aponta para um evento, o cartão usa o evento aprovado no cofre.

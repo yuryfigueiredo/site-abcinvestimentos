@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { parseAllowlist, parseCalendarEvent, parseEdition, parseEditorialBriefing } from '../../src/lib/diario/schema';
+import {
+  parseAllowlist,
+  parseCalendarEvent,
+  parseCollectedInputs,
+  parseEdition,
+  parseEditorialBriefing,
+  parseThresholds,
+} from '../../src/lib/diario/schema';
 import type { AllowlistSource, CalendarEvent, Edition, EditorialBriefing, Lesson } from '../../src/lib/diario/types';
 import { DATE, draft, inputs, vault } from './fixtures';
 
@@ -535,6 +542,87 @@ describe('schema 2 fixtures', () => {
     expect(value).not.toHaveProperty('briefing');
     expect(value).not.toHaveProperty('event');
     expect(parseEdition(value)).toEqual(value);
+  });
+});
+
+describe('parseThresholds', () => {
+  const approved = {
+    version: '1.1.0',
+    timezone: 'America/Sao_Paulo',
+    runLocal: '19:00',
+    dollarAbsChangePct: 1,
+    lessonWeekday: 1,
+    maxLessonsPerIsoWeek: 1,
+    lessonOnlyWhenQuiet: true,
+    newsWindowHours: 30,
+    weekendNewsWindowHours: 72,
+    minMediaSources: 2,
+    maxItems: 3,
+    topics: [
+      'renda-fixa',
+      'juros',
+      'inflacao',
+      'cambio',
+      'bolsa-fiis',
+      'regulacao',
+      'pagamentos-credito',
+      'trabalho-renda',
+      'consumo',
+    ],
+    events: ['copom', 'ipca', 'igp-m', 'payroll', 'fomc'],
+  };
+
+  it('accepts the approved weekday and weekend windows with all nine topics', () => {
+    expect(parseThresholds(approved)).toEqual(approved);
+  });
+
+  it.each([
+    [{ ...approved, weekendNewsWindowHours: 0 }, /weekendNewsWindowHours/],
+    [{ ...approved, weekendNewsWindowHours: 169 }, /weekendNewsWindowHours/],
+    [{ ...approved, weekendNewsWindowHours: 24 }, /weekendNewsWindowHours/],
+  ])('rejects an invalid weekend news window', (value, expected) => {
+    expect(() => parseThresholds(value)).toThrow(expected);
+  });
+});
+
+describe('parseCollectedInputs', () => {
+  it('accepts a future editorial reference without changing the real retrieval timestamp', () => {
+    const value = {
+      ...inputs(),
+      date: '2026-11-28',
+      retrievedAt: '2026-11-27T22:00:00Z',
+      referenceAt: '2026-11-28T22:00:00Z',
+    };
+
+    expect(parseCollectedInputs(value)).toEqual(value);
+  });
+
+  it('rejects a reference instant earlier than retrieval', () => {
+    const value = {
+      ...inputs(),
+      date: '2026-11-28',
+      retrievedAt: '2026-11-27T22:00:00Z',
+      referenceAt: '2026-11-27T21:00:00Z',
+    };
+
+    expect(() => parseCollectedInputs(value)).toThrow(/referenceAt.*retrievedAt|retrievedAt.*referenceAt/i);
+  });
+
+  it('requires the editorial date to match the reference instant when one is supplied', () => {
+    const value = {
+      ...inputs(),
+      date: '2026-11-28',
+      retrievedAt: '2026-11-27T22:00:00Z',
+      referenceAt: '2026-11-29T22:00:00Z',
+    };
+
+    expect(() => parseCollectedInputs(value)).toThrow(/referenceAt/);
+  });
+
+  it('keeps the retrieval-date rule when no reference instant is supplied', () => {
+    const value = { ...inputs(), date: '2026-11-24' };
+
+    expect(() => parseCollectedInputs(value)).toThrow(/retrievedAt/);
   });
 });
 

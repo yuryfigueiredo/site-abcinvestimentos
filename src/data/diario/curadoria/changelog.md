@@ -28,3 +28,11 @@
 - A verificação foi feita em 2026-11-24 sem requisitar corpos de artigos. O feed de notas técnicas do Banco Central e o feed econômico da Câmara responderam com XML válido, itens recentes e links HTTPS. Termos da Câmara: https://www2.camara.leg.br/termo-de-uso-e-politica-de-privacidade.
 - Senado, atos e comunicados do Banco Central, CVM, IBGE, Tesouro Nacional, governo federal, Valor Investe, InfoMoney e Agência Pública continuam desabilitados e sem feeds. O Senado geral produziu falso positivo de relevância; a CVM exige política de links HTTP e tratamento de licença; a Agência Pública não autoriza resumo automatizado sem reprodução integral ou contato prévio.
 - A allowlist passou para 1.2.0; a carta e o changelog passaram para 1.0.3, com novo hash e approval vinculados ao plano `docs/superpowers/plans/2026-11-24-diario-expansao-fontes.md`.
+
+## 1.0.4 — 2026-11-27
+
+- Por ordem explícita do dono, a cobertura passa a incluir pagamentos e crédito, trabalho e renda e consumo, mantendo fora do escopo cripto e qualquer recomendação de aplicação.
+- A janela de notícias passa a trinta horas em dias úteis e setenta e duas horas no fim de semana. A coleta continua diária às 19:00 no fuso de São Paulo para preservar a continuidade histórica.
+- A allowlist passa para 1.3.0 com o feed anual de normativos do Banco Central em https://www.bcb.gov.br/api/feed/app/normativos/normativos?ano=2026, limitado a pagamentos e crédito e regulação. A URL sem ano respondeu com erro e não foi aprovada.
+- Senado, CVM, IBGE, Tesouro Nacional, governo federal, Valor Investe, InfoMoney, CNN, Agência Brasil, FGV e G1 continuam fora da coleta por licença, corpo integral, ausência de feed adequado ou política de uso incompatível. A Câmara e o The Conversation permanecem nos termos já aprovados.
+- Os thresholds passam para 1.1.0; a carta e o changelog passam para 1.0.4, com novo hash e approval vinculados ao plano `docs/superpowers/plans/2026-11-27-diario-cobertura-simulacao.md`.

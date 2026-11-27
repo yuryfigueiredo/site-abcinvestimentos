@@ -2,11 +2,14 @@ import { createHash } from 'node:crypto';
 import { parseEdition as parseEditionForHistory, parseSourceCandidate } from './schema';
 import { isCalendarDate, isoWeekKey } from './time';
 import type {
+  AllowlistFeed,
   AllowlistSource,
   BcbObservation,
   BcbSnapshot,
   CollectedInputs,
   CurationDecision,
+  CurationDiagnostic,
+  DiagnosticReason,
   Edition,
   MeasuredKey,
   ReasonCode,
@@ -26,24 +29,42 @@ const SIMILARITY_THRESHOLD = 0.80;
 const RECENT_MATERIAL_LIMIT = 10;
 
 const TOPIC_TERMS: Record<Topic, RegExp> = {
-  juros: /\b(?:juros?|selic|copom|politica monetaria|taxa de juros|spread)\b/iu,
-  inflacao: /\b(?:inflacao|ipca|incc|precos?|indice de precos|deflacao)\b/iu,
+  juros: /\b(?:juros?|selic|copom|politica monetaria|taxa de juros)\b/iu,
+  inflacao: /\b(?:inflacao|ipca|igp m|incc|precos?|indice de precos|deflacao)\b/iu,
   cambio: /\b(?:cambio|dolar|moeda|cotacao)\b/iu,
   'bolsa-fiis': /\b(?:bolsa|ibovespa|fiis?|fundos? imobiliarios?|acoes?|dividendos?|b3)\b/iu,
   'renda-fixa': /\b(?:renda fixa|tesouro|cdb|lci|lca|debentures?|titulo publico|credito privado)\b/iu,
   regulacao: /\b(?:regulacao|regulador|fiscalizacao|compliance|cvm|fgc|bacen)\b/iu,
+  'pagamentos-credito': /\b(?:pix|meios? de pagamento|conta de pagamento|credito|financiamento|endividamento|spread|cartao|emprestimo|securitizacao|origacao de credito)\b/iu,
+  'trabalho-renda': /\b(?:emprego|desemprego|ocupacao|trabalho informal|renda|salario|salario minimo|folha de pagamento|caged)\b/iu,
+  consumo: /\b(?:consumo|black friday|compras?|varejo|intencao de compra|desconto|poder de compra|confianca do consumidor)\b/iu,
 };
+
+const TOPIC_PRECEDENCE: readonly Topic[] = [
+  'consumo',
+  'pagamentos-credito',
+  'trabalho-renda',
+  'cambio',
+  'inflacao',
+  'bolsa-fiis',
+  'renda-fixa',
+  'juros',
+  'regulacao',
+];
 
 export const EVENT_TOPICS: Readonly<Record<string, Topic>> = {
   copom: 'juros',
   ipca: 'inflacao',
   'igp-m': 'inflacao',
-  payroll: 'renda-fixa',
+  payroll: 'trabalho-renda',
   fomc: 'juros',
 };
 
-type NormalizedCandidate = SourceCandidate & { topic: Topic };
+type NormalizedCandidate = SourceCandidate & { topic: Topic; inputIndex: number };
 type NewsCluster = { id: string; topic: Topic; sources: NormalizedCandidate[] };
+type NormalizationResult =
+  | { status: 'accepted'; candidate: NormalizedCandidate }
+  | { status: 'rejected'; diagnostic: CurationDiagnostic };
 
 function sha256(value: string): string {
   return createHash('sha256').update(value, 'utf8').digest('hex');
@@ -114,36 +135,94 @@ export function isCcByNd(licenseUrl: string | undefined): boolean {
   }
 }
 
-export function sourceMatchesAllowlist(candidate: SourceCandidate, vault: Vault): boolean {
+function matchingFeed(candidate: SourceCandidate, vault: Vault): AllowlistFeed | null {
   const allowed = vault.allowlist.find((source) => source.id === candidate.sourceId);
-  if (!allowed?.enabled || allowed.kind !== candidate.kind || allowed.publisher !== candidate.publisher) return false;
-  if ((allowed.licenseUrl ?? null) !== (candidate.licenseUrl ?? null)) return false;
+  if (!allowed?.enabled || allowed.kind !== candidate.kind || allowed.publisher !== candidate.publisher) return null;
+  if ((allowed.licenseUrl ?? null) !== (candidate.licenseUrl ?? null)) return null;
   try {
-    const hostname = new URL(candidate.canonicalUrl).hostname;
-    return allowed.feeds.some((feed) => new URL(feed.url).hostname === hostname);
+    const feedUrl = new URL(candidate.feedUrl).toString();
+    const feed = allowed.feeds.find((item) => new URL(item.url).toString() === feedUrl);
+    if (!feed) return null;
+    return new URL(candidate.canonicalUrl).hostname === new URL(feed.url).hostname ? feed : null;
   } catch {
-    return false;
+    return null;
   }
 }
 
-function classifyTopic(title: string, excerpt: string): Topic | null {
+export function sourceMatchesAllowlist(candidate: SourceCandidate, vault: Vault): boolean {
+  return matchingFeed(candidate, vault) !== null;
+}
+
+type TopicClassification =
+  | { topic: Topic; reason?: never }
+  | { topic: null; reason: 'crypto-excluded' | 'topic-not-allowed' };
+
+function classifyTopic(title: string, excerpt: string): TopicClassification {
   const text = normalizedText(`${title} ${excerpt}`);
-  if (CRYPTO_TERM.test(text)) return null;
+  if (CRYPTO_TERM.test(text)) return { topic: null, reason: 'crypto-excluded' };
   const scores = (Object.entries(TOPIC_TERMS) as Array<[Topic, RegExp]>).map(([topic, pattern]) => ({
     topic,
     score: text.match(pattern)?.length ?? 0,
   }));
-  scores.sort((left, right) => right.score - left.score);
-  return scores[0]?.score ? scores[0].topic : null;
+  scores.sort((left, right) =>
+    right.score - left.score || TOPIC_PRECEDENCE.indexOf(left.topic) - TOPIC_PRECEDENCE.indexOf(right.topic),
+  );
+  return scores[0]?.score ? { topic: scores[0].topic } : { topic: null, reason: 'topic-not-allowed' };
 }
 
-function normalizeCandidate(candidate: SourceCandidate, collected: CollectedInputs, vault: Vault): NormalizedCandidate | null {
+function diagnosticTitle(candidate: SourceCandidate): string {
+  if (typeof candidate.title !== 'string') return '';
+  const namedEntities: Record<string, string> = {
+    amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ',
+  };
+  const decoded = candidate.title.replace(/&(?:#\d+|#x[\da-f]+|amp|lt|gt|quot|apos|nbsp);/giu, (entity) => {
+    const key = entity.slice(1, -1).toLowerCase();
+    if (key.startsWith('#x') || key.startsWith('#')) {
+      const codePoint = Number.parseInt(key.slice(key.startsWith('#x') ? 2 : 1), key.startsWith('#x') ? 16 : 10);
+      if (!Number.isFinite(codePoint) || codePoint > 0x10ffff || (codePoint >= 0xd800 && codePoint <= 0xdfff)) return '\uFFFD';
+      return String.fromCodePoint(codePoint);
+    }
+    return namedEntities[key] ?? entity;
+  });
+  return decoded
+    .replace(/<[^>]*>/gu, ' ')
+    .replace(/&(?:#\d+|#x[\da-f]+|[a-z][a-z\d]+);/giu, ' ')
+    .replace(CONTROL_CHARACTER, ' ')
+    .normalize('NFKC')
+    .replace(/\s+/gu, ' ')
+    .trim()
+    .slice(0, 500)
+    .trimEnd();
+}
+
+export function diagnosticFor(candidate: SourceCandidate, reason: DiagnosticReason, topic: Topic | null = null): CurationDiagnostic {
+  const title = diagnosticTitle(candidate);
+  return {
+    id: typeof candidate.id === 'string' ? candidate.id : '',
+    title,
+    publishedAt: typeof candidate.publishedAt === 'string' ? candidate.publishedAt : null,
+    topic,
+    reason,
+  };
+}
+
+function newsWindowHours(collected: CollectedInputs, vault: Vault): number {
+  const weekday = new Date(`${collected.date}T00:00:00Z`).getUTCDay();
+  return weekday === 0 || weekday === 6 ? vault.thresholds.weekendNewsWindowHours : vault.thresholds.newsWindowHours;
+}
+
+function normalizeCandidate(
+  candidate: SourceCandidate,
+  collected: CollectedInputs,
+  vault: Vault,
+  inputIndex: number,
+): NormalizationResult {
   if (
     typeof candidate.title !== 'string' || typeof candidate.excerpt !== 'string' ||
     typeof candidate.publisher !== 'string' || typeof candidate.canonicalUrl !== 'string' ||
     typeof candidate.retrievedAt !== 'string' || CONTROL_CHARACTER.test(candidate.title) ||
     CONTROL_CHARACTER.test(candidate.excerpt)
-  ) return null;
+  ) return { status: 'rejected', diagnostic: diagnosticFor(candidate, 'invalid-candidate') };
 
   const title = normalizedMetadata(candidate.title);
   const excerpt = normalizedMetadata(candidate.excerpt);
@@ -151,9 +230,16 @@ function normalizeCandidate(candidate: SourceCandidate, collected: CollectedInpu
   const retrievedAt = normalizedTimestamp(candidate.retrievedAt);
   const publishedAt = candidate.publishedAt === null ? null : normalizedTimestamp(candidate.publishedAt);
   const collectionTime = Date.parse(collected.retrievedAt);
-  if (!title || !excerpt || !canonicalUrl || !retrievedAt || !Number.isFinite(collectionTime)) return null;
-  if (candidate.publishedAt !== null && !publishedAt) return null;
-  if (Date.parse(retrievedAt) > collectionTime || (publishedAt && Date.parse(publishedAt) > collectionTime)) return null;
+  const referenceTime = Date.parse(collected.referenceAt ?? collected.retrievedAt);
+  if (!title || !excerpt || !canonicalUrl || !retrievedAt || !Number.isFinite(collectionTime) || !Number.isFinite(referenceTime)) {
+    return { status: 'rejected', diagnostic: diagnosticFor(candidate, 'invalid-candidate') };
+  }
+  if (candidate.publishedAt !== null && !publishedAt) {
+    return { status: 'rejected', diagnostic: diagnosticFor(candidate, 'invalid-candidate') };
+  }
+  if (Date.parse(retrievedAt) > collectionTime) {
+    return { status: 'rejected', diagnostic: diagnosticFor(candidate, 'invalid-candidate') };
+  }
 
   const normalized: SourceCandidate = {
     ...candidate,
@@ -168,16 +254,37 @@ function normalizeCandidate(candidate: SourceCandidate, collected: CollectedInpu
   try {
     parsed = parseSourceCandidate(normalized);
   } catch {
-    return null;
+    return { status: 'rejected', diagnostic: diagnosticFor(candidate, 'invalid-candidate') };
   }
-  if (parsed.excerptSha256 !== sha256(excerpt)) return null;
-  if (!sourceMatchesAllowlist(parsed, vault) || isCcByNd(parsed.licenseUrl)) return null;
-  const topic = classifyTopic(parsed.title, parsed.excerpt);
-  if (!topic || !vault.thresholds.topics.includes(topic)) return null;
-  if (!publishedAt) return null;
-  const age = collectionTime - Date.parse(publishedAt);
-  if (age < 0 || age > vault.thresholds.newsWindowHours * 3_600_000) return null;
-  return { ...parsed, topic };
+  if (parsed.excerptSha256 !== sha256(excerpt)) {
+    return { status: 'rejected', diagnostic: diagnosticFor(candidate, 'invalid-candidate') };
+  }
+  const feed = matchingFeed(parsed, vault);
+  if (!feed) {
+    return { status: 'rejected', diagnostic: diagnosticFor(candidate, 'source-not-allowed') };
+  }
+  if (isCcByNd(parsed.licenseUrl)) {
+    return { status: 'rejected', diagnostic: diagnosticFor(candidate, 'cc-by-nd') };
+  }
+  const classification = classifyTopic(parsed.title, parsed.excerpt);
+  if (!classification.topic) {
+    return { status: 'rejected', diagnostic: diagnosticFor(candidate, classification.reason) };
+  }
+  if (!feed.topics.includes(classification.topic) || !vault.thresholds.topics.includes(classification.topic)) {
+    return { status: 'rejected', diagnostic: diagnosticFor(candidate, 'topic-not-allowed', classification.topic) };
+  }
+  if (!publishedAt) {
+    return { status: 'rejected', diagnostic: diagnosticFor(candidate, 'invalid-candidate', classification.topic) };
+  }
+  const publicationTime = Date.parse(publishedAt);
+  if (publicationTime > collectionTime || publicationTime > referenceTime) {
+    return { status: 'rejected', diagnostic: diagnosticFor(candidate, 'future-publication', classification.topic) };
+  }
+  const age = referenceTime - publicationTime;
+  if (age > newsWindowHours(collected, vault) * 3_600_000) {
+    return { status: 'rejected', diagnostic: diagnosticFor(candidate, 'outside-window', classification.topic) };
+  }
+  return { status: 'accepted', candidate: { ...parsed, topic: classification.topic, inputIndex } };
 }
 
 export function historyIsValid(previous: Edition[], date: string): boolean {
@@ -364,13 +471,60 @@ function clusterIsDuplicate(cluster: NewsCluster, previous: Edition[]): boolean 
   );
 }
 
-function selectClusters(inputs: CollectedInputs, previous: Edition[], vault: Vault): NewsCluster[] {
-  const candidates = inputs.sources
-    .map((source) => normalizeCandidate(source, inputs, vault))
-    .filter((source): source is NormalizedCandidate => source !== null);
-  return buildClusters(candidates)
-    .filter((cluster) => clusterIsSufficient(cluster, vault) && !clusterIsDuplicate(cluster, previous))
-    .slice(0, vault.thresholds.maxItems);
+export function analyzeCandidates(inputs: CollectedInputs, previous: Edition[], vault: Vault) {
+  const diagnostics: Array<CurationDiagnostic | undefined> = new Array(inputs.sources.length);
+  const candidates: NormalizedCandidate[] = [];
+  for (const [inputIndex, source] of inputs.sources.entries()) {
+    const result = normalizeCandidate(source, inputs, vault, inputIndex);
+    if (result.status === 'rejected') diagnostics[inputIndex] = result.diagnostic;
+    else candidates.push(result.candidate);
+  }
+
+  const duplicates = duplicateCandidateIds(candidates);
+  const uniqueCandidates = candidates.filter((candidate) => {
+    if (!duplicates.has(candidate.id)) return true;
+    diagnostics[candidate.inputIndex] = diagnosticFor(candidate, 'duplicate-candidate', candidate.topic);
+    return false;
+  });
+
+  const eligible: NewsCluster[] = [];
+  for (const cluster of buildClusters(uniqueCandidates)) {
+    if (!clusterIsSufficient(cluster, vault)) {
+      for (const source of cluster.sources) {
+        diagnostics[source.inputIndex] = diagnosticFor(source, 'media-needs-two-sources', source.topic);
+      }
+      continue;
+    }
+    if (clusterIsDuplicate(cluster, previous)) {
+      for (const source of cluster.sources) {
+        diagnostics[source.inputIndex] = diagnosticFor(source, 'duplicate-history', source.topic);
+      }
+      continue;
+    }
+    eligible.push(cluster);
+  }
+
+  const clusters = eligible.slice(0, vault.thresholds.maxItems);
+  const selected = new Set(clusters.flatMap((cluster) => cluster.sources.map((source) => source.inputIndex)));
+  for (const cluster of eligible.slice(vault.thresholds.maxItems)) {
+    for (const source of cluster.sources) {
+      diagnostics[source.inputIndex] = diagnosticFor(source, 'item-limit', source.topic);
+    }
+  }
+  for (const cluster of clusters) {
+    for (const source of cluster.sources) {
+      diagnostics[source.inputIndex] = diagnosticFor(source, 'selected', source.topic);
+    }
+  }
+
+  return {
+    clusters,
+    diagnostics: diagnostics.map((diagnostic, index) => {
+      if (diagnostic) return diagnostic;
+      return diagnosticFor(inputs.sources[index], 'cluster-not-selected');
+    }),
+    selected,
+  };
 }
 
 function eventKind(eventId: string, vault: Vault): string | undefined {
@@ -432,13 +586,12 @@ function lessonForQuietDay(inputs: CollectedInputs, previous: Edition[], vault: 
   return lesson?.id;
 }
 
-export function decideEdition(inputs: CollectedInputs, previous: Edition[], vault: Vault): CurationDecision {
-  if (!historyIsValid(previous, inputs.date)) {
-    return { status: 'morno', reasonCodes: ['history-unavailable'], newsClusterIds: [] };
-  }
-
-  const materialHistory = recentMaterialEditions(previous);
-  const clusters = selectClusters(inputs, materialHistory, vault);
+export function decideEditionFromClusters(
+  inputs: CollectedInputs,
+  previous: Edition[],
+  vault: Vault,
+  clusters: ReturnType<typeof analyzeCandidates>['clusters'],
+): CurationDecision {
   const reasonCodes: ReasonCode[] = [];
   let eventId: string | undefined;
   const event = approvedEvent(inputs, vault);
@@ -486,6 +639,44 @@ export function decideEdition(inputs: CollectedInputs, previous: Edition[], vaul
   return { status: 'morno', reasonCodes: ['no-substantive-delta'], newsClusterIds: [] };
 }
 
+export function decideEdition(inputs: CollectedInputs, previous: Edition[], vault: Vault): CurationDecision {
+  if (!historyIsValid(previous, inputs.date)) {
+    return { status: 'morno', reasonCodes: ['history-unavailable'], newsClusterIds: [] };
+  }
+  const analysis = analyzeCandidates(inputs, recentMaterialEditions(previous), vault);
+  return decideEditionFromClusters(inputs, previous, vault, analysis.clusters);
+}
+
+export function buildSelectionFromClusters(
+  inputs: CollectedInputs,
+  decision: CurationDecision,
+  analyzedClusters: ReturnType<typeof analyzeCandidates>['clusters'],
+): Selection {
+  if (decision.status === 'morno' || decision.reasonCodes.includes('history-unavailable')) {
+    return { date: inputs.date, decision, clusters: [], selectedSources: [] };
+  }
+  const clusters = analyzedClusters.filter((cluster) => decision.newsClusterIds.includes(cluster.id));
+  return {
+    date: inputs.date,
+    decision,
+    clusters: clusters.map((cluster) => ({
+      id: cluster.id,
+      topic: cluster.topic,
+      sourceIds: cluster.sources.map((source) => source.id),
+    })),
+    selectedSources: clusters.flatMap((cluster) => cluster.sources.map((source) => {
+      const { inputIndex: _inputIndex, ...candidate } = source;
+      return {
+        ...candidate,
+        clusterId: cluster.id,
+        topic: cluster.topic,
+      } satisfies SelectedSourceEvidence;
+    })),
+    ...(decision.eventId === undefined ? {} : { eventId: decision.eventId }),
+    ...(decision.lessonId === undefined ? {} : { lessonId: decision.lessonId }),
+  };
+}
+
 export function buildSelection(
   inputs: CollectedInputs,
   decision: CurationDecision,
@@ -495,24 +686,8 @@ export function buildSelection(
   if (decision.status === 'morno' || decision.reasonCodes.includes('history-unavailable')) {
     return { date: inputs.date, decision, clusters: [], selectedSources: [] };
   }
-  const clusters = selectClusters(inputs, recentMaterialEditions(previous), vault)
-    .filter((cluster) => decision.newsClusterIds.includes(cluster.id));
-  return {
-    date: inputs.date,
-    decision,
-    clusters: clusters.map((cluster) => ({
-      id: cluster.id,
-      topic: cluster.topic,
-      sourceIds: cluster.sources.map((source) => source.id),
-    })),
-    selectedSources: clusters.flatMap((cluster) => cluster.sources.map((source) => ({
-      ...source,
-      clusterId: cluster.id,
-      topic: cluster.topic,
-    } satisfies SelectedSourceEvidence))),
-    ...(decision.eventId === undefined ? {} : { eventId: decision.eventId }),
-    ...(decision.lessonId === undefined ? {} : { lessonId: decision.lessonId }),
-  };
+  const analysis = analyzeCandidates(inputs, recentMaterialEditions(previous), vault);
+  return buildSelectionFromClusters(inputs, decision, analysis.clusters);
 }
 
 export function publicPolicy(vault: Vault): Edition['policy'] {
@@ -527,7 +702,7 @@ export function publicPolicy(vault: Vault): Edition['policy'] {
 }
 
 export function sourceReference(source: SourceCandidate): SourceRef {
-  const { excerpt: _excerpt, excerptSha256: _hash, clusterId: _clusterId, topic: _topic, ...reference } =
+  const { excerpt: _excerpt, excerptSha256: _hash, feedUrl: _feedUrl, clusterId: _clusterId, topic: _topic, ...reference } =
     source as SourceCandidate & { clusterId?: string; topic?: Topic };
   return reference;
 }

@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 
 import { join, resolve } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { buildDeterministicBriefing } from './briefing';
+import { diarioCachePath } from './cache';
 import {
   buildBcbSnapshot,
   buildSelection,
@@ -26,7 +27,7 @@ import {
   parseSourceCandidate,
 } from './schema';
 import { isCalendarDate, parseCalendarDate } from './time';
-import type { CollectedInputs, Edition, SelectedSourceEvidence, Selection, ValidationContext, Vault } from './types';
+import type { CacheScope, CollectedInputs, Edition, SelectedSourceEvidence, Selection, ValidationContext, Vault } from './types';
 
 const MAX_JSON_BYTES = 5_000_000;
 const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
@@ -108,13 +109,16 @@ export function loadPreviousEditions(date: string, root = process.cwd()): Histor
   return { editions, unavailable: false };
 }
 
-export function loadCurationContext(date: string, root = process.cwd()): CurationContext {
+function loadScopedCurationContext(date: string, root: string, scope: CacheScope): CurationContext {
   parseCalendarDate(date, 'date');
   const resolvedRoot = resolve(root);
   const vault = verifyGovernance(resolvedRoot);
-  const cache = join(resolvedRoot, '.cache/diario', date);
+  const cache = diarioCachePath(resolvedRoot, date, scope);
   const collected = parseCollectedInputs(readJson(join(cache, 'inputs.json'), 'inputs.json'));
   if (collected.date !== date) throw new Error(`Cached inputs must use the requested date ${date}`);
+  if (scope === 'simulation' && collected.referenceAt === undefined) {
+    throw new Error('Simulation inputs require an explicit referenceAt');
+  }
   const history = loadPreviousEditions(date, resolvedRoot);
   collected.previousEditions = history.editions;
   return {
@@ -126,10 +130,14 @@ export function loadCurationContext(date: string, root = process.cwd()): Curatio
   };
 }
 
-export function loadValidationContext(date: string, root = process.cwd()): ValidationContext {
-  const curation = loadCurationContext(date, root);
+export function loadCurationContext(date: string, root = process.cwd()): CurationContext {
+  return loadScopedCurationContext(date, root, 'edition');
+}
+
+function loadScopedValidationContext(date: string, root: string, scope: CacheScope): ValidationContext {
+  const curation = loadScopedCurationContext(date, root, scope);
   const selection = parseSelection(readJson(
-    join(curation.root, '.cache/diario', date, 'selection.json'),
+    join(diarioCachePath(curation.root, date, scope), 'selection.json'),
     'selection.json',
   ));
   if (selection.date !== date) throw new Error(`Cached selection must use the requested date ${date}`);
@@ -142,6 +150,14 @@ export function loadValidationContext(date: string, root = process.cwd()): Valid
     historyUnavailable: curation.historyUnavailable,
     root: curation.root,
   };
+}
+
+export function loadValidationContext(date: string, root = process.cwd()): ValidationContext {
+  return loadScopedValidationContext(date, root, 'edition');
+}
+
+export function loadSimulationValidationContext(date: string, root = process.cwd()): ValidationContext {
+  return loadScopedValidationContext(date, root, 'simulation');
 }
 
 function sameJson(left: unknown, right: unknown): boolean {

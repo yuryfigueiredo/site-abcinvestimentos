@@ -29,7 +29,7 @@ Fora destas rotas, por decisão de 2026-11-16: `matt-wayfinder`, `matt-chief-of-
 
 ## Diário e schema
 
-- Automação do Diário: seguir `docs/diario/automation-prompt.md`, versão `diario-2026-11-26-preflight-v3`.
+- Automação do Diário: seguir `docs/diario/automation-prompt.md`, versão `diario-2026-11-27-preflight-v4`.
 - Edições usam `schemaVersion: 2`; `briefing` é obrigatório em material e proibido em morno.
 - O cofre em `src/data/diario/curadoria/` é imutável pela automação.
 - Rascunho material inválido interrompe a execução; nunca rebaixar, editar `decision.status` ou publicar incompleto.

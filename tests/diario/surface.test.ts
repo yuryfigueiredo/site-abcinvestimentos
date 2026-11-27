@@ -125,6 +125,19 @@ describe('Superfície pública do Diário', () => {
     }
   });
 
+  it.runIf(ONLINE)('explica cobertura, janelas, diagnóstico e ausência de publicação por calendário', () => {
+    const methodology = source('src/pages/diario-do-investidor/metodologia.astro');
+    expect(methodology).toContain('30 horas');
+    expect(methodology).toContain('72 horas');
+    expect(methodology).toContain('normativos');
+    expect(methodology).toContain('pagamentos');
+    expect(methodology).toContain('trabalho');
+    expect(methodology).toContain('consumo');
+    expect(methodology).toMatch(/duplic/iu);
+    expect(methodology).toContain('diagnostics.json');
+    expect(methodology).toMatch(/n[ãa]o publica uma p[áa]gina por obriga[cç][aã]o de calend[aá]rio/iu);
+  });
+
   it('mantém o carregamento do Diário no sitemap coerente com o modo do checkout', () => {
     const config = source('astro.config.mjs');
     expect(config.includes('src/lib/diario')).toBe(ONLINE);

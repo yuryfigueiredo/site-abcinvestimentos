@@ -1,4 +1,13 @@
-export type Topic = 'renda-fixa' | 'juros' | 'inflacao' | 'cambio' | 'bolsa-fiis' | 'regulacao';
+export type Topic =
+  | 'renda-fixa'
+  | 'juros'
+  | 'inflacao'
+  | 'cambio'
+  | 'bolsa-fiis'
+  | 'regulacao'
+  | 'pagamentos-credito'
+  | 'trabalho-renda'
+  | 'consumo';
 
 export type MeasuredKey = 'selic' | 'cdi' | 'ipca12m' | 'dolar';
 
@@ -37,6 +46,7 @@ export interface Thresholds {
   maxLessonsPerIsoWeek: number;
   lessonOnlyWhenQuiet: boolean;
   newsWindowHours: number;
+  weekendNewsWindowHours: number;
   minMediaSources: number;
   maxItems: number;
   topics: Topic[];
@@ -57,6 +67,7 @@ export interface SourceRef {
 }
 
 export interface SourceCandidate extends SourceRef {
+  feedUrl: string;
   excerpt: string;
   excerptSha256: string;
 }
@@ -73,6 +84,37 @@ export interface Selection {
   selectedSources: SelectedSourceEvidence[];
   eventId?: string;
   lessonId?: string;
+}
+
+export type DiagnosticReason =
+  | 'selected'
+  | 'invalid-candidate'
+  | 'duplicate-candidate'
+  | 'source-not-allowed'
+  | 'cc-by-nd'
+  | 'crypto-excluded'
+  | 'topic-not-allowed'
+  | 'future-publication'
+  | 'outside-window'
+  | 'media-needs-two-sources'
+  | 'duplicate-history'
+  | 'cluster-not-selected'
+  | 'item-limit'
+  | 'history-unavailable';
+
+export interface CurationDiagnostic {
+  id: string;
+  title: string;
+  publishedAt: string | null;
+  topic: Topic | null;
+  reason: DiagnosticReason;
+}
+
+export interface CurationResult {
+  decision: CurationDecision;
+  selection: Selection;
+  briefing?: EditorialBriefing;
+  diagnostics: CurationDiagnostic[];
 }
 
 export interface NewsItem {
@@ -181,6 +223,7 @@ export interface Vault {
 export interface CollectedInputs {
   date: string;
   retrievedAt: string;
+  referenceAt?: string;
   bcb: Partial<Record<MeasuredKey, BcbObservation[]>>;
   sources: SourceCandidate[];
   events: CalendarEvent[];
@@ -198,8 +241,12 @@ export interface ValidationContext {
   root?: string;
 }
 
+export type CacheScope = 'edition' | 'simulation';
+
 export interface CollectOptions {
   root?: string;
   now?: Date;
   fetch?: typeof fetch;
+  referenceAt?: string;
+  cacheScope?: CacheScope;
 }

@@ -21,7 +21,7 @@ function expectInOrder(...fragments: string[]): void {
 
 describe('Prompt da automação do Diário', () => {
   it('fixa a versão exata e a operação no Mac às 19:00 BRT', () => {
-    const expectedVersion = 'diario-2026-11-26-preflight-v3';
+    const expectedVersion = 'diario-2026-11-27-preflight-v4';
     const versionTokens = prompt.match(/diario-\d{4}-\d{2}-\d{2}-preflight-v\d+/gu) ?? [];
     expect(new Set(versionTokens)).toEqual(new Set([expectedVersion]));
     expect(normalized).toContain(`Versão obrigatória: \`${expectedVersion}\``);
@@ -81,6 +81,13 @@ describe('Prompt da automação do Diário', () => {
     expect(normalized).toMatch(/lock (?:permanece|mantido).*(?:validação|build).*(?:commit)/iu);
     expect(normalized).toMatch(/cleanup .*finally-style/iu);
     expect(normalized).toContain('npm run diario:verify-build -- --online');
+  });
+
+  it('exige diagnostics.json como auditoria interna sem excerpts públicos', () => {
+    expect(normalized).toContain('.cache/diario/<date>/diagnostics.json');
+    expect(normalized).toMatch(/diagnostics\.json.*auditoria/iu);
+    expect(normalized).toMatch(/diagnostics\.json.*sem excerpts/iu);
+    expect(normalized).toMatch(/nunca.*diagnostics\.json.*(?:rascunho|edi[cç][aã]o p[uú]blica)/iu);
   });
 
   it('escreve título e resumo específicos e usa apenas selection.json nas notícias', () => {

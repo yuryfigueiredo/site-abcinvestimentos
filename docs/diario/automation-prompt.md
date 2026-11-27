@@ -1,6 +1,6 @@
 # Prompt da automação — Diário do Investidor
 
-Versão obrigatória: `diario-2026-11-26-preflight-v3`.
+Versão obrigatória: `diario-2026-11-27-preflight-v4`.
 
 Use este prompt no Qoder Automations do Mac, no repositório canônico, todos os dias às
 **19:00 BRT**. A data da edição é a data corrente em `America/Sao_Paulo`. A publicação automática
@@ -20,7 +20,7 @@ autoriza religar o Diário enquanto a superfície pública estiver offline.
   com título, data e link preservados. A lição referenciada por `decision.lessonId` também deve ser
   copiada do registro aprovado, sem alteração.
 - Defina `provenance.generator` como `qoder-diario`, `provenance.promptVersion` como
-  `diario-2026-11-26-preflight-v3` e `provenance.disclaimerKey` como
+  `diario-2026-11-27-preflight-v4` e `provenance.disclaimerKey` como
   `educacional-nao-e-recomendacao`. Preserve o aviso educacional fixo.
 - Nunca altere `decision.status`: a materialidade pertence à camada determinística. Nunca rebaixe
   material inválido para contornar o validador.
@@ -35,6 +35,9 @@ autoriza religar o Diário enquanto a superfície pública estiver offline.
   um excerpt CC BY-ND como paráfrase, resumo ou tradução. Se ele for a única base possível para uma
   notícia reescrita e não houver superfície de citação literal aprovada, descarte a fonte e recalcule
   a seleção determinística.
+- A cobertura governada usa trinta horas de janela em dias úteis e setenta e duas horas em fins de
+  semana. O feed de normativos do Banco Central e os tópicos de pagamentos e crédito, trabalho e
+  renda e consumo já fazem parte do cofre; não amplie fontes ou limites por conta própria.
 
 ## Workflow operacional
 
@@ -91,6 +94,9 @@ offline. Nenhum lock, pull, coleta ou escrita pode acontecer antes desse portão
    `.cache/diario/<date>/briefing.json` somente para material sem notícias e remove um
    `briefing.json` stale ou obsoleto quando essa condição deixa de valer. Se o artefato esperado
    estiver ausente, inconsistente ou obsoleto, pare; não improvise.
+5. Leia `.cache/diario/<date>/diagnostics.json` como artefato de auditoria interno, sem excerpts.
+   Ele registra um motivo terminal para cada candidato coletado. Nunca copie `diagnostics.json`
+   para o rascunho ou para a edição pública.
 
 ### 4. Tratar perda de lastro na camada determinística
 

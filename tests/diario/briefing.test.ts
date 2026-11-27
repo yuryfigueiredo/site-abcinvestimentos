@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { buildDeterministicBriefing } from '../../src/lib/diario/briefing';
+import { buildDeterministicBriefing, educationalTopicContext } from '../../src/lib/diario/briefing';
 import { verifyGovernance } from '../../src/lib/diario/governance';
 import { parseCalendarEvent, parseEdition, parseEditorialBriefing } from '../../src/lib/diario/schema';
 import type { CalendarEvent, Edition } from '../../src/lib/diario/types';
@@ -97,6 +97,18 @@ describe('buildDeterministicBriefing', () => {
     expect(briefing.whatHappened).not.toContain(event.title);
     expect(briefing.whatHappened).toMatch(/infla[cç][aã]o/iu);
   });
+
+  it.each(['pagamentos-credito', 'trabalho-renda', 'consumo'] as const)(
+    'provides safe educational context for %s',
+    (topic) => {
+      const context = educationalTopicContext(topic);
+
+      expect(context.subject.length).toBeGreaterThan(0);
+      expect(context.whyItMatters.length).toBeGreaterThan(0);
+      expect(context.whatToWatch.length).toBeGreaterThan(0);
+      expect(JSON.stringify(context)).not.toMatch(/\p{N}|<|>/u);
+    },
+  );
 
   it('uses the approved lesson in a monday-lesson briefing', () => {
     const approvedVault = vault();

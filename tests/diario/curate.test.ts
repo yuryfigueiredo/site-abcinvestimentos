@@ -6,6 +6,7 @@ import {
   decideEdition,
 } from '../../src/lib/diario/curate';
 import * as curation from '../../src/lib/diario/curate';
+import { curateCollectedInputs } from '../../src/lib/diario/curation';
 import type { Edition, EditorialBriefing } from '../../src/lib/diario/types';
 import {
   DATE,
@@ -457,7 +458,7 @@ describe('decideEdition', () => {
 
   it('excludes articles outside the approved news window', () => {
     const collected = inputs('2026-11-24');
-    collected.sources = [source({ publishedAt: '2026-11-23T21:59:59Z' })];
+    collected.sources = [source({ publishedAt: '2026-11-23T15:59:59Z' })];
 
     expect(decideEdition(collected, [], vault()).status).toBe('morno');
   });
@@ -662,5 +663,190 @@ describe('buildBcbSnapshot', () => {
     collected.bcb.selic = [{ value: previous.snapshot.measured.selic?.value ?? 0, date: '2026-11-22' }];
 
     expect(buildBcbSnapshot(collected, [previous]).measured.selic?.origin).toBe('stale');
+  });
+});
+
+describe('curateCollectedInputs', () => {
+  it.each([
+    ['Pix amplia conta de pagamento', 'O meio de pagamento Pix tem nova regra.', 'pagamentos-credito'],
+    ['Black Friday e intenção de compra', 'O varejo acompanha consumo e poder de compra.', 'consumo'],
+    ['CAGED e desemprego', 'O emprego e a ocupação mudam no mercado de trabalho.', 'trabalho-renda'],
+    ['IGP-M e preços', 'O índice de preços IGP-M atualiza a inflação.', 'inflacao'],
+    ['Spread bancário', 'O spread é a taxa cobrada nas operações de crédito.', 'pagamentos-credito'],
+    ['Crédito e financiamento', 'O financiamento e o endividamento mudam as condições.', 'pagamentos-credito'],
+  ] as const)('classifies %s as %s', (title, excerpt, topic) => {
+    const collected = inputs('2026-11-24');
+    collected.sources = [sourceForDate('2026-11-24', { title, excerpt })];
+
+    const result = curateCollectedInputs(collected, [], vault());
+
+    expect(result.selection.clusters[0]?.topic).toBe(topic);
+    expect(result.diagnostics[0]).toMatchObject({ topic, reason: 'selected' });
+  });
+
+  it('maps payroll events to trabalho-renda', () => {
+    expect(curation.EVENT_TOPICS.payroll).toBe('trabalho-renda');
+  });
+
+  it.each([
+    ['2026-11-27', '2026-11-26T21:00:00Z'],
+    ['2026-11-28', '2026-11-26T21:00:00Z'],
+    ['2026-11-29', '2026-11-26T22:00:00Z'],
+  ])('uses the adaptive weekend window for %s', (date, publishedAt) => {
+    const collected = inputs(date);
+    collected.sources = [sourceForDate(date, { publishedAt })];
+
+    const result = curateCollectedInputs(collected, [], vault());
+
+    expect(result.decision.status).toBe('material');
+    expect(result.diagnostics[0]?.reason).toBe('selected');
+  });
+
+  it.each([
+    ['2026-11-24', '2026-11-23T15:59:59Z'],
+    ['2026-11-28', '2026-11-25T21:00:01Z'],
+  ])('rejects a candidate outside the adaptive window for %s', (date, publishedAt) => {
+    const collected = inputs(date);
+    collected.sources = [sourceForDate(date, { publishedAt })];
+
+    const result = curateCollectedInputs(collected, [], vault());
+
+    expect(result.decision.status).toBe('morno');
+    expect(result.diagnostics[0]?.reason).toBe('outside-window');
+  });
+
+  it('uses referenceAt for age but retrievedAt for the publication cutoff', () => {
+    const collected = inputs('2026-11-28');
+    collected.retrievedAt = '2026-11-27T22:00:00Z';
+    collected.referenceAt = '2026-11-28T22:00:00Z';
+    collected.sources = [
+      source({ id: 'conhecida', publishedAt: '2026-11-26T18:00:00Z', retrievedAt: collected.retrievedAt }),
+      source({ id: 'agendada', publishedAt: '2026-11-27T23:00:00Z', retrievedAt: collected.retrievedAt }),
+    ];
+
+    const result = curateCollectedInputs(collected, [], vault());
+
+    expect(result.selection.selectedSources.map((item) => item.id)).toEqual(['conhecida']);
+    expect(result.diagnostics.map((item) => [item.id, item.reason])).toEqual([
+      ['conhecida', 'selected'],
+      ['agendada', 'future-publication'],
+    ]);
+  });
+
+  it('rejects publication after the editorial reference instant', () => {
+    const collected = inputs('2026-11-28');
+    collected.retrievedAt = '2026-11-27T22:00:00Z';
+    collected.referenceAt = '2026-11-28T22:00:00Z';
+    collected.sources = [source({ publishedAt: '2026-11-28T23:00:00Z', retrievedAt: collected.retrievedAt })];
+
+    expect(curateCollectedInputs(collected, [], vault()).diagnostics[0]?.reason).toBe('future-publication');
+  });
+
+  it('records exactly one terminal reason per source without evidence text', () => {
+    const collected = inputs('2026-11-24');
+    const invalid = sourceForDate('2026-11-24', { id: 'invalida' });
+    invalid.excerptSha256 = '0'.repeat(64);
+    const duplicate = sourceForDate('2026-11-24', { id: 'duplicada' });
+    const notAllowed = sourceForDate('2026-11-24', { id: 'nao-autorizada', sourceId: 'fonte-desconhecida' });
+    const crypto = sourceForDate('2026-11-24', {
+      id: 'cripto',
+      title: 'Bitcoin e criptomoedas sobem',
+      excerpt: 'O mercado de criptoativos reage às expectativas.',
+    });
+    const offTopic = sourceForDate('2026-11-24', {
+      id: 'fora-de-tema',
+      title: 'Receita caseira de bolo',
+      excerpt: 'Uma preparação simples para o café da tarde.',
+    });
+    const outside = sourceForDate('2026-11-24', { id: 'antiga', publishedAt: '2026-11-22T22:00:00Z' });
+    const singleMedia = mediaSourceForDate('2026-11-24', 'alpha', { id: 'midia-sola' });
+    collected.sources = [
+      sourceForDate('2026-11-24', {
+        id: 'selecionada',
+        title: 'Copom publica nova avaliação',
+        canonicalUrl: 'https://www.bcb.gov.br/publicacoes/comunicados/avaliacao',
+      }),
+      invalid,
+      duplicate,
+      sourceForDate('2026-11-24', { id: 'duplicada-outra' }),
+      notAllowed,
+      conversationSourceForDate('2026-11-24', { id: 'cc-by-nd' }),
+      crypto,
+      offTopic,
+      outside,
+      singleMedia,
+    ];
+
+    const result = curateCollectedInputs(collected, [], vault());
+
+    expect(result.diagnostics.map((item) => [item.id, item.reason])).toEqual([
+      ['selecionada', 'selected'],
+      ['invalida', 'invalid-candidate'],
+      ['duplicada', 'duplicate-candidate'],
+      ['duplicada-outra', 'duplicate-candidate'],
+      ['nao-autorizada', 'source-not-allowed'],
+      ['cc-by-nd', 'cc-by-nd'],
+      ['cripto', 'crypto-excluded'],
+      ['fora-de-tema', 'topic-not-allowed'],
+      ['antiga', 'outside-window'],
+      ['midia-sola', 'media-needs-two-sources'],
+    ]);
+    expect(result.diagnostics).toHaveLength(collected.sources.length);
+    expect(JSON.stringify(result.diagnostics)).not.toMatch(/excerpt|excerptSha256|<|>/iu);
+  });
+
+  it('strips HTML tags and entities from diagnostic titles', () => {
+    const collected = inputs('2026-11-24');
+    collected.sources = [sourceForDate('2026-11-24', {
+      title: '&lt;strong&gt;Pix&lt;/strong&gt;',
+      excerpt: 'O meio de pagamento Pix recebe uma nova regra.',
+    })];
+
+    const result = curateCollectedInputs(collected, [], vault());
+
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0]).toMatchObject({ reason: 'selected', title: 'Pix' });
+    expect(JSON.stringify(result.diagnostics)).not.toMatch(/&lt;|&gt;|<|>/iu);
+  });
+
+  it('marks history duplicates and eligible clusters beyond the item limit', () => {
+    const previous = previousEdition('2026-11-22');
+    const collected = inputs('2026-11-24');
+    collected.sources = [
+      sourceForDate('2026-11-24', { id: 'repetida', canonicalUrl: previous.sources[0].canonicalUrl }),
+      sourceForDate('2026-11-24', {
+        id: 'juros',
+        title: 'Copom avalia juros',
+        canonicalUrl: 'https://www.bcb.gov.br/publicacoes/comunicados/juros',
+        excerpt: 'A política monetária atualiza os juros.',
+      }),
+      sourceForDate('2026-11-24', {
+        id: 'inflacao',
+        title: 'IPCA atualiza preços',
+        canonicalUrl: 'https://www.bcb.gov.br/publicacoes/indices/precos/ipca',
+        excerpt: 'A inflação e o índice de preços mudam.',
+      }),
+    ];
+    const approvedVault = vault();
+    approvedVault.thresholds.maxItems = 1;
+
+    const result = curateCollectedInputs(collected, [previous], approvedVault);
+
+    expect(result.diagnostics.find((item) => item.id === 'repetida')?.reason).toBe('duplicate-history');
+    expect(result.selection.clusters).toHaveLength(1);
+    expect(result.diagnostics.filter((item) => item.reason === 'item-limit')).toHaveLength(1);
+    expect(result.diagnostics.filter((item) => item.reason === 'selected')).toHaveLength(1);
+  });
+
+  it('fails closed with history-unavailable diagnostics when the historical chain is invalid', () => {
+    const collected = inputs('2026-11-24');
+    collected.sources = [sourceForDate('2026-11-24')];
+    const brokenHistory = [{ ...previousEdition('2026-11-23'), date: '2026-11-24' }];
+
+    const result = curateCollectedInputs(collected, brokenHistory, vault());
+
+    expect(result.decision).toEqual({ status: 'morno', reasonCodes: ['history-unavailable'], newsClusterIds: [] });
+    expect(result.selection.selectedSources).toEqual([]);
+    expect(result.diagnostics[0]?.reason).toBe('history-unavailable');
   });
 });

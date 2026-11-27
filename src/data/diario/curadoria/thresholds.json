@@ -1,12 +1,13 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "timezone": "America/Sao_Paulo",
   "runLocal": "19:00",
   "dollarAbsChangePct": 1.0,
   "lessonWeekday": 1,
   "maxLessonsPerIsoWeek": 1,
   "lessonOnlyWhenQuiet": true,
-  "newsWindowHours": 24,
+  "newsWindowHours": 30,
+  "weekendNewsWindowHours": 72,
   "minMediaSources": 2,
   "maxItems": 3,
   "topics": [
@@ -15,7 +16,10 @@
     "inflacao",
     "cambio",
     "bolsa-fiis",
-    "regulacao"
+    "regulacao",
+    "pagamentos-credito",
+    "trabalho-renda",
+    "consumo"
   ],
   "events": [
     "copom",

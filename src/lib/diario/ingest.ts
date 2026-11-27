@@ -4,12 +4,16 @@ import { join, resolve } from 'node:path';
 import { XMLParser, XMLValidator } from 'fast-xml-parser';
 import { fetchBcbLastValue, fetchBcbRecentValues } from '../bcb';
 import { cancelResponseBody, readBoundedText } from '../http';
+import { diarioCachePath } from './cache';
 import { verifyGovernance } from './governance';
+import { parseCollectedInputs } from './schema';
 import { isCalendarDate, parseCalendarDate } from './time';
 import type {
+  AllowlistFeed,
   AllowlistSource,
   BcbObservation,
   CollectedInputs,
+  CacheScope,
   CollectOptions,
   MeasuredKey,
   SourceCandidate,
@@ -270,15 +274,6 @@ function canonicalUrl(value: unknown): string | null {
   }
 }
 
-function normalizedTitleKey(value: string): string {
-  return value
-    .normalize('NFKD')
-    .toLocaleLowerCase('pt-BR')
-    .replace(/\p{M}/gu, '')
-    .replace(/[^\p{L}\p{N}]+/gu, ' ')
-    .trim();
-}
-
 function joinedAuthorNames(names: Array<string | null>): string | null {
   if (names.length === 0 || names.some((name) => name === null)) return null;
   const author = names.join('; ');
@@ -494,7 +489,7 @@ function normalizedAtomContentExcerpt(value: unknown): string {
   return '';
 }
 
-function parseFeed(xml: string, source: AllowlistSource, retrievedAt: string): ParsedFeed | null {
+function parseFeed(xml: string, source: AllowlistSource, feed: AllowlistFeed, retrievedAt: string): ParsedFeed | null {
   if (!xml) return null;
   const preparedXml = prepareXml(xml);
   if (preparedXml === null || XMLValidator.validate(preparedXml) !== true) return null;
@@ -545,6 +540,7 @@ function parseFeed(xml: string, source: AllowlistSource, retrievedAt: string): P
       publisher: source.publisher,
       title,
       canonicalUrl: url,
+      feedUrl: feed.url,
       publishedAt: normalizedTimestamp(item.pubDate ?? item.published ?? item.updated),
       retrievedAt,
       excerpt,
@@ -568,7 +564,7 @@ async function collectSource(
       const outcome = await fetchFeedXml(feed.url, fetchImpl);
       if (outcome.kind === 'blocked') break;
       if (outcome.kind === 'unavailable') continue;
-      const parsed = parseFeed(outcome.xml, source, retrievedAt);
+      const parsed = parseFeed(outcome.xml, source, feed, retrievedAt);
       if (parsed === null || (parsed.entryCount > 0 && parsed.candidates.length === 0)) continue;
       successfulFeeds += 1;
       candidates.push(...parsed.candidates);
@@ -579,8 +575,8 @@ async function collectSource(
   return { candidates, successfulFeeds };
 }
 
-function persistInputs(root: string, inputs: CollectedInputs): void {
-  const directory = join(root, '.cache', 'diario', inputs.date);
+function persistInputs(root: string, inputs: CollectedInputs, scope: CacheScope): void {
+  const directory = diarioCachePath(root, inputs.date, scope);
   mkdirSync(directory, { recursive: true });
   const destination = join(directory, 'inputs.json');
   const temporary = join(directory, `.inputs.${process.pid}.tmp`);
@@ -595,6 +591,7 @@ export async function collectInputs(date: string, options: CollectOptions = {}):
   const root = resolve(options.root ?? process.cwd());
   const fetchImpl = options.fetch ?? fetch;
   const retrievedAt = now.toISOString();
+  const cacheScope = options.cacheScope ?? 'edition';
 
   const vault = verifyGovernance(root);
   const { allowlist, calendar: events, lessons } = vault;
@@ -613,24 +610,14 @@ export async function collectInputs(date: string, options: CollectOptions = {}):
   };
 
   const sources: SourceCandidate[] = [];
-  const seenUrls = new Set<string>();
-  const seenTitles = new Map<string, Set<string>>();
   let enabledFeeds = 0;
   let successfulFeeds = 0;
   for (const source of allowlist) {
     if (!source.enabled) continue;
     enabledFeeds += source.feeds.length;
-    const publisherTitles = seenTitles.get(source.id) ?? new Set<string>();
-    seenTitles.set(source.id, publisherTitles);
     const collected = await collectSource(source, retrievedAt, fetchImpl);
     successfulFeeds += collected.successfulFeeds;
-    for (const candidate of collected.candidates) {
-      const titleKey = normalizedTitleKey(candidate.title);
-      if (seenUrls.has(candidate.canonicalUrl) || publisherTitles.has(titleKey)) continue;
-      seenUrls.add(candidate.canonicalUrl);
-      publisherTitles.add(titleKey);
-      sources.push(candidate);
-    }
+    sources.push(...collected.candidates);
   }
   if (enabledFeeds > 0 && successfulFeeds === 0) {
     throw new Error(`RSS collection unavailable: every enabled feed failed to fetch or parse (${enabledFeeds} feeds)`);
@@ -639,12 +626,14 @@ export async function collectInputs(date: string, options: CollectOptions = {}):
   const inputs: CollectedInputs = {
     date,
     retrievedAt,
+    ...(options.referenceAt === undefined ? {} : { referenceAt: options.referenceAt }),
     bcb,
     sources,
     events,
     lessons,
     previousEditions: [],
   };
-  persistInputs(root, inputs);
-  return inputs;
+  const parsed = parseCollectedInputs(inputs);
+  persistInputs(root, parsed, cacheScope);
+  return parsed;
 }

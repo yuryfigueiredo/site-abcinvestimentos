@@ -4,7 +4,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildDeterministicBriefing } from '../../src/lib/diario/briefing';
+import { diarioCachePath } from '../../src/lib/diario/cache';
+import { curateCollectedInputs } from '../../src/lib/diario/curation';
 import { computeCurationBundleHash, verifyGovernance } from '../../src/lib/diario/governance';
+import { buildSimulationDraft } from '../../src/lib/diario/preview';
 import { parseEditorialBriefing, parseSelection } from '../../src/lib/diario/schema';
 import { DATE, draft, inputs, source, sourceForDate } from './fixtures';
 
@@ -37,6 +40,15 @@ function runScript(name: 'curate' | 'validate', root: string, publish = false, d
   return execFileSync(script, args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
 }
 
+function runScriptWithArgs(name: 'simulate' | 'validate', root: string, args: string[]): string {
+  const script = join(process.cwd(), 'node_modules/.bin/tsx');
+  return execFileSync(script, [join(process.cwd(), `scripts/diario/${name}.ts`), ...args], {
+    cwd: root,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+}
+
 describe('Diário CLIs', () => {
   it('writes deterministic selection without publishing an edition', () => {
     const root = tempRoot();
@@ -52,6 +64,28 @@ describe('Diário CLIs', () => {
     expect(selection.decision.status).toBe('material');
     expect(selection.selectedSources.map((item) => item.id)).toEqual(['fonte-bcb']);
     expect(existsSync(join(root, 'src/data/diario/edicoes', `${DATE}.json`))).toBe(false);
+  });
+
+  it('writes a terminal diagnostic for every collected source without excerpts', () => {
+    const root = tempRoot();
+    const approvedVault = verifyGovernance(root);
+    const collected = inputs();
+    collected.sources = [source()];
+    collected.lessons = approvedVault.lessons;
+    writeJson(join(root, '.cache/diario', DATE, 'inputs.json'), collected);
+
+    runScript('curate', root);
+
+    const bytes = readFileSync(join(root, '.cache/diario', DATE, 'diagnostics.json'), 'utf8');
+    const diagnostics = JSON.parse(bytes) as Array<Record<string, unknown>>;
+    expect(diagnostics).toEqual([{
+      id: 'fonte-bcb',
+      title: 'Copom mantém avaliação de juros',
+      publishedAt: `${DATE}T10:00:00.000Z`,
+      topic: 'juros',
+      reason: 'selected',
+    }]);
+    expect(bytes).not.toMatch(/excerpt|excerptSha256|<|>/iu);
   });
 
   it('writes deterministic briefing without publishing a no-news material edition', () => {
@@ -163,5 +197,36 @@ describe('Diário CLIs', () => {
     const published = readFileSync(editionPath, 'utf8');
     expect(() => runScript('validate', root, true)).toThrow(/exists|overwrite|same day/iu);
     expect(readFileSync(editionPath, 'utf8')).toBe(published);
+  }, 15_000);
+
+  it('validates a seeded simulation without reading or writing the edition cache', () => {
+    const root = tempRoot();
+    const date = '2026-11-24';
+    const approvedVault = verifyGovernance(root);
+    const collected = inputs(date);
+    collected.referenceAt = '2026-11-25T01:00:00Z';
+    collected.sources = [sourceForDate(date)];
+    collected.lessons = approvedVault.lessons;
+    const result = curateCollectedInputs(collected, [], approvedVault);
+    const preview = buildSimulationDraft(collected, result, approvedVault, []);
+    const cache = diarioCachePath(root, date, 'simulation');
+    writeJson(join(cache, 'inputs.json'), collected);
+    writeJson(join(cache, 'selection.json'), result.selection);
+    writeJson(join(cache, 'draft.json'), preview);
+
+    expect(runScriptWithArgs('validate', root, [date, '--root', root, '--simulation'])).toMatch(/simula[cç][aã]o/iu);
+    expect(existsSync(join(root, 'src/data/diario/edicoes', `${date}.json`))).toBe(false);
+    expect(existsSync(diarioCachePath(root, date, 'edition'))).toBe(false);
+  }, 15_000);
+
+  it('rejects simulation publication and unknown flags before any collection or write', () => {
+    const root = tempRoot();
+    const args = [DATE, '--as-of', '2026-11-28T22:00:00Z', '--root', root];
+
+    expect(() => runScriptWithArgs('simulate', root, [...args, '--publish'])).toThrow(/publish|usage/iu);
+    expect(() => runScriptWithArgs('simulate', root, [...args, '--unknown'])).toThrow(/usage/iu);
+    expect(() => runScriptWithArgs('validate', root, [DATE, '--root', root, '--simulation', '--publish'])).toThrow(/usage/iu);
+    expect(existsSync(diarioCachePath(root, DATE, 'simulation'))).toBe(false);
+    expect(existsSync(join(root, 'src/data/diario/edicoes', `${DATE}.json`))).toBe(false);
   }, 15_000);
 });

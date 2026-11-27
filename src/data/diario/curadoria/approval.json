@@ -1,7 +1,7 @@
 {
-  "bundleSha256": "15d4ed90f7c75e76b6dbf1d01eda478fcb344ef0f0b88ab6ae5743fd994dde35",
-  "charterVersion": "1.0.3",
-  "approvedAt": "2026-11-25T00:07:43Z",
+  "bundleSha256": "1115809c149935c8deea62faab1494fe681821d332a2c8bf35b9baa6ab02f8ce",
+  "charterVersion": "1.0.4",
+  "approvedAt": "2026-11-27T18:10:37Z",
   "approvedBy": "Yury Figueiredo",
-  "instructionRef": "docs/superpowers/plans/2026-11-24-diario-expansao-fontes.md"
+  "instructionRef": "docs/superpowers/plans/2026-11-27-diario-cobertura-simulacao.md"
 }
