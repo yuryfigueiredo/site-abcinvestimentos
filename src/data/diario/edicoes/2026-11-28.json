@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 2,
+  "id": "diario-2026-11-28",
+  "date": "2026-11-28",
+  "generatedAt": "2026-11-27T19:26:33.453Z",
+  "title": "Pix, crédito e agricultura no radar do Banco Central",
+  "summary": "O Banco Central apresentou as prioridades do Pix para o próximo ano, divulgou estatísticas monetárias e de crédito atualizadas e publicou uma resolução para operações de crédito ligadas à disseminação tecnológica na agricultura. A leitura abaixo separa os fatos e explica por que eles importam para o planejamento financeiro, sem recomendar contratações ou aplicações.",
+  "snapshot": {
+    "status": "stale",
+    "measured": {
+      "cdi": {
+        "value": 13.65,
+        "observedOn": "2026-11-26",
+        "origin": "bcb-sgs"
+      },
+      "ipca12m": {
+        "value": 4.63,
+        "observedOn": "2026-10-01",
+        "origin": "stale"
+      },
+      "dolar": {
+        "value": 5.7446,
+        "observedOn": "2026-11-26",
+        "origin": "stale"
+      }
+    },
+    "staleFields": [
+      "ipca12m",
+      "dolar"
+    ],
+    "dollarChangePct": null
+  },
+  "decision": {
+    "status": "material",
+    "reasonCodes": [
+      "official-news"
+    ],
+    "newsClusterIds": [
+      "cluster-1",
+      "cluster-2",
+      "cluster-3"
+    ]
+  },
+  "items": [
+    {
+      "id": "pix-agenda",
+      "topic": "pagamentos-credito",
+      "headline": "Pix terá foco em serviços e segurança no próximo ano",
+      "summary": "O Fórum Pix apresentou um balanço das iniciativas do arranjo de pagamentos e as diretrizes para a agenda evolutiva. O Banco Central indicou que o próximo ano terá continuidade do aprimoramento de serviços e reforço da segurança, com foco na evolução do Pix como ferramenta de pagamento.",
+      "whyItMatters": "Mudanças em serviços e segurança podem afetar a experiência de uso do Pix e a forma como as pessoas se protegem em transações. Ainda assim, a agenda anunciada não representa garantia de retorno financeiro nem recomendação de trocar instrumentos de pagamento.",
+      "sourceIds": [
+        "src-b1db74f23709ff403e8ecf98"
+      ]
+    },
+    {
+      "id": "estatisticas-credito",
+      "topic": "pagamentos-credito",
+      "headline": "Banco Central atualiza estatísticas monetárias e de crédito",
+      "summary": "O Banco Central divulgou as Estatísticas Monetárias e de Crédito com dados atualizados até outubro. O material reúne informações oficiais para acompanhamento do mercado de crédito e das variáveis monetárias, mas a nota de imprensa não apresenta, por si só, uma conclusão sobre o custo do crédito para cada pessoa.",
+      "whyItMatters": "Estatísticas oficiais ajudam a entender o contexto do crédito e a evitar decisões baseadas apenas em notícias isoladas. Para comparar condições, é importante olhar a data de referência, o público analisado e as condições concretas de cada operação.",
+      "sourceIds": [
+        "src-ff57a5abfc063b3a7b395ed4"
+      ]
+    },
+    {
+      "id": "credito-agricola",
+      "topic": "pagamentos-credito",
+      "headline": "Nova resolução disciplina crédito para disseminação tecnológica na agricultura",
+      "summary": "O Banco Central publicou uma resolução que disciplina operações de crédito com recursos do Fundo Nacional de Desenvolvimento Científico e Tecnológico destinadas à disseminação tecnológica na produção agrícola. A regra se refere a um recorte específico de crédito e não deve ser interpretada como mudança geral nas condições de financiamento do campo.",
+      "whyItMatters": "A medida interessa a quem acompanha o financiamento de iniciativas tecnológicas na agricultura. Seu alcance depende do texto normativo e das regras de cada operação, por isso a leitura isolada do título não basta para avaliar impacto financeiro.",
+      "sourceIds": [
+        "src-2b33f1fb0c80e7f2279e7471"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "src-b1db74f23709ff403e8ecf98",
+      "sourceId": "bcb",
+      "kind": "official",
+      "publisher": "Banco Central do Brasil",
+      "title": "Fórum Pix projeta avanços para 2027",
+      "canonicalUrl": "https://www.bcb.gov.br/detalhenoticia/21337/noticia",
+      "publishedAt": "2026-11-26T20:45:55.000Z",
+      "retrievedAt": "2026-11-27T19:26:33.453Z"
+    },
+    {
+      "id": "src-ff57a5abfc063b3a7b395ed4",
+      "sourceId": "bcb",
+      "kind": "official",
+      "publisher": "Banco Central do Brasil",
+      "title": "BC divulga Estatísticas Monetárias e de Crédito à imprensa",
+      "canonicalUrl": "https://www.bcb.gov.br/detalhenoticia/21338/nota",
+      "publishedAt": "2026-11-27T11:32:01.000Z",
+      "retrievedAt": "2026-11-27T19:26:33.453Z"
+    },
+    {
+      "id": "src-2b33f1fb0c80e7f2279e7471",
+      "sourceId": "bcb",
+      "kind": "official",
+      "publisher": "Banco Central do Brasil",
+      "title": "BC - Resolução CMN N° 5.351 de 26/11/2026",
+      "canonicalUrl": "https://www.bcb.gov.br/estabilidadefinanceira/exibenormativo?numero=5351&tipo=Resolu%C3%A7%C3%A3o+CMN",
+      "publishedAt": "2026-11-26T21:02:31.000Z",
+      "retrievedAt": "2026-11-27T19:26:33.453Z"
+    }
+  ],
+  "briefing": {
+    "whatHappened": "O Banco Central do Brasil reuniu três movimentos relevantes nesta semana. No Fórum Pix, apresentou um balanço das iniciativas do arranjo de pagamentos e sinalizou que o próximo ano terá foco no aprimoramento de serviços e no reforço da segurança. Também divulgou as Estatísticas Monetárias e de Crédito com dados atualizados até outubro. Por fim, publicou uma resolução que disciplina operações de crédito com recursos do Fundo Nacional de Desenvolvimento Científico e Tecnológico destinadas à disseminação tecnológica na produção agrícola. São pautas distintas, mas todas ajudam a acompanhar a evolução do sistema financeiro.",
+    "whyItMatters": "Para o investidor, o valor dessas informações está em separar movimento institucional de efeito automático sobre resultados pessoais. A agenda do Pix pode influenciar a experiência de pagamento e a segurança das transações, mas não altera por si só a rentabilidade de uma aplicação. As estatísticas de crédito oferecem uma base para acompanhar condições do mercado, e a resolução agrícola interessa a um recorte específico de operações. Ler cada fato no seu escopo evita conclusões amplas e ajuda a planejar decisões com mais critério.",
+    "whatToWatch": [
+      "Acompanhe os comunicados oficiais do Banco Central sobre a implementação da agenda do Pix e compare as medidas anunciadas com os serviços efetivamente disponíveis.",
+      "Use as Estatísticas Monetárias e de Crédito como fonte de acompanhamento, verificando a data de referência e evitando tratar um único indicador como retrato completo do mercado.",
+      "Se a resolução agrícola interessar ao seu contexto, consulte o texto integral e os comunicados do Banco Central antes de interpretar seu alcance."
+    ]
+  },
+  "relatedCalculatorSlug": "renda-fixa",
+  "policy": {
+    "charterVersion": "1.0.4",
+    "allowlistVersion": "1.3.0",
+    "thresholdsVersion": "1.1.0",
+    "sourceIds": [
+      "bcb",
+      "camara",
+      "the-conversation-brasil"
+    ],
+    "allowedHosts": [
+      "theconversation.com",
+      "www.bcb.gov.br",
+      "www.camara.leg.br"
+    ]
+  },
+  "provenance": {
+    "generator": "qoder-diario",
+    "promptVersion": "diario-2026-11-27-preflight-v4",
+    "disclaimerKey": "educacional-nao-e-recomendacao"
+  }
+}
